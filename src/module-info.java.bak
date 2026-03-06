@@ -1,0 +1,12 @@
+/**
+ * Modul-Definition für die Zündung-Anwendung.
+ * 
+ * Definiert die erforderlichen Module und ermöglicht Reflektion
+ * für XML-Binding und andere Framework-Features.
+ */
+open module Zuendung {
+    requires java.desktop;
+    requires java.logging;
+    requires jakarta.xml.bind;
+    requires java.xml;
+}

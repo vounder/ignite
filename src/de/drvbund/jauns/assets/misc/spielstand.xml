@@ -1,0 +1,553 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<gameState>
+    <score>100</score>
+    <money>0</money>
+    <spieler>
+        <deck>
+            <nummer>KÖNIG</nummer>
+            <farbe>KREUZ</farbe>
+            <beschreibung>Kreuz König: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>51</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>ACHT</nummer>
+            <farbe>HERZ</farbe>
+            <zusätze>AUSSETZEN</zusätze>
+            <beschreibung>Herz Acht:  Der Gegner setzt eine Runde aus.</beschreibung>
+            <preis>1</preis>
+            <aussetzWert>1</aussetzWert>
+            <loaderIndex>7</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>BUBE</nummer>
+            <farbe>HERZ</farbe>
+            <beschreibung>Herz Bube: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>10</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>DREI</nummer>
+            <farbe>KREUZ</farbe>
+            <beschreibung>Kreuz Drei: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>41</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>BUBE</nummer>
+            <farbe>KARO</farbe>
+            <beschreibung>Karo Bube: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>23</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>NEUN</nummer>
+            <farbe>KARO</farbe>
+            <beschreibung>Karo Neun: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>21</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>DAME</nummer>
+            <farbe>KARO</farbe>
+            <beschreibung>Karo Dame: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>24</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>KÖNIG</nummer>
+            <farbe>HERZ</farbe>
+            <beschreibung>Herz König: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>12</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>VIER</nummer>
+            <farbe>KARO</farbe>
+            <beschreibung>Karo Vier: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>16</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>ASS</nummer>
+            <farbe>PIK</farbe>
+            <beschreibung>Pik Ass: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>39</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>VIER</nummer>
+            <farbe>KREUZ</farbe>
+            <beschreibung>Kreuz Vier: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>42</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>DAME</nummer>
+            <farbe>PIK</farbe>
+            <beschreibung>Pik Dame: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>37</loaderIndex>
+        </deck>
+        <hand>
+            <nummer>FÜNF</nummer>
+            <farbe>KARO</farbe>
+            <beschreibung>Karo Fünf: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>17</loaderIndex>
+        </hand>
+        <hand>
+            <nummer>NEUN</nummer>
+            <farbe>KREUZ</farbe>
+            <beschreibung>Kreuz Neun: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>47</loaderIndex>
+        </hand>
+        <hand>
+            <nummer>ZEHN</nummer>
+            <farbe>PIK</farbe>
+            <beschreibung>Pik Zehn: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>35</loaderIndex>
+        </hand>
+        <hand>
+            <nummer>SECHS</nummer>
+            <farbe>PIK</farbe>
+            <beschreibung>Pik Sechs: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>31</loaderIndex>
+        </hand>
+        <kartenRückseite>
+            <loaderIndex>0</loaderIndex>
+        </kartenRückseite>
+        <tauschEffekt>false</tauschEffekt>
+        <spiegelEffekt>false</spiegelEffekt>
+        <doppelEffekt>false</doppelEffekt>
+        <verbrennEffekt>false</verbrennEffekt>
+        <vorhersageEffekt>false</vorhersageEffekt>
+        <gespenstRunde>0</gespenstRunde>
+        <opferEffekt>false</opferEffekt>
+        <zockenEffekt>false</zockenEffekt>
+        <zytokineseEffekt>false</zytokineseEffekt>
+        <zytokinese2Effekt>false</zytokinese2Effekt>
+    </spieler>
+    <gegner>
+        <deck>
+            <nummer>DAME</nummer>
+            <farbe>KARO</farbe>
+            <beschreibung>Karo Dame: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>24</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>SECHS</nummer>
+            <farbe>KREUZ</farbe>
+            <beschreibung>Kreuz Sechs: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>44</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>KÖNIG</nummer>
+            <farbe>KARO</farbe>
+            <beschreibung>Karo König: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>25</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>NEUN</nummer>
+            <farbe>HERZ</farbe>
+            <beschreibung>Herz Neun: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>8</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>ACHT</nummer>
+            <farbe>KREUZ</farbe>
+            <zusätze>AUSSETZEN</zusätze>
+            <beschreibung>Kreuz Acht:  Der Gegner setzt eine Runde aus.</beschreibung>
+            <preis>1</preis>
+            <aussetzWert>1</aussetzWert>
+            <loaderIndex>46</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>SECHS</nummer>
+            <farbe>PIK</farbe>
+            <beschreibung>Pik Sechs: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>31</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>NEUN</nummer>
+            <farbe>PIK</farbe>
+            <beschreibung>Pik Neun: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>34</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>ACHT</nummer>
+            <farbe>HERZ</farbe>
+            <zusätze>AUSSETZEN</zusätze>
+            <beschreibung>Herz Acht:  Der Gegner setzt eine Runde aus.</beschreibung>
+            <preis>1</preis>
+            <aussetzWert>1</aussetzWert>
+            <loaderIndex>7</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>DREI</nummer>
+            <farbe>KARO</farbe>
+            <beschreibung>Karo Drei: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>15</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>DAME</nummer>
+            <farbe>HERZ</farbe>
+            <beschreibung>Herz Dame: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>11</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>BUBE</nummer>
+            <farbe>HERZ</farbe>
+            <beschreibung>Herz Bube: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>10</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>DREI</nummer>
+            <farbe>KREUZ</farbe>
+            <beschreibung>Kreuz Drei: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>41</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>FÜNF</nummer>
+            <farbe>KREUZ</farbe>
+            <beschreibung>Kreuz Fünf: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>43</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>KÖNIG</nummer>
+            <farbe>PIK</farbe>
+            <beschreibung>Pik König: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>38</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>ASS</nummer>
+            <farbe>HERZ</farbe>
+            <beschreibung>Herz Ass: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>13</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>KÖNIG</nummer>
+            <farbe>KREUZ</farbe>
+            <beschreibung>Kreuz König: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>51</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>SIEBEN</nummer>
+            <farbe>KARO</farbe>
+            <zusätze>AUSSETZEN</zusätze>
+            <zusätze>ADDIEREN</zusätze>
+            <beschreibung>Karo Sieben:  Der Gegner setzt eine Runde aus. Der Gegner zieht 2 Karten.</beschreibung>
+            <preis>1</preis>
+            <addierWert>2</addierWert>
+            <aussetzWert>1</aussetzWert>
+            <loaderIndex>19</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>VIER</nummer>
+            <farbe>KREUZ</farbe>
+            <beschreibung>Kreuz Vier: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>42</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>ZWEI</nummer>
+            <farbe>KREUZ</farbe>
+            <beschreibung>Kreuz Zwei: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>40</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>DAME</nummer>
+            <farbe>KREUZ</farbe>
+            <beschreibung>Kreuz Dame: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>50</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>VIER</nummer>
+            <farbe>KARO</farbe>
+            <beschreibung>Karo Vier: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>16</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>ASS</nummer>
+            <farbe>KREUZ</farbe>
+            <beschreibung>Kreuz Ass: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>52</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>ZWEI</nummer>
+            <farbe>HERZ</farbe>
+            <beschreibung>Herz Zwei: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>1</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>BUBE</nummer>
+            <farbe>KARO</farbe>
+            <beschreibung>Karo Bube: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>23</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>ZEHN</nummer>
+            <farbe>KARO</farbe>
+            <beschreibung>Karo Zehn: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>22</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>BUBE</nummer>
+            <farbe>PIK</farbe>
+            <beschreibung>Pik Bube: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>36</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>ZEHN</nummer>
+            <farbe>KREUZ</farbe>
+            <beschreibung>Kreuz Zehn: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>48</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>DREI</nummer>
+            <farbe>PIK</farbe>
+            <beschreibung>Pik Drei: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>28</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>VIER</nummer>
+            <farbe>PIK</farbe>
+            <beschreibung>Pik Vier: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>29</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>SIEBEN</nummer>
+            <farbe>HERZ</farbe>
+            <zusätze>AUSSETZEN</zusätze>
+            <zusätze>ADDIEREN</zusätze>
+            <beschreibung>Herz Sieben:  Der Gegner setzt eine Runde aus. Der Gegner zieht 2 Karten.</beschreibung>
+            <preis>1</preis>
+            <addierWert>2</addierWert>
+            <aussetzWert>1</aussetzWert>
+            <loaderIndex>6</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>ACHT</nummer>
+            <farbe>PIK</farbe>
+            <zusätze>AUSSETZEN</zusätze>
+            <beschreibung>Pik Acht:  Der Gegner setzt eine Runde aus.</beschreibung>
+            <preis>1</preis>
+            <aussetzWert>1</aussetzWert>
+            <loaderIndex>33</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>VIER</nummer>
+            <farbe>HERZ</farbe>
+            <beschreibung>Herz Vier: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>3</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>FÜNF</nummer>
+            <farbe>KARO</farbe>
+            <beschreibung>Karo Fünf: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>17</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>NEUN</nummer>
+            <farbe>KREUZ</farbe>
+            <beschreibung>Kreuz Neun: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>47</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>KÖNIG</nummer>
+            <farbe>HERZ</farbe>
+            <beschreibung>Herz König: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>12</loaderIndex>
+        </deck>
+        <deck>
+            <zusätze>FLUCH</zusätze>
+            <beschreibung>Der Gegner zieht zusätzlich 1 Karte(n).</beschreibung>
+            <preis>2</preis>
+            <fluchRundenAnzahl>1</fluchRundenAnzahl>
+            <loaderIndex>0</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>ASS</nummer>
+            <farbe>KARO</farbe>
+            <beschreibung>Karo Ass: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>26</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>SECHS</nummer>
+            <farbe>KARO</farbe>
+            <beschreibung>Karo Sechs: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>18</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>SECHS</nummer>
+            <farbe>HERZ</farbe>
+            <beschreibung>Herz Sechs: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>5</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>ZEHN</nummer>
+            <farbe>PIK</farbe>
+            <beschreibung>Pik Zehn: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>35</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>BUBE</nummer>
+            <farbe>KREUZ</farbe>
+            <beschreibung>Kreuz Bube: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>49</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>ACHT</nummer>
+            <farbe>KARO</farbe>
+            <zusätze>AUSSETZEN</zusätze>
+            <beschreibung>Karo Acht:  Der Gegner setzt eine Runde aus.</beschreibung>
+            <preis>1</preis>
+            <aussetzWert>1</aussetzWert>
+            <loaderIndex>20</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>ZWEI</nummer>
+            <farbe>PIK</farbe>
+            <beschreibung>Pik Zwei: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>27</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>DREI</nummer>
+            <farbe>HERZ</farbe>
+            <beschreibung>Herz Drei: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>2</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>ASS</nummer>
+            <farbe>PIK</farbe>
+            <beschreibung>Pik Ass: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>39</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>SIEBEN</nummer>
+            <farbe>KREUZ</farbe>
+            <zusätze>AUSSETZEN</zusätze>
+            <zusätze>ADDIEREN</zusätze>
+            <beschreibung>Kreuz Sieben:  Der Gegner setzt eine Runde aus. Der Gegner zieht 2 Karten.</beschreibung>
+            <preis>1</preis>
+            <addierWert>2</addierWert>
+            <aussetzWert>1</aussetzWert>
+            <loaderIndex>45</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>ZEHN</nummer>
+            <farbe>HERZ</farbe>
+            <beschreibung>Herz Zehn: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>9</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>ZWEI</nummer>
+            <farbe>KARO</farbe>
+            <beschreibung>Karo Zwei: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>14</loaderIndex>
+        </deck>
+        <deck>
+            <nummer>SIEBEN</nummer>
+            <farbe>PIK</farbe>
+            <zusätze>AUSSETZEN</zusätze>
+            <zusätze>ADDIEREN</zusätze>
+            <beschreibung>Pik Sieben:  Der Gegner setzt eine Runde aus. Der Gegner zieht 2 Karten.</beschreibung>
+            <preis>1</preis>
+            <addierWert>2</addierWert>
+            <aussetzWert>1</aussetzWert>
+            <loaderIndex>32</loaderIndex>
+        </deck>
+        <hand>
+            <nummer>NEUN</nummer>
+            <farbe>KARO</farbe>
+            <beschreibung>Karo Neun: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>21</loaderIndex>
+        </hand>
+        <hand>
+            <nummer>FÜNF</nummer>
+            <farbe>PIK</farbe>
+            <beschreibung>Pik Fünf: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>30</loaderIndex>
+        </hand>
+        <hand>
+            <nummer>DAME</nummer>
+            <farbe>PIK</farbe>
+            <beschreibung>Pik Dame: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>37</loaderIndex>
+        </hand>
+        <hand>
+            <nummer>FÜNF</nummer>
+            <farbe>HERZ</farbe>
+            <beschreibung>Herz Fünf: Diese Karte hat keinen Effekt.</beschreibung>
+            <preis>1</preis>
+            <loaderIndex>4</loaderIndex>
+        </hand>
+        <kartenRückseite>
+            <loaderIndex>0</loaderIndex>
+        </kartenRückseite>
+        <tauschEffekt>false</tauschEffekt>
+        <spiegelEffekt>false</spiegelEffekt>
+        <doppelEffekt>false</doppelEffekt>
+        <verbrennEffekt>false</verbrennEffekt>
+        <vorhersageEffekt>false</vorhersageEffekt>
+        <gespenstRunde>0</gespenstRunde>
+        <opferEffekt>false</opferEffekt>
+        <zockenEffekt>false</zockenEffekt>
+        <zytokineseEffekt>false</zytokineseEffekt>
+        <zytokinese2Effekt>false</zytokinese2Effekt>
+    </gegner>
+    <level>1</level>
+    <lastCard>
+        <nummer>DAME</nummer>
+        <farbe>HERZ</farbe>
+        <beschreibung>Herz Dame: Diese Karte hat keinen Effekt.</beschreibung>
+        <preis>1</preis>
+        <loaderIndex>3403</loaderIndex>
+    </lastCard>
+    <spielerZug>true</spielerZug>
+</gameState>

@@ -1,0 +1,21 @@
+# Maven build output
+target/
+
+# Eclipse build output
+bin/
+
+# Eclipse project files
+.classpath
+.project
+.settings/
+
+# Personal / generated files
+chat.txt
+chat_to_md.py
+output.md
+
+# Misc
+*.class
+*.jar
+*.war
+*.log
