@@ -4,37 +4,33 @@
 > [`godot/`](godot/README.md). Die Java-Version bleibt bis zur funktionalen
 > Parität unverändert als Regel- und Inhaltsreferenz erhalten.
 
-## Projektübersicht
-
 Zündung ist ein Roguelike-Kartenspiel basierend auf Mau-Mau mit erweiterten Gameplay-Mechaniken, Items und einem Shop-System.
 
-## Version 0.2.0 - Optimierungen und Verbesserungen
+## Version 0.2.0
 
-### Hauptverbesserungen
+### Änderungen
 
-#### 🚀 Performance-Optimierungen
-- **Intelligenter Renderer**: Ersetzt den 16ms-Timer durch bedarfsgesteuertes Rendering
-- **Ressourcen-Caching**: Effiziente Bildladung mit automatischem Caching
-- **Memory Management**: Reduzierte Speichernutzung durch optimierte Datenstrukturen
-- **Thread-Sicherheit**: Concurrent Collections für bessere Parallelität
+#### Performance
+- Bedarfsgesteuertes Rendering statt konstantem 16ms-Timer
+- Ressourcen-Caching beim Laden von Bildern
+- Reduzierte Speichernutzung durch optimierte Datenstrukturen
+- Concurrent Collections für Thread-Sicherheit
 
-#### 🏗️ Architektur-Verbesserungen
-- **Observer Pattern**: GameState benachrichtigt UI über Änderungen
-- **Singleton-Optimierung**: Thread-sichere Implementierungen
-- **Modulare Struktur**: Bessere Trennung von Concerns
-- **Error Handling**: Robuste Fehlerbehandlung mit aussagekräftigen Meldungen
+#### Architektur
+- Observer Pattern: GameState benachrichtigt UI über Änderungen
+- Thread-sichere Singleton-Implementierungen
+- Robuste Fehlerbehandlung
 
-#### 🎮 Gameplay-Features
-- **Effekt-System**: Vollständig implementierte Consumables und Trinkets
-- **Konfigurationssystem**: Umfassende Einstellungsmöglichkeiten
-- **State Management**: Verbessertes Spielzustand-Management
-- **Auto-Save**: Automatisches Speichern des Fortschritts
+#### Gameplay
+- Vollständig implementierte Consumables und Trinkets
+- Konfigurationssystem für Einstellungen
+- Verbessertes Spielzustand-Management
+- Automatisches Speichern des Fortschritts
 
-#### 🔧 Code-Qualität
-- **Clean Code**: Entfernung aller TODO-Kommentare
-- **Documentation**: Umfassende JavaDoc-Dokumentation
-- **Utility Classes**: Wiederverwendbare Hilfsmethoden
-- **Type Safety**: Generics und moderne Java-Features
+#### Code
+- JavaDoc-Dokumentation
+- Wiederverwendbare Utility-Klassen
+- Generics und moderne Java-Features
 
 ## Technische Details
 
@@ -179,18 +175,18 @@ EntryPoint
 
 ## Bekannte Issues & Roadmap
 
-### Aktuell behoben
-- ✅ Performance-Issues durch konstantes Repaint
-- ✅ Memory Leaks in der Ressourcenverwaltung
-- ✅ Thread-Safety-Probleme
-- ✅ Fehlende Effekt-Implementierungen
+### Behoben in 0.2.0
+- Performance-Probleme durch konstantes Repaint
+- Memory Leaks in der Ressourcenverwaltung
+- Thread-Safety-Probleme
+- Fehlende Effekt-Implementierungen
 
 ### Geplant für v0.3.0
-- [ ] Multiplayer-Unterstützung
-- [ ] Erweiterte Animationen
-- [ ] Sound-System
-- [ ] Achievements
-- [ ] Localization
+- Multiplayer-Unterstützung
+- Erweiterte Animationen
+- Sound-System
+- Achievements
+- Localization
 
 ## Entwicklung
 
@@ -242,4 +238,4 @@ Bei Fragen oder Problemen:
 
 ---
 
-**Zündung v0.2.0** - Optimiert für Performance und Benutzerfreundlichkeit
+**Zündung v0.2.0**
