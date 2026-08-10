@@ -1,6 +1,13 @@
 # Maven build output
 target/
 
+# .NET / Godot build output
+**/bin/
+**/obj/
+godot/game/.godot/
+godot/builds/
+.tools/
+
 # Eclipse build output
 bin/
 

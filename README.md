@@ -1,5 +1,9 @@
 # Zündung - Mau-Mau Roguelike Kartenspiel
 
+> **Neubau:** Der spielbare Godot-4.6-.NET-V2-Run liegt unter
+> [`godot/`](godot/README.md). Die Java-Version bleibt bis zur funktionalen
+> Parität unverändert als Regel- und Inhaltsreferenz erhalten.
+
 ## Projektübersicht
 
 Zündung ist ein Roguelike-Kartenspiel basierend auf Mau-Mau mit erweiterten Gameplay-Mechaniken, Items und einem Shop-System.

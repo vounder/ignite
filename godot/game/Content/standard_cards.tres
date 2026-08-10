@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="StandardCardSetResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Content/StandardCardSetResource.cs" id="1_cards"]
+
+[resource]
+script = ExtResource("1_cards")
+CatalogVersion = "standard-1"
+RankPrices = Array[int]([1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5])
+SevenDrawCount = 2
+SevenSkipCount = 1
+EightSkipCount = 1

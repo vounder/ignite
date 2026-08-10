@@ -1,0 +1,50 @@
+; Engine configuration file.
+; Edit through the Godot editor when possible.
+config_version=5
+
+[application]
+
+config/name="Zündung"
+run/main_scene="res://Main.tscn"
+config/features=PackedStringArray("4.6", "C#", "GL Compatibility")
+
+[display]
+
+window/size/viewport_width=640
+window/size/viewport_height=360
+window/size/window_width_override=1280
+window/size/window_height_override=720
+window/stretch/mode="canvas_items"
+window/stretch/aspect="keep"
+window/handheld/orientation=1
+
+[dotnet]
+
+project/assembly_name="Zuendung.Game"
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/default_filters/use_nearest_mipmap_filter=false
+textures/canvas_textures/default_texture_filter=0
+environment/defaults/default_clear_color=Color(0.045, 0.025, 0.016, 1)
+
+[audio]
+
+default_bus_layout="res://default_bus_layout.tres"
+
+[input]
+
+draw_card={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"physical_keycode":32,"unicode":32)]
+}
+save_run={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"ctrl_pressed":true,"physical_keycode":83,"unicode":115)]
+}
+pause_menu={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"physical_keycode":4194305,"unicode":27)]
+}
