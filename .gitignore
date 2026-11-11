@@ -26,3 +26,7 @@ output.md
 *.jar
 *.war
 *.log
+
+# Browser-Version: Serverdaten und lokale Konfiguration
+server/data/
+server/.env
