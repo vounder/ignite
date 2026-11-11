@@ -28,6 +28,7 @@
           self.pause();
         }
       });
+      ZU.preload([ZU.asset('title/backroom.png')], true);
       this.go('menu');
       // Erst die Gegner eines gespeicherten Runs, dann nach und nach alles Übrige.
       var saved = ZU.Run.load();
