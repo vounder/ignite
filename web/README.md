@@ -84,6 +84,7 @@ Tasten: `1`–`9` spielt Handkarten, `Leertaste` zieht, `Enter` legt die Auswahl
 | `js/meta.js` | Meta-Progression: Asche, Freischaltungen, Upgrades, Einsätze |
 | `js/duelview.js` | spielt die Ereignisse als Animationen ab, nimmt Eingaben an |
 | `js/cards.js` | Kartenflächen (aus dem Atlas) und gefederte Karten-Sprites |
+| `js/title.js` | Titelschriftzug: Pixel-Buchstaben, die ein Streichholz entzündet, mit Pixel-Feuer |
 | `js/fx.js` | Bühne, Partikel, Popups, Bildschirmwackeln, Tooltips |
 | `js/bg.js` | WebGL-Hintergrund (verpixelter Rauch mit Glutfunken) |
 | `js/audio.js` | synthetische Effekte (WebAudio) und Musik |

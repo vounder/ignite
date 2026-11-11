@@ -1,7 +1,7 @@
 """Bereitet die Assets der Browser-Version aus den Godot-Quellen auf.
 
 Aufruf (aus dem Repo-Wurzelverzeichnis):
-    python web/tools/prepare_assets.py [--audio] [--generated <Ordner>] [--sheets <Ordner>] [--manfred <Ordner>] [--optimize] [--icons <Ordner> <Zielordner>]
+    python web/tools/prepare_assets.py [--audio] [--generated <Ordner>] [--sheets <Ordner>] [--manfred <Ordner>] [--optimize] [--icons <Ordner> <Zielordner>] [--title <Bild>]
 
 - Spezialkarten und Logo werden verkleinert nach web/assets kopiert.
   (Der Pixel-Font entsteht separat mit web/tools/make_font.py.)
@@ -241,6 +241,19 @@ def icons(folder, subdir):
         print("  icon", subdir, path.stem)
 
 
+def title(source):
+    """Kulisse des Titelbildschirms: auf 640x360 verkleinert (im Spiel doppelt so gross gezeigt) und auf 192 Farben reduziert."""
+    im = Image.open(source).convert("RGB")
+    width, height = im.size
+    crop = min(width, height * 16 // 9)
+    left, top = (width - crop) // 2, (height - crop * 9 // 16) // 2
+    im = im.crop((left, top, left + crop, top + crop * 9 // 16)).resize((640, 360), Image.BOX)
+    target = DST / "title" / "backroom.png"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    im.quantize(colors=192, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).save(target, optimize=True)
+    print("  title", target.stat().st_size // 1024, "KB")
+
+
 def audio():
     """Wandelt die Musik in MP3 um (braucht das Paket "lameenc": pip install lameenc)."""
     import lameenc
@@ -266,6 +279,9 @@ def audio():
 
 
 if __name__ == "__main__":
+    if "--title" in sys.argv:  # nur die Kulisse des Titelbildschirms
+        title(sys.argv[sys.argv.index("--title") + 1])
+        sys.exit()
     images()
     print("images ok")
     if "--generated" in sys.argv:

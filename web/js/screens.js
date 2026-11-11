@@ -443,16 +443,32 @@
   /* ---------- Hauptmenü ---------- */
   var screens = {};
 
+  /* Titelbildschirm: das Hinterzimmer als Kulisse, der Schriftzug wird von einem Streichholz entzündet
+     und brennt danach; unten liegt die eigene Hand auf dem Filz. Nur beim ersten Mal läuft das Anzünden
+     in voller Länge – ein Klick überspringt es. */
+  var TITLE_HAND = [['hearts-Q'], ['fluch', 'clubs'], ['spades-K'], ['diamonds-A'], ['hodl', 'red'], ['clubs-J'], ['tausch', 'wild']];
+
   screens.menu = function (game, root) {
     ZU.bg.set('menu');
     ZU.audio.music('menu');
     var profile = game.profile, saved = ZU.Run.load();
-    var deco = h('div', 'menu-deco');
-    ['hearts-A', 'tausch', 'spades-7', 'zocken', 'diamonds-K', 'opfer'].forEach(function (id, i) {
-      var c = h('div', 'deco-card d' + i, [ZU.cardFace(ZU.CARDS[id])]);
-      c.style.animationDelay = (-i * 1.3) + 's';
-      deco.appendChild(c);
+    var calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var intro = !game.titleSeen && !calm;
+    game.titleSeen = true;
+
+    var art = h('div', 'title-art');
+    art.style.backgroundImage = 'url(' + ZU.asset('title/backroom.png') + ')';
+    var logo = ZU.titleLogo('ZÜNDUNG');
+
+    var hand = h('div', 'title-hand');
+    TITLE_HAND.forEach(function (entry, i) {
+      var slot = h('div', 'hand-slot', [ZU.cardStatic(ZU.CARDS[entry[0]], { bind: entry[1] })]);
+      slot.style.setProperty('--a', ((i - (TITLE_HAND.length - 1) / 2) * 4.5) + 'deg');
+      slot.style.setProperty('--i', i);
+      slot.addEventListener('pointerenter', function () { ZU.audio.hover(); });
+      hand.appendChild(slot);
     });
+
     var buttons = h('div', 'menu-buttons');
     if (saved) buttons.appendChild(btn('Weiterspielen', 'big ember', function () { game.continueRun(saved); }));
     buttons.appendChild(btn('Neuer Run', 'big ' + (saved ? 'felt' : 'ember'), function () {
@@ -461,23 +477,51 @@
         if (yes) game.go('starter');
       });
     }));
-    buttons.appendChild(btn('Hinterzimmer', 'felt', function () { game.go('backroom'); }));
-    buttons.appendChild(btn('So wird gezündet', 'felt', function () { helpModal(); }));
-    buttons.appendChild(btn('Einstellungen', 'felt', function () { settingsModal(game, false); }));
-    var slot = accountSlot();
-    root.appendChild(h('div', 'screen menu', [
-      deco,
-      slot,
-      h('img', 'logo', null, { src: ZU.asset('logo.png'), alt: 'Zündung', draggable: 'false' }),
-      buttons,
-      h('div', 'menu-version', 'v' + ZU.VERSION)
+    buttons.appendChild(h('div', 'menu-row', [
+      btn('Hinterzimmer', 'felt', function () { game.go('backroom'); }),
+      btn('Einstellungen', 'felt', function () { settingsModal(game, false); })
     ]));
+    buttons.appendChild(btn('So wird gezündet', 'felt', function () { helpModal(); }));
+    Array.prototype.forEach.call(buttons.children, function (child, i) { child.style.setProperty('--i', i); });
+
+    var slot = accountSlot();
+    var screen = h('div', 'screen menu title ' + (intro ? 'intro' : 'ready quick'), [
+      art,
+      h('div', 'title-shade'),
+      logo,
+      hand,
+      buttons,
+      slot,
+      h('div', 'menu-version', 'v' + ZU.VERSION)
+    ]);
+    root.appendChild(screen);
+
+    function ready() {
+      if (!screen.classList.contains('intro')) return;
+      screen.classList.remove('intro');
+      screen.classList.add('ready');
+      for (var i = 0; i < TITLE_HAND.length; i++) setTimeout(ZU.audio.deal, 140 + i * 70);
+    }
+    logo.onAblaze = ready;
+    logo.ignite(!intro);
+    function skip() {
+      if (!screen.classList.contains('intro')) return;
+      logo.ignite(true);
+      ready();
+    }
+    screen.addEventListener('pointerdown', skip);
+    /* Parallaxe: Kulisse, Schriftzug und Hand verschieben sich leicht gegen die Maus. */
+    screen.addEventListener('pointermove', function (e) {
+      var r = screen.getBoundingClientRect();
+      screen.style.setProperty('--mx', (((e.clientX - r.left) / r.width - 0.5) * 2).toFixed(3));
+      screen.style.setProperty('--my', (((e.clientY - r.top) / r.height - 0.5) * 2).toFixed(3));
+    });
     if (!profile.seenHelp) {
       profile.seenHelp = true;
       game.saveProfile();
       setTimeout(function () { if (game.screen === 'menu' && !ZU.modal.isOpen()) helpModal(); }, 600);
     }
-    return function () { slot._off(); };
+    return function () { slot._off(); logo.destroy(); };
   };
 
   /* ---------- Startschachtel ---------- */

@@ -101,6 +101,20 @@ Kurze Lunte, Falschgeld, Stempelkarte.
 Privilegien: Flinke Finger (behandschuhte Hand mit Kartenfächer), Großes Regal,
 Vitrine, Stammplatz, Schleifer, Glockenrecht, Aschekasten, Zündholzbrief.
 
+### Kulisse des Titelbildschirms (`title/backroom.png`)
+
+Ein Bild im Format 16:9, mit der Codex CLI am 11.11.2026 generiert (Referenz:
+vier vorhandene Gegnerporträts): das verrauchte Hinterzimmer vom eigenen Platz
+aus gesehen – runder Tisch mit grünem Filz, Hängelampe, links Dolores und
+Fingers, rechts der Consigliere und Donna, dazu Jetons, Aschenbecher und
+Vorhänge. Die Bildmitte ist bewusst leer, dort stehen Schriftzug und Knöpfe.
+`prepare_assets.py --title <Bild>` verkleinert es auf 640×360 und 192 Farben;
+im Spiel wird es doppelt so groß mit harten Pixeln gezeigt.
+
+Der brennende Schriftzug selbst ist kein Bild: `js/title.js` zeichnet ihn aus
+den Glyphen des Pixel-Fonts und simuliert das Feuer zur Laufzeit. `logo.png`
+wird im Menü nicht mehr gezeigt.
+
 ### Hoffiguren und Asse (`cards/faces.png`)
 
 Zwölf Hoffiguren (Bube, Dame, König je Symbol) und vier Ass-Embleme, ebenfalls
