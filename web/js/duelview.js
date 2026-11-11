@@ -8,10 +8,10 @@
   var ANCHOR = { player: { x: CENTER, y: 492 }, opp: { x: CENTER, y: 168 } };
 
   var PROMPTS = {
-    mulligan: 'Aschenbecher: Wähle eine Karte zum Tauschen – oder behalte dein Blatt.',
-    sacrifice: 'Opfer: Wähle die Karten, die du abwirfst.',
-    gamble: 'Zocken: Wähle eine der aufgedeckten Karten. Sie wird sofort gespielt.',
-    clone: 'Zytokinese: Wähle eine Handkarte. Eine Kopie wandert dauerhaft in dein Deck.'
+    mulligan: 'Aschenbecher: Klicke eine Karte, um sie zu tauschen – oder behalte dein Blatt.',
+    sacrifice: 'Opfer: Klicke die Karten an, die du abwirfst.',
+    gamble: 'Zocken: Klicke eine der aufgedeckten Karten. Sie wird sofort gespielt.',
+    clone: 'Zytokinese: Klicke eine Handkarte. Eine Kopie wandert dauerhaft in dein Deck.'
   };
 
   function DuelView(game, run, duel) {
@@ -32,6 +32,9 @@
     this.pileZ = 300;
     this.chain = duel.chain;
     this.destroyed = false;
+    this.baseMood = 'idle';
+    this.multiOwned = run.has('nimble-fingers');
+    this.multi = this.multiOwned && game.multiSelect !== false;
   }
 
   /* ---------- Aufbau ---------- */
@@ -53,6 +56,7 @@
       h('div', 'kindtag k-' + e.kind, ZU.KIND_LABEL[e.kind]),
       this.portrait,
       h('div', 'ename', enemy.name),
+      h('div', 'erole', enemy.role),
       h('div', 'epassive', enemy.passiveText),
       h('div', 'ecount', ['Handkarten: ', this.oppCount]),
       this.oppStatus,
@@ -61,7 +65,8 @@
       this.turnCount,
       h('div', 'label', 'Deine Effekte'),
       this.meStatus,
-      h('div', 'sortrow', [h('span', 'label', 'Sortieren'), sortRank, sortSuit])
+      h('div', 'label', 'Hand sortieren'),
+      h('div', 'sortrow', [sortRank, sortSuit])
     ]);
 
     // rechte Tafel: Run-Werte, Trinkets, Aktionen
@@ -81,6 +86,9 @@
       }
     }
     this.playBtn = h('button', 'btn big ember', 'Ausspielen', { onclick: function () { self.onPlayButton(); } });
+    this.multiBtn = h('button', 'btn small switch', 'An', { onclick: function () { self.setMulti(!self.multi); } });
+    this.multiRow = h('div', 'multirow', [h('span', 'label', 'Mehrfachwahl'), this.multiBtn]);
+    ZU.tip.bind(this.multiRow, '<b>Flinke Finger</b><p>Bei <b>An</b> wählst du mehrere Karten mit gleichem Wert und legst sie zusammen. Bei <b>Aus</b> wird jede angeklickte Karte sofort gespielt.</p>');
     this.drawBtn = h('button', 'btn big felt', 'Ziehen', { onclick: function () { self.onDrawButton(); } });
     var lives = h('div', 'lives');
     for (var l = 0; l < ZU.MAX_LIVES; l++) lives.appendChild(ZU.iconEl(l < run.s.lives ? 'match' : 'matchOut', 'match'));
@@ -94,6 +102,7 @@
       h('div', 'label', 'Trinkets'),
       slots,
       h('div', 'grow'),
+      this.multiOwned ? this.multiRow : null,
       this.playBtn,
       this.drawBtn
     ]);
@@ -301,6 +310,7 @@
     this.setStock(d.stock.length);
     this.status = d._statusEvent().status;
     this.renderStatus();
+    this.updateBaseMood();
   };
 
   /* ---------- Ereignisse abspielen ---------- */
@@ -308,6 +318,7 @@
     var self = this;
     this.busy = true;
     this.mode = 'wait';
+    this.portrait.classList.remove('thinking');
     this.refresh();
     // Stapelgröße vor dieser Ereignisfolge zurückrechnen
     var count = this.duel.stock.length;
@@ -339,6 +350,7 @@
     if (d.pending) { this.enterDecision(); return null; }
     if (d.active === 'opp') {
       this.setTurn('opp');
+      this.portrait.classList.add('thinking');
       return wait(620).then(function () {
         if (self.destroyed) return null;
         return self.runEvents(d.aiMove());
@@ -418,6 +430,7 @@
         fx.punch(self.glutEl);
         self.setChain(sc.next, true);
         if (sc.chain >= 4) { fx.shake(2 + sc.chain * 0.9); ZU.bg.flash(0.08 + hot * 0.3); }
+        if (sc.chain >= 5) self.react('shocked', 900);
       } else {
         fx.burst(PILE.x, PILE.y, { n: 5, speed: 140, colors: ['#e9d8b0', '#b9aa86', '#7d7360'] });
       }
@@ -448,25 +461,33 @@
       case 'draw':
         fx.pop(a.x, a.y, '+' + ev.amount + ' Karten', bad ? 'bad' : 'good');
         ZU.audio.whoosh();
-        if (bad) { fx.shake(5); this.maybeSay('attack'); } else this.maybeSay('hurt');
+        if (bad) { fx.shake(5); this.react('smug'); this.maybeSay('attack'); } else { this.react('angry'); this.maybeSay('hurt'); }
         return wait(380);
       case 'skip':
         fx.pop(a.x, a.y, 'Aussetzen!', bad ? 'bad' : 'good');
         ZU.audio.skip();
-        if (bad) this.maybeSay('attack'); else this.maybeSay('hurt');
+        if (bad) { this.react('smug'); this.maybeSay('attack'); } else { this.react('angry'); this.maybeSay('hurt'); }
         return wait(420);
       case 'skip-blocked':
-        fx.pop(a.x, a.y, 'Abgewehrt!', 'good');
+        fx.pop(a.x, a.y, 'Abgewehrt!', bad ? 'good' : 'bad');
         ZU.audio.reflect();
+        this.react(bad ? 'angry' : 'smug');
         return wait(420);
+      case 'fizzle':
+        fx.pop(PILE.x, PILE.y - 100, 'Verpufft!', 'bad');
+        fx.smoke(PILE.x, PILE.y, 16);
+        ZU.audio.reflect();
+        return wait(450);
       case 'curse':
         fx.pop(a.x, a.y, 'Verflucht ×' + ev.amount, bad ? 'bad' : 'good');
         ZU.audio.curse();
         fx.smoke(a.x, a.y, 14);
+        this.react(bad ? 'smug' : 'angry');
         return wait(450);
       case 'spy':
         fx.pop(ANCHOR.opp.x, ANCHOR.opp.y, 'Durchschaut!', 'good');
         ZU.audio.spy();
+        this.react('shocked', 1100);
         return wait(420);
       case 'hodl':
         fx.pop(ANCHOR.player.x, ANCHOR.player.y, 'HODL: +' + ev.amount + ' Mark in 2 Zügen', 'gold');
@@ -513,7 +534,8 @@
     this.layoutOpp();
     ZU.audio.whoosh();
     fx.shake(9);
-    if (ev.src === 'opp') this.maybeSay('attack', 1); else this.maybeSay('hurt', 1);
+    if (ev.src === 'opp') { this.react('smug', 2200); this.maybeSay('attack', 1); }
+    else { this.react('shocked', 2200); this.maybeSay('hurt', 1); }
     return fx.banner('Tausch!', 'swap', 900);
   };
 
@@ -535,6 +557,7 @@
     fx.pop(PILE.x, PILE.y - 110, 'Zurückgeworfen!', ev.onto === 'player' ? 'bad' : 'good');
     ZU.audio.reflect();
     fx.shake(6);
+    this.react(ev.onto === 'player' ? 'smug' : 'shocked');
     return wait(520);
   };
 
@@ -551,11 +574,12 @@
   };
 
   DuelView.prototype.on_passive = function () {
-    fx.punch(this.portrait, 'trigger');
+    var text = this.duel.enemy.passiveText, colon = text.indexOf(':');
+    this.react('smug');
     var p = ZU.stagePos(this.portrait);
-    fx.pop(p.x + 120, p.y, 'Passiv!', 'bad small');
+    fx.pop(p.x + 130, p.y, colon > 0 ? text.slice(0, colon) + '!' : 'Passiv!', 'bad small');
     ZU.audio.boss();
-    return wait(380);
+    return wait(420);
   };
 
   DuelView.prototype.on_skipped = function (ev) {
@@ -647,13 +671,37 @@
     if (!lines || !lines.length) return;
     this.bubble.textContent = lines[Math.floor(Math.random() * lines.length)];
     fx.punch(this.bubble, 'on');
+    this.portrait.classList.add('talk');
     clearTimeout(this._sayTimer);
-    this._sayTimer = setTimeout(function () { self.bubble.classList.remove('on'); }, 2400);
+    this._sayTimer = setTimeout(function () {
+      self.bubble.classList.remove('on');
+      self.portrait.classList.remove('talk');
+    }, 2900);
     this._said = ZU.time;
   };
+
   DuelView.prototype.maybeSay = function (kind, chance) {
-    if (ZU.time - (this._said || -99) < 5) return;
-    if (Math.random() < (chance == null ? 0.45 : chance)) this.say(kind);
+    if (ZU.time - (this._said || -99) < 4) return;
+    if (Math.random() < (chance == null ? 0.5 : chance)) this.say(kind);
+  };
+
+  /* Kurze Reaktion des Gegners (Gesichtsausdruck wechselt und springt zurück). */
+  DuelView.prototype.react = function (mood, ms) {
+    if (this.mode === 'ended') return;
+    this.portrait.setMood(mood, ms || 1700);
+  };
+
+  /* Grundstimmung je nach Spielstand: nervös, wenn du kurz vor dem Sieg stehst, hämisch im umgekehrten Fall. */
+  DuelView.prototype.updateBaseMood = function () {
+    if (this.duel.phase === 'ended') return;
+    var p = this.duel.hand.player.length, o = this.duel.hand.opp.length, base = 'idle';
+    if (p <= 2 && o > p) base = 'shocked';
+    else if (o <= 2 && p > o) base = 'smug';
+    if (base === this.baseMood) return;
+    this.baseMood = base;
+    this.portrait.setBase(base);
+    if (base === 'shocked') this.maybeSay('nervous', 0.9);
+    else if (base === 'smug') this.maybeSay('gloat', 0.9);
   };
 
   /* ---------- Eingaben ---------- */
@@ -673,13 +721,39 @@
     if (this.mode === 'decision') {
       var p = this.duel.pending;
       if (!p || p.options.indexOf(sp.id) < 0) { ZU.audio.error(); return; }
-      if (p.pool === 'staging') { this.submitDecision([sp.id]); return; }
+      if (p.pool === 'staging' || p.max === 1) { this.submitDecision([sp.id]); return; }
       this.toggle(sp, p.max);
-      this.refresh();
+      if (this.selected.length === p.max) {
+        this.submitDecision(this.selected.map(function (item) { return item.id; }));
+      } else {
+        this.refresh();
+      }
       return;
     }
     if (this.mode !== 'play' || this.pHand.indexOf(sp) < 0) return;
+    if (!this.multi) { this.playNow(sp); return; }
     this.toggle(sp, 99);
+    this.refresh();
+  };
+
+  /* Ohne Mehrfachwahl: Ein Klick spielt die Karte sofort. */
+  DuelView.prototype.playNow = function (sp) {
+    var check = this.duel.canPlay('player', [sp.id]);
+    if (!check.ok) {
+      ZU.audio.error();
+      sp.kick(ZU.rand(-420, 420), 0, ZU.rand(-260, 260));
+      fx.pop(CENTER, 470, check.reason, 'small bad', 1400);
+      return;
+    }
+    ZU.audio.click();
+    this.clearSelection();
+    this.runEvents(this.duel.play('player', [sp.id]));
+  };
+
+  DuelView.prototype.setMulti = function (on) {
+    this.multi = this.game.multiSelect = !!on;
+    ZU.audio.click();
+    this.clearSelection();
     this.refresh();
   };
 
@@ -710,16 +784,9 @@
   };
 
   DuelView.prototype.onPlayButton = function () {
-    if (this.busy) return;
+    if (this.busy || this.mode !== 'play' || !this.multi) return;
     ZU.audio.unlock();
     var ids = this.selected.map(function (sp) { return sp.id; });
-    if (this.mode === 'decision') {
-      var p = this.duel.pending;
-      if (ids.length < Math.max(1, p.min) || ids.length > p.max) { this.deny(); return; }
-      this.submitDecision(ids);
-      return;
-    }
-    if (this.mode !== 'play') return;
     var check = this.duel.canPlay('player', ids);
     if (!check.ok) { this.deny(check.reason); return; }
     ZU.audio.click();
@@ -783,22 +850,22 @@
     }
   };
 
-  /* Aktualisiert Knöpfe und Markierungen passend zum Zustand. */
   DuelView.prototype.refresh = function () {
     var self = this, d = this.duel, mode = this.mode, busy = this.busy;
     var play = this.playBtn, draw = this.drawBtn;
     var pending = mode === 'decision' ? d.pending : null;
     var ids = this.selected.map(function (sp) { return sp.id; });
     draw.style.visibility = 'visible';
+    // Der Ausspielen-Knopf wird nur bei eingeschalteter Mehrfachwahl gebraucht.
+    play.style.display = this.multi && !pending ? '' : 'none';
+    this.multiBtn.textContent = this.multi ? 'An' : 'Aus';
+    this.multiBtn.classList.toggle('on', this.multi);
 
     if (pending) {
-      var labels = { mulligan: 'Tauschen', sacrifice: 'Opfern', gamble: 'Karte wählen', clone: 'Kopieren' };
-      play.textContent = labels[pending.kind];
-      play.disabled = pending.pool === 'staging' || ids.length < Math.max(1, pending.min) || ids.length > pending.max;
       if (pending.kind === 'mulligan') { draw.textContent = 'Behalten'; draw.disabled = false; }
       else { draw.style.visibility = 'hidden'; }
     } else {
-      play.textContent = ids.length > 1 ? 'Kette legen (' + ids.length + ')' : 'Ausspielen';
+      play.textContent = ids.length > 1 ? 'Legen (' + ids.length + ')' : 'Ausspielen';
       draw.textContent = 'Ziehen';
       var ok = mode === 'play' && !busy && ids.length > 0 && d.canPlay('player', ids).ok;
       play.disabled = !ok;
@@ -828,9 +895,12 @@
   DuelView.prototype.finish = function () {
     var self = this, won = this.duel.winner === 'player';
     this.busy = true;
-    this.mode = 'ended';
     this.refresh();
     this.promptEl.classList.remove('on');
+    this.portrait.classList.remove('thinking');
+    this.portrait.setMood(won ? 'defeated' : 'smug', 60000);
+    this.portrait.classList.add(won ? 'ko' : 'gloating');
+    this.mode = 'ended';
     this.say(won ? 'lose' : 'win');
     var done;
     if (won) {

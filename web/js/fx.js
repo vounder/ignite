@@ -235,12 +235,14 @@
   };
 
   /* Neigt ein Element in 3D zur Maus (für Karten in Laden, Deck und Belohnung). */
-  ZU.tilt = function (el, inner) {
+  ZU.tilt = function (el, inner, deg, grow) {
     inner = inner || el;
+    deg = deg == null ? 14 : deg;
+    grow = grow == null ? 1.08 : grow;
     el.addEventListener('pointermove', function (e) {
       var r = el.getBoundingClientRect();
       var nx = ((e.clientX - r.left) / r.width - 0.5) * 2, ny = ((e.clientY - r.top) / r.height - 0.5) * 2;
-      inner.style.transform = 'rotateY(' + (nx * 14).toFixed(1) + 'deg) rotateX(' + (-ny * 14).toFixed(1) + 'deg) scale(1.08)';
+      inner.style.transform = 'rotateY(' + (nx * deg).toFixed(1) + 'deg) rotateX(' + (-ny * deg).toFixed(1) + 'deg) scale(' + grow + ')';
     });
     el.addEventListener('pointerleave', function () { inner.style.transform = ''; });
   };

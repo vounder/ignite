@@ -29,7 +29,7 @@
 - Keine Laufzeit-Abhängigkeiten: reines HTML, CSS und JavaScript.
 - Spezialkarten-Illustrationen, Manfred-Posen, Logo und Musik stammen aus den
   oben genannten Projekt-Assets und wurden nur verkleinert bzw. heruntergerechnet.
-- Die Gegnerporträts unter `web/assets/enemies/` und die Trinket-Icons unter
+- Die Gegner-Sprites unter `web/assets/enemies/` und die Trinket-Icons unter
   `web/assets/trinkets/` wurden mit OpenAI Image Generation (über die Codex-CLI)
   speziell für dieses Projekt erzeugt. Prompts und Nachbearbeitung sind in
   `web/assets/ASSETS.md` dokumentiert.

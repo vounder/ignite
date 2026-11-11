@@ -32,6 +32,12 @@
     return { stock: Math.min(14, stock), hand: Math.min(4, hand + extra) };
   };
 
+  /* Wie oft ein Gegner einen Zug verschenkt – der wichtigste Schwierigkeitsregler. */
+  ZU.aiHesitation = function (kind, act) {
+    var a = Math.min(act, 3) - 1;
+    return kind === 'battle' ? [0.24, 0.16, 0.08][a] : kind === 'elite' ? [0.12, 0.06, 0][a] : [0.05, 0, 0][a];
+  };
+
   function Duel(opts) {
     this.rng = opts.rng;
     this.enemy = ZU.ENEMIES[opts.enemyId];
@@ -114,7 +120,9 @@
     this.pile.push(tableId);
     ev.push({ t: 'table', id: tableId });
 
-    var oppSize = this.enemy.passive === 'head-start' ? 6 : this.enemy.passive === 'house' ? 7 : ZU.HAND_SIZE + 1;
+    var oppSize = ZU.OPP_HAND + (this.kind === 'battle' ? 1 : 0) + (this.enemy.handBonus || 0) -
+      (this.enemy.passive === 'head-start' ? 2 : this.enemy.passive === 'house' ? 1 : 0);
+    if (this.enemy.passive === 'jewels') counts.hand = 3;
     var oppOpening = [];
     for (var h = 0; h < counts.hand && oppOpening.length < oppSize; h++) {
       oppOpening.push(this._register(rng.pick(this.enemy.pool), 'enemy', false));
@@ -134,10 +142,14 @@
       }
     }
 
-    if (this.enemy.passive === 'house') {
-      this.status.curse.player += 3;
-      ev.push({ t: 'passive', id: 'house' });
+    if (this.enemy.passive === 'house' || this.enemy.passive === 'venom') {
+      this.status.curse.player += this.enemy.passive === 'house' ? 3 : 2;
+      ev.push({ t: 'passive', id: this.enemy.passive });
       ev.push(this._statusEvent());
+    }
+    if (this.enemy.passive === 'donna') {
+      ev.push({ t: 'passive', id: 'donna' });
+      this._drawInto('player', 2, 'deal', ev, false);
     }
     if (this.has('black-book')) {
       this.status.spy = 3;
@@ -202,6 +214,10 @@
       if (!this._matches(ids[0], actor)) return { ok: false, reason: 'Passt nicht: gleiche Farbe oder gleicher Wert.' };
       return { ok: true, order: ids.slice() };
     }
+    var limit = actor === 'player' ? (this.has('nimble-fingers') ? 99 : 1) : this.enemy.chain;
+    if (ids.length > limit) {
+      return { ok: false, reason: actor === 'player' ? 'Mehrere Karten auf einmal gehen nur mit „Flinke Finger“.' : 'Zu viele Karten.' };
+    }
     var first = this.def(ids[0]);
     for (var k = 0; k < ids.length; k++) {
       var def = this.def(ids[k]);
@@ -244,7 +260,13 @@
       this.retain = true;
       ev.push({ t: 'trinket', id: 'hot-wire' });
     }
-    this._queueEffects(actor, check.order, false);
+    if (single && actor === 'player' && this.enemy.passive === 'void-special' && !this.used['void-special']) {
+      this.used['void-special'] = true;
+      ev.push({ t: 'passive', id: 'void-special' });
+      ev.push({ t: 'effect', type: 'fizzle', src: actor, tgt: actor });
+    } else {
+      this._queueEffects(actor, check.order, false);
+    }
     this._resolve(ev);
     return ev;
   };
@@ -431,6 +453,10 @@
         if (tgt === 'player' && this.has('pocket-watch') && !this.used['pocket-watch']) {
           this.used['pocket-watch'] = true;
           ev.push({ t: 'trinket', id: 'pocket-watch' });
+          ev.push({ t: 'effect', type: 'skip-blocked', src: src, tgt: tgt });
+        } else if (tgt === 'opp' && this.enemy.passive === 'thick-skin' && !this.used['thick-skin']) {
+          this.used['thick-skin'] = true;
+          ev.push({ t: 'passive', id: 'thick-skin' });
           ev.push({ t: 'effect', type: 'skip-blocked', src: src, tgt: tgt });
         } else {
           this.status.skip[tgt] = 1;
@@ -672,10 +698,8 @@
 
   Duel.prototype._aiPlan = function () {
     var self = this, hand = this.hand.opp, best = null;
-    var sees = this.enemy.passive === 'sees-hand' || this.enemy.passive === 'smoke';
-    // Kettenlänge der KI: einfache Gegner legen einzeln, Elite Paare, Bosse wachsen mit dem Akt.
-    var chainCap = this.kind === 'battle' ? 1 : this.kind === 'elite' ? (this.act >= 2 ? 2 : 1) : Math.min(4, 1 + this.act);
-    var chains = chainCap > 1;
+    var sees = this.enemy.passive === 'sees-hand';
+    var chainCap = this.enemy.chain, chains = chainCap > 1; // nur wenige Gegner legen mehrere Karten
     var playerDefs = this.hand.player.map(function (id) { return self.def(id); });
 
     function follow(def) { // wie viele Spielerkarten könnten direkt anlegen?
@@ -725,6 +749,8 @@
   Duel.prototype.aiMove = function () {
     this._requireAction('opp');
     var order = this._aiPlan();
+    // Schwächere Gegner zögern gelegentlich und ziehen, obwohl sie legen könnten.
+    if (order && order.length < this.hand.opp.length && this.rng.next() < ZU.aiHesitation(this.kind, this.act)) order = null;
     return order ? this.play('opp', order) : this.draw('opp');
   };
 
@@ -734,7 +760,7 @@
     hand.forEach(function (id) {
       if (!self.playable('player', id)) return;
       var def = self.def(id), group = [id];
-      if (!def.special) {
+      if (!def.special && self.has('nimble-fingers')) {
         hand.forEach(function (o) {
           if (o !== id && !self.def(o).special && self.def(o).rank === def.rank) group.push(o);
         });

@@ -16,57 +16,67 @@ Quelle ist jeweils `godot/game/Assets/`; aufbereitet mit
 
 ## Neu generiert
 
-Die acht Gegnerporträts (`enemies/`) und 17 Trinket-Icons (`trinkets/`) wurden
-am 11.11.2026 mit der Bildgenerierung von OpenAI über die Codex-CLI speziell
-für Zündung erzeugt. Als Stilreferenz dienten vorhandene Projektgrafiken
-(Manfred, Spezialkarten). Die Bilder entstanden auf Chroma-Grün und wurden mit
-`prepare_assets.py --generated` freigestellt, quadratisch zugeschnitten und auf
-192×192 (Porträts) bzw. 96×96 (Trinkets) verkleinert.
+Alle Bilder wurden am 11.11.2026 mit der Bildgenerierung von OpenAI über die
+Codex-CLI speziell für Zündung erzeugt, jeweils auf Chroma-Grün, und mit
+`web/tools/prepare_assets.py` freigestellt und verkleinert.
 
-### Prompt Gegnerporträts
+### Gegner (`enemies/`, 20 Sprite-Streifen)
 
-```text
-STYLE (apply to every image): chunky 16-bit pixel art with large clearly visible square pixels (roughly 64x64 logical pixels upscaled), thick dark outlines, limited palette of dark walnut brown, bottle green, aged ivory, burgundy red, brass gold and ember orange, moody 1930s backroom casino feeling. The attached reference images show the exact art style to match. Subject centered and filling about 85% of a square canvas. Background: one flat pure chroma-key green (#00FF00) with nothing else on it. No text, no letters, no numbers, no border, no UI, no gradients, no cast shadows on the background, and do not use green anywhere on the subject itself unless stated.
+Jeder Gegner entstand als Ausdrucks-Sheet mit 3×2 Feldern (neutral, Blinzeln,
+hämisch, wütend, geschockt, geschlagen). `prepare_assets.py --sheets` erkennt
+das Raster, legt die sechs Bilder deckungsgleich übereinander und speichert sie
+als Streifen von 6 × 192 Pixeln. Für die acht Figuren der ersten Fassung diente
+deren bisheriges Einzelporträt als Vorlage.
 
-Each image is a head-and-shoulders bust portrait of a card-game opponent, facing the viewer:
-1. ember-croupier.png - calm professional casino croupier wearing a dark teal dealer eyeshade visor, black waistcoat, ivory shirt, red bow tie, thin mustache, faint ember-orange rim light.
-2. curse-dealer.png - sinister card dealer in a dark purple hooded cloak, pale sickly skin, glowing yellow eyes under the hood, thin wisps of dark smoke.
-3. card-counter.png - thin nervous accountant-like card counter with round glasses, slicked-back hair, grey-blue suit, gold tie, a pencil behind the ear.
-4. double-igniter.png - wild-eyed pyromaniac gambler with brass goggles pushed up on the forehead, soot-smudged face, singed spiky hair, orange shirt, two lit matches held up.
-5. boss-shark.png - heavy-set smug card shark boss with a black bowler hat, cigar, dark navy pinstripe suit, blue tie, one gold tooth in a grin.
-6. boss-smoke.png - elegant older femme fatale with silver-white 1930s wavy hair, long cigarette holder with curling grey smoke, burgundy dress, pearl necklace, knowing smile.
-7. boss-house.png - imposing casino owner with a black top hat, monocle, white mustache, black tailcoat, gold watch chain, stern glare, ember-red rim light.
-```
-
-Der Falschspieler (`cheater.png`) wurde mit demselben Stil-Prompt einzeln
-nachgeneriert: „sly card cheat facing the viewer: red fedora with a black band,
-thin pencil mustache, crooked smirk, one raised eyebrow, burgundy vest over an
-ivory shirt, an ace playing card half hidden in his raised hand“.
-
-### Prompt Trinket-Icons
+Gemeinsamer Prompt:
 
 ```text
-STYLE (apply to every image): chunky 16-bit pixel art with large clearly visible square pixels (roughly 64x64 logical pixels upscaled), thick dark outlines, limited palette of dark walnut brown, bottle green, aged ivory, burgundy red, brass gold and ember orange, moody 1930s backroom casino feeling. The attached reference images show the exact art style to match. Subject centered and filling about 85% of a square canvas. Background: one flat pure chroma-key green (#00FF00) with nothing else on it. No text, no letters, no numbers, no border, no UI, no gradients, no cast shadows on the background, and do not use green anywhere on the subject itself unless stated.
+You are producing game art. Use your built-in image generation tool (do NOT draw with code or scripts). If the image generation tool is not available, write FAILED.txt explaining why and stop.
 
-Each image is a single small collectible object icon (a lucky charm / trinket), simple and readable at 48x48:
-1. lucky-chip.png - a gold poker chip embossed with a four-leaf clover (the clover may be dark teal).
-2. ashtray.png - a brass ashtray with a smoking cigarette butt.
-3. false-bottom.png - a small open wooden box showing a hidden false-bottom compartment with gold coins.
-4. fuse.png - a coiled fuse cord with a bright burning spark at its end.
-5. ledger.png - a leather-bound cash ledger book with a gold coin on top.
-6. brass-knuckles.png - a pair of brass knuckles.
-7. pocket-watch.png - a brass pocket watch with a short chain.
-8. loaded-die.png - an ivory die with glowing ember-orange pips.
-9. velvet-glove.png - a burgundy velvet glove.
-10. heartblood.png - a glossy red heart (card suit shape) with a single drop falling from it.
-11. rollercoaster.png - a small brass roller-coaster loop track shaped like a figure eight with a tiny red cart.
-12. slow-burner.png - a glowing charcoal ember with a small steady flame.
-13. black-book.png - a small black notebook with a brass eye emblem on the cover.
-14. smoke-mirror.png - an ornate brass hand mirror with grey smoke swirling in the glass.
-15. hot-wire.png - a red-hot glowing coiled wire throwing sparks.
-16. ace-sleeve.png - a dark suit jacket sleeve cuff with an ivory playing card peeking out of it.
-17. golden-match.png - a golden matchstick with a radiant flame.
+For EACH character listed below, generate ONE separate landscape image (about 3:2) and save it as a PNG with exactly the given filename in the current working directory. Generate them one at a time. When done, list the files you created.
+
+Every image is a CHARACTER EXPRESSION SHEET: a strict grid of 3 columns x 2 rows = 6 equal cells on one flat pure chroma-key green (#00FF00) background, with a clear empty green gap between neighbouring cells and around the border. No grid lines, no frames, no labels, no numbers, no text.
+Every cell shows the SAME character as a head-and-shoulders bust, facing the viewer, with identical size, identical position inside the cell, identical outfit, hair and accessories. ONLY the facial expression changes (eyes, eyebrows, mouth, at most a slight head tilt):
+- row 1, cell 1: neutral, calm, confident idle look
+- row 1, cell 2: exactly like cell 1 but with the eyes closed (a blink)
+- row 1, cell 3: smug, pleased, gloating grin
+- row 2, cell 1: angry, annoyed scowl
+- row 2, cell 2: shocked and nervous, wide eyes, one sweat drop
+- row 2, cell 3: defeated, deflated, eyes lowered, sad
+
+STYLE: chunky 16-bit pixel art with large clearly visible square pixels, thick dark outlines, limited palette of dark walnut brown, aged ivory, burgundy red, brass gold, ember orange and muted teal, moody 1930s backroom casino and mafia feeling. The attached reference images show the exact art style, framing and level of detail to match. Do not use bright green anywhere on the character.
 ```
+
+Figuren:
+
+- curse-dealer.png - exactly the character shown in the SECOND attached image: a sinister card dealer in a dark purple hooded cloak, pale skin, glowing yellow eyes under the hood, thin goatee, holding a fan of cards.
+- cheater.png - exactly the character shown in the THIRD attached image: a sly card cheat with a red fedora with black band, thin pencil mustache, burgundy vest over an ivory shirt, an ace card in his raised hand.
+- card-counter.png - exactly the character shown in the FOURTH attached image: a thin nervous accountant-like card counter with round gold glasses, slicked-back brown hair, grey-blue suit, gold tie, a pencil behind the ear.
+- double-igniter.png - exactly the character shown in the FIFTH attached image: a wild-eyed pyromaniac gambler with brass goggles pushed up on the forehead, soot-smudged face, singed spiky hair, orange shirt, holding two lit matches.
+- boss-shark.png - exactly the character shown in the SECOND attached image: a heavy-set smug card shark boss with a black bowler hat, cigar in the mouth, dark navy pinstripe suit, blue tie, one gold tooth.
+- boss-smoke.png - exactly the character shown in the THIRD attached image: an elegant older femme fatale with silver-white 1930s wavy hair, long cigarette holder with curling grey smoke, burgundy dress, pearl necklace, gold earrings.
+- boss-house.png - exactly the character shown in the FOURTH attached image: an imposing old casino owner with a black top hat with red band, gold monocle, big white mustache, black tailcoat, red bow tie, gold watch chain.
+- cigarette-girl.png - a pretty young 1930s cigarette girl: small burgundy pillbox hat with a brass badge, bobbed auburn hair with a curl on the cheek, red lipstick, long lashes, burgundy uniform jacket with brass buttons and an ivory collar, a leather tray strap over the shoulders.
+- barkeeper.png - a broad-shouldered bald barkeeper with a big dark handlebar mustache, thick eyebrows, rolled-up ivory shirt sleeves, black vest, burgundy sleeve garters, a white towel over one shoulder.
+- showgirl.png - a glamorous beautiful 1930s revue showgirl: tall feather headdress in ember orange and gold, platinum blonde finger-wave hair, red lipstick, beauty mark, sparkling burgundy sequin costume with bare shoulders, long ivory opera gloves, gold earrings.
+- bruiser.png - a huge dim-witted mafia enforcer: thick neck, broken crooked nose, a scar across one eyebrow, grey flat cap, stubble, too-tight dark pinstripe suit, loosened burgundy tie, one raised fist wearing brass knuckles.
+- pianist.png - a slim melancholic lounge pianist with dark brown skin, short slicked hair, a thin mustache, a cigarette hanging from his lips with a wisp of smoke, loose black bow tie, ivory dinner jacket with a burgundy pocket square.
+- bookie.png - a small jittery bookmaker: straw boater hat with a burgundy band, round face, thin mustache, pencil behind the ear, brown checkered suit, orange bow tie, a fan of betting slips in one hand.
+- black-widow.png - a strikingly beautiful cold femme fatale widow: small black hat with a black lace veil over the eyes, glossy black hair in a low bun, very pale skin, dark red lips, black high-collar dress with a brass spider brooch, pearl earrings.
+- pickpocket.png - a pretty cheeky young woman pickpocket: brown newsboy cap over curly copper-red hair, freckles, bright mischievous eyes, an oversized brown men's jacket over an ivory shirt, burgundy scarf, fingerless gloves, dangling a brass pocket watch on its chain from one hand.
+- bouncer.png - an enormous casino doorman: shaved head, cauliflower ears, heavy brow, square jaw, tiny black bow tie on a thick neck, black tuxedo straining over huge shoulders, arms crossed.
+- boss-dolores.png - a glamorous beautiful jewel fence in her thirties: platinum blonde Hollywood waves, red lipstick, haughty half-closed eyes, white fur stole, a huge sparkling diamond necklace and drop earrings, holding a champagne coupe.
+- boss-consigliere.png - a cold elegant mafia consigliere in his fifties: slicked dark hair with silver temples, thin round glasses, sharp cheekbones, charcoal three-piece suit, burgundy tie with a gold pin, a closed leather ledger held to his chest.
+- boss-donna.png - a stunningly beautiful ice-cold mafia donna: long dark wavy hair over one shoulder, deep red lips, sharp confident eyes, red evening dress, ruby necklace, black opera gloves, a single red rose held near her shoulder.
+- ember-croupier.png - a calm professional casino croupier with a dark teal dealer eyeshade visor, black waistcoat, ivory shirt, red bow tie, thin mustache, brown wavy hair.
+
+### Trinket-Icons (`trinkets/`, 18 Stück)
+
+Einzelne Objekt-Icons im selben Stil, auf 96×96 verkleinert: Glückschip,
+Aschenbecher, Doppelboden, Zündschnur, Kassenbuch, Messingknöchel, Taschenuhr,
+Gezinkter Würfel, Samthandschuh, Herzblut, Achterbahn, Dauerbrenner, Schwarzes
+Notizbuch, Rauchspiegel, Heißer Draht, Ass im Ärmel, Goldenes Streichholz und
+Flinke Finger (eine behandschuhte Hand, die drei Karten auffächert).
 
 ## Im Projekt erzeugt
 

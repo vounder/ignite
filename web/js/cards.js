@@ -15,6 +15,7 @@
     coin: ['..gggg..', '.gyyyyG.', 'gyygGyyG', 'gyggGyyG', 'gyygGyyG', 'gyygGyyG', '.gyyyyG.', '..GGGG..'],
     flame: ['....o...', '...oo...', '..ooo.o.', '..oyoooo', '.ooyyoo.', '.oyyyyo.', 'ooywwyoo', 'ooywwyoo', '.ooyyoo.', '..oooo..'],
     lock: ['..kkkk..', '.kk..kk.', '.kk..kk.', 'gggggggg', 'gyyGGyyg', 'gyyGGyyg', 'gyyyyyyg', 'gggggggg'],
+    reroll: ['...xxxxx...', '..x.....x.x', '.x.......xx', '.x......xxx', 'x..........', 'x.........x', '..........x', 'xxx......x.', 'xx.......x.', 'x.x.....x..', '...xxxxx...'],
     deck: ['..wwwwww', '.wwwwwww', 'wwwwwwkw', 'wrwwwwkw', 'wwwwwwkw', 'wwwrwwkw', 'wwwwwwkw', 'wwwwwwk.', 'kkkkkkk.']
   };
   var COLORS = {
@@ -119,12 +120,45 @@
     return el;
   };
 
+  /* Animiertes Gegnerporträt: ein Sprite-Streifen mit sechs Ausdrücken (ZU.MOODS).
+     setBase() legt die Grundstimmung fest, setMood() zeigt kurz eine Reaktion. */
   ZU.portraitEl = function (enemyId, cls) {
     var enemy = ZU.ENEMIES[enemyId];
     var img = h('i', 'pt-img');
     img.style.backgroundImage = 'url(assets/enemies/' + enemyId + '.png)';
-    var el = h('div', 'portrait ' + (cls || '') + ' k-' + enemy.kind, [img]);
-    el.style.setProperty('--pbg', enemy.look.bg);
+    var el = h('div', 'portrait ' + (cls || '') + ' k-' + enemy.kind, [h('div', 'pt-react', [h('div', 'pt-bob', [img])])]);
+    el.style.setProperty('--pbg', enemy.bg);
+    var base = 'idle', shown = 'idle', timer = null, blinkTimer = null, wasConnected = false;
+
+    function show(mood) {
+      shown = mood;
+      var index = Math.max(0, ZU.MOODS.indexOf(mood));
+      img.style.backgroundPosition = (index * 100 / (ZU.MOODS.length - 1)) + '% 100%';
+      el.dataset.mood = mood;
+    }
+    function blink() {
+      if (el.isConnected) wasConnected = true;
+      else if (wasConnected) return; // Porträt wurde entfernt: Schleife beenden
+      if (shown === 'idle' && el.isConnected) {
+        show('blink');
+        setTimeout(function () { if (shown === 'blink') show('idle'); }, 130);
+      }
+      blinkTimer = setTimeout(blink, 1800 + Math.random() * 3600);
+    }
+    el.setBase = function (mood) {
+      base = mood;
+      if (!timer) show(base);
+    };
+    el.setMood = function (mood, ms) {
+      clearTimeout(timer);
+      show(mood);
+      ['idle', 'smug', 'angry', 'shocked', 'defeated'].forEach(function (m) { el.classList.remove('react-' + m); });
+      void el.offsetWidth;
+      el.classList.add('react-' + mood);
+      timer = setTimeout(function () { timer = null; show(base); }, (ms || 1700) / ZU.speed);
+    };
+    show('idle');
+    blinkTimer = setTimeout(blink, 900 + Math.random() * 2500);
     return el;
   };
 

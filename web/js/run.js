@@ -20,7 +20,7 @@
       v: 1, seed: seed >>> 0, rng: seed >>> 0, starter: starter.id,
       act: 1, table: 0, lives: ZU.MAX_LIVES, money: starter.money, score: 0, nextId: 1,
       collection: [], trinkets: starter.trinkets.slice(), phase: 'select',
-      encounters: [], lastBattle: null, lastElite: null, shop: null, reward: null, burnCount: 0, endless: false,
+      encounters: [], seen: [], shop: null, reward: null, burnCount: 0, endless: false,
       stats: { duels: 0, wins: 0, losses: 0, bestChain: 1, bestGlut: 0, played: 0, earned: 0 }
     };
     var run = new Run(state);
@@ -45,17 +45,25 @@
     return this.s.act <= 3 ? ZU.ACT_NAMES[this.s.act - 1] : 'Nachglut ' + ZU.roman(this.s.act - 3);
   };
 
+  /* Zieht je Akt einen Tisch, eine Elite und einen Boss – möglichst ohne Wiederholungen im Run. */
   Run.prototype._encounters = function () {
     var s = this.s, rng = this.rng;
-    var battles = ZU.BATTLE_POOL.filter(function (id) { return id !== s.lastBattle; });
-    var elites = ZU.ELITE_POOL.filter(function (id) { return id !== s.lastElite; });
-    var battle = rng.pick(battles), elite = rng.pick(elites);
-    s.lastBattle = battle;
-    s.lastElite = elite;
+    s.seen = s.seen || [];
+    function fresh(pool) {
+      var open = pool.filter(function (id) { return s.seen.indexOf(id) < 0; });
+      if (!open.length) {
+        s.seen = s.seen.filter(function (id) { return pool.indexOf(id) < 0; });
+        open = pool.slice();
+      }
+      var pick = rng.pick(open);
+      s.seen.push(pick);
+      return pick;
+    }
+    var bosses = s.act <= ZU.BOSS_ACTS.length ? ZU.BOSS_ACTS[s.act - 1] : [].concat.apply([], ZU.BOSS_ACTS);
     s.encounters = [
-      { enemy: battle, kind: 'battle' },
-      { enemy: elite, kind: 'elite' },
-      { enemy: ZU.BOSS_ORDER[(s.act - 1) % ZU.BOSS_ORDER.length], kind: 'boss' }
+      { enemy: fresh(ZU.BATTLE_POOL), kind: 'battle' },
+      { enemy: fresh(ZU.ELITE_POOL), kind: 'elite' },
+      { enemy: fresh(bosses), kind: 'boss' }
     ];
   };
 
@@ -236,9 +244,13 @@
       shop.cards.push({ def: def, price: ZU.CARDS[def].price, sold: false });
     }
     var owned = s.trinkets;
-    shop.trinkets = this._weighted(ZU.TRINKET_IDS.filter(function (id) { return owned.indexOf(id) < 0; }),
-      function (id) { return [50, 30, 15, 5][ZU.TRINKETS[id].rarity]; }, 2)
-      .map(function (id) { return { id: id, price: ZU.TRINKETS[id].price, sold: false }; });
+    var picks = this._weighted(ZU.TRINKET_IDS.filter(function (id) { return owned.indexOf(id) < 0; }),
+      function (id) { return [50, 30, 15, 5][ZU.TRINKETS[id].rarity]; }, 2);
+    // Der erste Laden eines Runs führt immer "Flinke Finger", damit die Mehrfachwahl früh erreichbar ist.
+    if (s.stats.wins <= 1 && shop.rerolls === 0 && owned.indexOf('nimble-fingers') < 0 && picks.indexOf('nimble-fingers') < 0 && picks.length) {
+      picks[0] = 'nimble-fingers';
+    }
+    shop.trinkets = picks.map(function (id) { return { id: id, price: ZU.TRINKETS[id].price, sold: false }; });
   };
 
   Run.prototype.cardPrice = function (index) {

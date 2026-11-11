@@ -17,23 +17,29 @@ Danach <http://localhost:8377> aufrufen.
 ## Spielprinzip
 
 - **Duell:** Mau-Mau gegen den Dealer. Gelegt wird auf gleiche Farbe oder
-  gleichen Wert; wer zuerst keine Karten mehr hat, gewinnt.
-- **Kette:** Mehrere Karten mit gleichem Wert dürfen in einem Zug gelegt
-  werden. Die 7 lässt den Gegner 2 Karten ziehen und aussetzen.
+  gleichen Wert; wer zuerst keine Karten mehr hat, gewinnt. Ein Klick auf eine
+  passende Handkarte spielt sie sofort. Die 7 lässt den Gegner 2 Karten ziehen
+  und aussetzen.
+- **Mehrfachwahl:** Das Trinket „Flinke Finger“ schaltet das Legen mehrerer
+  Karten mit gleichem Wert frei. Danach lässt sich die Mehrfachwahl rechts am
+  Tisch an- und ausschalten. Der erste Laden eines Runs führt es immer.
 - **Spezialkarten** (elf Stück, von Stillstand bis Zytokinese II) sind Joker
   mit Effekt.
 - **Glut:** Jede gespielte Karte bringt Kartenwert × Kette. Die Kette wächst
   mit jeder Karte und fällt beim Ziehen zurück. Glut zahlt beim Sieg Mark.
+- **Gegner:** 20 Charaktere – neun Tische, fünf Eliten und sechs Bosse (zwei je
+  Akt) – mit eigenen Passiven, Dialogen und animierten Porträts, die auf den
+  Spielverlauf reagieren.
 - **Run:** Drei Akte mit je drei Tischen (Gegner, Elite, Boss), dazwischen
-  Manfreds Laden mit Karten, 17 Trinkets, Verbrennen, Streichholz und neuer
+  Manfreds Laden mit Karten, 18 Trinkets, Verbrennen, Streichholz und neuer
   Auslage. Drei Streichhölzer sind die Leben. Nach dem dritten Boss geht es
   optional endlos in der Nachglut weiter.
 - **Deck:** Zu Duellbeginn zieht man 7 Karten aus dem eigenen Deck; der Rest
   wandert in den gemeinsamen Nachziehstapel.
 - **Sperrstunde:** Nach 50 Zügen gewinnt, wer weniger Karten hält.
 
-Tasten: `Enter` legt, `Leertaste` zieht, `1`–`9` wählt Handkarten, `Esc` öffnet
-das Menü. Der Run wird zwischen den Tischen automatisch im Browser gespeichert.
+Tasten: `1`–`9` spielt Handkarten, `Leertaste` zieht, `Enter` legt die Auswahl
+(bei Mehrfachwahl), `Esc` öffnet das Menü. Der Run wird zwischen den Tischen automatisch im Browser gespeichert.
 
 ## Aufbau
 
@@ -68,7 +74,8 @@ Herkunft und Aufbereitung stehen in [`assets/ASSETS.md`](assets/ASSETS.md).
 Die Werkzeuge liegen unter `tools/`:
 
 - `prepare_assets.py` – verkleinert Projektgrafiken aus `godot/`, stellt
-  generierte Greenscreen-Bilder frei und rechnet die Musik herunter.
+  generierte Greenscreen-Bilder frei, zerlegt die Ausdrucks-Sheets der Gegner
+  in Sprite-Streifen und rechnet die Musik herunter.
 - `make_font.py` – erzeugt den Pixel-Font aus Bitmap-Definitionen (braucht
   `fontTools`).
 
