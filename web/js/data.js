@@ -3,8 +3,12 @@
   'use strict';
 
   ZU.VERSION = '1.0.0'; // im Hauptmenü unten rechts angezeigt
+  /* Build-Kennung: wird an alle Asset-Adressen gehängt, damit Browser und CDN nach einem Update frische
+     Dateien holen. Nicht von Hand ändern: web/tools/stamp_version.py setzt den Wert. */
+  ZU.BUILD = 'b9e9afac11';
+  ZU.asset = function (path) { return 'assets/' + path + '?v=' + ZU.BUILD; };
+
   ZU.HAND_SIZE = 7;
-  ZU.MAX_TRINKETS = 5;
   ZU.MAX_LIVES = 3;
   ZU.OPP_HAND = 8; // Starthand der Gegner
   ZU.TURN_LIMIT = 50; // Sperrstunde: danach gewinnt, wer weniger Karten hält
@@ -64,58 +68,147 @@
       price: price, base: 15, tag: tag, text: text, effects: effects
     };
   }
-  special('stillstand', 'Stillstand', 5, 0, 'Aussetzen', 'Der Gegner setzt eine Runde aus.',
+  special('stillstand', 'Stillstand', 9, 0, 'Aussetzen', 'Der Gegner setzt eine Runde aus.',
     [{ type: 'skip', reflectable: true }]);
-  special('addieren', 'Addieren', 6, 0, '+2 Karten', 'Der Gegner zieht 2 Karten.',
+  special('addieren', 'Addieren', 10, 0, '+2 Karten', 'Der Gegner zieht 2 Karten.',
     [{ type: 'draw', amount: 2, reflectable: true }]);
-  special('spion', 'Spion', 6, 0, 'Einblick', 'Du siehst die Hand des Gegners für 3 Züge.',
+  special('spion', 'Spion', 9, 0, 'Einblick', 'Du siehst die Hand des Gegners für 3 Züge.',
     [{ type: 'spy', duration: 3 }]);
-  special('fluch', 'Fluch', 8, 1, 'Fluch ×3', 'Die nächsten 3 Male, die der Gegner zieht, zieht er 1 Karte mehr.',
+  special('fluch', 'Fluch', 13, 1, 'Fluch ×3', 'Die nächsten 3 Male, die der Gegner zieht, zieht er 1 Karte mehr.',
     [{ type: 'curse', amount: 3, reflectable: true }]);
-  special('hodl', 'HODL', 7, 1, '+6 Mark', 'Nach 2 deiner Züge wandern 6 Mark in die Bank. Die Bank wird beim Sieg ausgezahlt.',
+  special('hodl', 'HODL', 12, 1, '+6 Mark', 'Nach 2 deiner Züge wandern 6 Mark in die Bank. Die Bank wird beim Sieg ausgezahlt.',
     [{ type: 'hodl', amount: 6, duration: 2 }]);
-  special('zytokinese', 'Zytokinese', 8, 1, 'Kopie', 'Wähle eine Handkarte: Eine dauerhafte Kopie wandert in dein Deck. Zytokinese wird dabei verbraucht.',
+  special('zytokinese', 'Zytokinese', 13, 1, 'Kopie', 'Wähle eine Handkarte: Eine dauerhafte Kopie wandert in dein Deck. Zytokinese wird dabei verbraucht.',
     [{ type: 'clone' }]);
-  special('tausch', 'Tausch', 10, 2, 'Handtausch', 'Du tauschst deine Hand mit der des Gegners.',
+  special('tausch', 'Tausch', 17, 2, 'Handtausch', 'Du tauschst deine Hand mit der des Gegners.',
     [{ type: 'swap' }]);
-  special('bonusgeld', 'Bonusgeld', 12, 2, 'Prämie ×2', 'Verdoppelt Tischprämie und Bank dieses Duells.',
+  special('bonusgeld', 'Bonusgeld', 19, 2, 'Prämie ×2', 'Verdoppelt Tischprämie und Bank dieses Duells.',
     [{ type: 'bonus' }]);
-  special('opfer', 'Opfer', 10, 2, '−2 Karten', 'Wirf 2 weitere Handkarten ab. +5 Mark in die Bank.',
+  special('opfer', 'Opfer', 16, 2, '−2 Karten', 'Wirf 2 weitere Handkarten ab. +5 Mark in die Bank.',
     [{ type: 'sacrifice', amount: 2 }]);
-  special('zocken', 'Zocken', 11, 2, 'Aufdecken', 'Decke 3 Karten vom Stapel auf und spiele eine davon sofort – egal ob sie passt.',
+  special('zocken', 'Zocken', 17, 2, 'Aufdecken', 'Decke 3 Karten vom Stapel auf und spiele eine davon sofort – egal ob sie passt.',
     [{ type: 'gamble', amount: 3 }]);
-  special('zytokinese_2', 'Zytokinese II', 18, 3, '2 Specials', 'Erzeugt 2 zufällige Spezialkarten dauerhaft in deinem Deck. Wird dabei verbraucht.',
+  special('zytokinese_2', 'Zytokinese II', 28, 3, '2 Specials', 'Erzeugt 2 zufällige Spezialkarten dauerhaft in deinem Deck. Wird dabei verbraucht.',
     [{ type: 'createSpecial', amount: 2 }]);
+
+  /* ---------- Bindung von Spezialkarten ----------
+     Eine Spezialkarte ist an ein Symbol, an eine Farbe (rot/schwarz) oder gar nicht gebunden (Joker).
+     Sie passt nur auf Karten ihrer Symbole und gibt als oberste Karte genau diese Symbole vor.
+     Je weiter der Run, desto freier die Karten, die auftauchen. */
+  ZU.bindSuits = function (bind) {
+    if (bind === 'red') return ['hearts', 'diamonds'];
+    if (bind === 'black') return ['spades', 'clubs'];
+    if (ZU.SUITS[bind]) return [bind];
+    return ZU.SUIT_ORDER;
+  };
+  ZU.bindTier = function (bind) { return ZU.SUITS[bind] ? 0 : bind === 'red' || bind === 'black' ? 1 : 2; };
+  ZU.bindLabel = function (bind) {
+    return ZU.SUITS[bind] ? ZU.SUITS[bind].name : bind === 'red' ? 'Rot' : bind === 'black' ? 'Schwarz' : 'Joker';
+  };
+  ZU.bindText = function (bind) {
+    if (ZU.SUITS[bind]) return 'An ' + ZU.SUITS[bind].name + ' gebunden: passt nur auf ' + ZU.SUITS[bind].name + ', danach muss ' + ZU.SUITS[bind].name + ' folgen.';
+    if (bind === 'red') return 'An Rot gebunden: passt auf Herz und Karo, danach muss Rot folgen.';
+    if (bind === 'black') return 'An Schwarz gebunden: passt auf Pik und Kreuz, danach muss Schwarz folgen.';
+    return 'Joker: passt auf jede Karte, danach darf alles folgen.';
+  };
+  /* Würfelt die Bindung passend zum Akt: erst fast nur Symbole, dann Farben, am Ende Joker. */
+  ZU.BIND_WEIGHTS = [[78, 20, 2], [30, 55, 15], [8, 44, 48], [0, 30, 70]];
+  ZU.rollBind = function (rng, act) {
+    var weights = ZU.BIND_WEIGHTS[Math.max(0, Math.min(ZU.BIND_WEIGHTS.length, act) - 1)];
+    var roll = rng.next() * (weights[0] + weights[1] + weights[2]);
+    if (roll < weights[0]) return rng.pick(ZU.SUIT_ORDER);
+    if (roll < weights[0] + weights[1]) return rng.next() < 0.5 ? 'red' : 'black';
+    return 'wild';
+  };
+  /* Preis einer Karte im Laden; gebundene Spezialkarten sind günstiger, Joker teurer. */
+  ZU.cardPrice = function (defId, bind) {
+    var def = cards[defId];
+    if (!def.special) return def.price;
+    return Math.max(2, Math.round(def.price * [0.8, 1, 1.3][ZU.bindTier(bind)]));
+  };
+
+  /* ---------- Hausregeln: gelten für einen einzelnen Tisch, tauchen mit dem Run häufiger auf ---------- */
+  ZU.RULES = {
+    'one-pass': {
+      name: 'Letzter Stapel',
+      text: 'Der Stapel wird nicht neu gemischt. Ist er leer und muss jemand ziehen, gewinnt, wer weniger Karten hält.'
+    }
+  };
+  ZU.RULE_CHANCE = { 'one-pass': [0.1, 0.3, 0.5, 0.7] };
 
   ZU.CARDS = cards;
   ZU.STANDARD_IDS = Object.keys(cards).filter(function (id) { return !cards[id].special; });
   ZU.SPECIAL_IDS = Object.keys(cards).filter(function (id) { return cards[id].special; });
 
   /* ---------- Trinkets ---------- */
+  /* Grundpreis je Seltenheit. Dazu kommt im Laden ein Aufschlag je bereits getragenem Trinket –
+     das ersetzt die frühere feste Obergrenze. */
+  ZU.TRINKET_PRICES = [15, 22, 32, 46];
+  ZU.TRINKET_SURCHARGE = 3;
   var trinkets = {};
   function trinket(id, name, rarity, text) {
-    trinkets[id] = { id: id, name: name, rarity: rarity, price: [8, 12, 18, 26][rarity], text: text };
+    trinkets[id] = { id: id, name: name, rarity: rarity, price: ZU.TRINKET_PRICES[rarity], text: text };
   }
   trinket('lucky-chip', 'Glückschip', 0, '+2 Mark nach jedem Sieg.');
   trinket('ashtray', 'Aschenbecher', 0, 'Zu Duellbeginn darfst du eine Handkarte gegen eine neue tauschen.');
   trinket('false-bottom', 'Doppelboden', 0, 'Der erste Kartenkauf in jedem Laden kostet 2 Mark weniger.');
   trinket('fuse', 'Zündschnur', 0, 'Deine Kette startet bei ×2 statt ×1.');
   trinket('ledger', 'Kassenbuch', 0, 'Zinsen bringen bis zu 6 statt 3 Mark.');
-  trinket('brass-knuckles', 'Messingknöchel', 1, 'Dein erster Zieheffekt je Duell lässt den Gegner 1 Karte mehr ziehen.');
+  trinket('brass-knuckles', 'Messingknöchel', 0, 'Dein erster Zieheffekt je Duell lässt den Gegner 1 Karte mehr ziehen.');
   trinket('pocket-watch', 'Taschenuhr', 1, 'Das erste Aussetzen gegen dich je Duell wird ignoriert.');
   trinket('loaded-die', 'Gezinkter Würfel', 1, 'Zocken deckt 5 statt 3 Karten auf.');
   trinket('velvet-glove', 'Samthandschuh', 1, 'Opfer bringt 3 Mark zusätzlich in die Bank.');
-  trinket('heartblood', 'Herzblut', 1, 'Herz-Karten bringen doppelte Glut.');
+  trinket('heartblood', 'Herzblut', 0, 'Herz-Karten bringen doppelte Glut.');
   trinket('rollercoaster', 'Achterbahn', 1, 'Deine 8en lassen den Gegner aussetzen.');
-  trinket('nimble-fingers', 'Flinke Finger', 1, 'Schaltet die Mehrfachwahl frei: Lege mehrere Karten mit gleichem Wert in einem Zug.');
-  trinket('slow-burner', 'Dauerbrenner', 1, 'Beim Ziehen wird deine Kette halbiert statt zurückgesetzt.');
+  trinket('slow-burner', 'Dauerbrenner', 0, 'Beim Ziehen wird deine Kette halbiert statt zurückgesetzt.');
   trinket('black-book', 'Schwarzes Notizbuch', 2, 'Zu Duellbeginn siehst du die Gegnerhand für 3 Züge.');
   trinket('smoke-mirror', 'Rauchspiegel', 2, 'Der erste Zieh-, Aussetz- oder Fluch-Effekt gegen dich je Duell prallt zurück.');
-  trinket('hot-wire', 'Heißer Draht', 2, 'Deine erste Spezialkarte je Duell beendet deinen Zug nicht.');
-  trinket('ace-sleeve', 'Ass im Ärmel', 2, 'Deine Asse passen auf jede Karte.');
+  trinket('hot-wire', 'Heißer Draht', 1, 'Deine erste Spezialkarte je Duell beendet deinen Zug nicht.');
+  trinket('ace-sleeve', 'Ass im Ärmel', 1, 'Deine Asse passen auf jede Karte.');
   trinket('golden-match', 'Goldenes Streichholz', 3, 'Verhindert einmal den Verlust deines letzten Streichholzes. Wird dabei verbraucht.');
+  // --- Zieh-Druck: mehr Karten für den Gegner ---
+  trinket('seven-sleeper', 'Siebenschläfer', 1, 'Deine 7en lassen den Gegner 3 statt 2 Karten ziehen.');
+  trinket('hex-board', 'Hexenbrett', 1, 'Der Gegner beginnt jedes Duell verflucht (×2).');
+  trinket('voodoo', 'Voodoopuppe', 1, 'Flüche auf dem Gegner wirken doppelt: 2 Karten mehr statt 1.');
+  trinket('gold-tooth', 'Goldzahn', 0, 'Restkarten des Gegners zahlen bis zu 10 statt 5 Mark.');
+  // --- Aussetzen ---
+  trinket('stopwatch', 'Stoppuhr', 1, 'Jedes Mal, wenn der Gegner aussetzt, wandert 1 Mark in die Bank.');
+  // --- Kette und Glut ---
+  trinket('card-shark', 'Kartenhai', 0, 'Passt die gezogene Karte, bleibt deine Kette erhalten.');
+  trinket('afterburner', 'Nachbrenner', 2, 'Deine Kette steigt je Karte um 2 statt 1.');
+  trinket('black-series', 'Schwarze Serie', 0, 'Pik- und Kreuz-Karten bringen 50 % mehr Glut.');
+  trinket('furnace', 'Glutofen', 2, 'Der Glut-Bonus zahlt schon je 150 statt je 250 Glut – und bis zu 20 statt 8 Mark.');
+  // --- Mehrfachwahl ---
+  trinket('pair-king', 'Paschkönig', 2, 'Legst du 2 oder mehr Karten auf einmal, zieht der Gegner 1 Karte.');
+  // --- Spezialkarten ---
+  trinket('skeleton-key', 'Dietrich', 1, 'Deine symbolgebundenen Spezialkarten passen auf die ganze Farbe (Rot oder Schwarz).');
+  trinket('master-key', 'Generalschlüssel', 3, 'Alle deine Spezialkarten passen auf jede Karte.');
+  trinket('counterfeit', 'Falschgeld', 0, 'Spezialkarten kosten im Laden 3 Mark weniger.');
+  // --- Kasse ---
+  trinket('diamond-cut', 'Karoschliff', 1, 'Jede gespielte Karo-Karte bringt 1 Mark in die Bank (höchstens 5 je Duell).');
+  trinket('compound', 'Zinseszins', 1, 'Zinsen gibt es schon je 4 statt je 5 Mark.');
+  trinket('loyalty', 'Stempelkarte', 0, 'Trinkets kosten im Laden 4 Mark weniger.');
+  // --- Regeln ---
+  trinket('cellar-key', 'Kellerschlüssel', 0, 'Bei Sperrstunde und „Letzter Stapel“ gewinnst du auch bei Gleichstand.');
+  trinket('short-fuse', 'Kurze Lunte', 0, 'Der Gegner setzt zu Beginn jedes Duells einmal aus.');
   ZU.TRINKETS = trinkets;
   ZU.TRINKET_IDS = Object.keys(trinkets);
+
+  /* ---------- Privilegien ----------
+     Gelten für den ganzen Run und belegen keinen Trinket-Platz. Manfred bietet je Akt genau eines an;
+     die Neue Auslage ändert daran nichts. In Akt 1 ist es immer „Flinke Finger". */
+  var perks = {};
+  function perk(id, name, price, text) { perks[id] = { id: id, name: name, price: price, text: text }; }
+  perk('nimble-fingers', 'Flinke Finger', 12, 'Mehrfachwahl: Lege mehrere Karten mit gleichem Wert in einem Zug.');
+  perk('shelf', 'Großes Regal', 14, 'Das Spezialkarten-Regal hat 3 statt 2 Plätze.');
+  perk('showcase', 'Vitrine', 14, 'Manfred zeigt 3 statt 2 Trinkets.');
+  perk('regular', 'Stammplatz', 16, 'Jede Tischprämie fällt 2 Mark höher aus.');
+  perk('grinder', 'Schleifer', 16, 'Spezialkarten im Laden sind mindestens farbgebunden.');
+  perk('bell', 'Glockenrecht', 12, 'Die Neue Auslage kostet immer nur 2 Mark.');
+  perk('ashbin', 'Aschekasten', 10, 'Verbrennen kostet immer nur 2 Mark.');
+  perk('matchbook', 'Zündholzbrief', 20, 'Du erhältst ein zusätzliches Streichholz, auch über das Maximum hinaus.');
+  ZU.PERKS = perks;
+  ZU.PERK_IDS = Object.keys(perks);
 
   /* ---------- Gegner ---------- */
   var COMMON = ['stillstand', 'addieren'];
@@ -148,7 +241,7 @@
   });
   enemy('curse-dealer', {
     name: 'Mortimer', role: 'Fluchdealer', kind: 'battle', ai: 'pressure', pool: CURSE, bg: '#3a2140',
-    passive: null, passiveText: 'Mischt Flüche in den Stapel.',
+    passive: 'evil-eye', passiveText: 'Böser Blick: Du beginnst verflucht (×1).',
     say: {
       start: ['Die Karten … flüstern schon von dir …', 'Zieh … wenn du dich traust …'],
       attack: ['Nimm … nimm mehr …', 'Der Stapel mag dich … hihihi …'],
@@ -161,7 +254,7 @@
   });
   enemy('cheater', {
     name: 'Rico', role: 'Falschspieler', kind: 'battle', ai: 'gamble', pool: GAMBLE, bg: '#4a2a1a',
-    passive: null, passiveText: 'Tauscht, zockt und opfert.',
+    passive: 'sleeve', passiveText: 'Ass im Ärmel: Seine Asse passen auf jede Karte.',
     say: {
       start: ['Fair? Nie gehört, Amigo~', 'Schau mir ruhig auf die Finger. Bringt nix~'],
       attack: ['Uuups~ War das etwa meine?', 'Aus dem Ärmel geschüttelt!'],
@@ -174,7 +267,7 @@
   });
   enemy('cigarette-girl', {
     name: 'Lola', role: 'Zigarettenmädchen', kind: 'battle', ai: 'greedy', pool: ['addieren', 'stillstand', 'spion'], bg: '#5a2230',
-    passive: null, passiveText: 'Lächelt süß und teilt aus.',
+    passive: 'light', passiveText: 'Feuer gefällig: Sie beginnt mit einer 7 auf der Hand.',
     say: {
       start: ['Zigarren, Zigaretten … oder lieber eine Abreibung, Süßer~?', 'Na~? Feuer gefällig?'],
       attack: ['Ups~ Die gehen aufs Haus!', 'Zwei für dich, Hübscher~'],
@@ -187,7 +280,7 @@
   });
   enemy('barkeeper', {
     name: 'Bruno', role: 'Barkeeper', kind: 'battle', ai: 'greedy', pool: ['stillstand', 'hodl', 'addieren'], bg: '#3b2a1c',
-    passive: null, passiveText: 'Redet wenig. Schenkt ordentlich ein.',
+    passive: 'last-round', passiveText: 'Letzte Runde: Sperrstunde schon nach 36 Zügen.',
     say: {
       start: ['… Was darf es sein?', 'Setz dich. Trink. Verlier.'],
       attack: ['Geht aufs Haus.', 'Doppelter. Für dich.'],
@@ -200,7 +293,7 @@
   });
   enemy('showgirl', {
     name: 'Roxy', role: 'Revuegirl', kind: 'battle', ai: 'gamble', pool: ['tausch', 'zocken', 'addieren'], bg: '#5a3312',
-    passive: null, passiveText: 'Liebt den großen Auftritt – und den Handtausch.',
+    passive: 'encore', passiveText: 'Zugabe: Ihre erste Spezialkarte beendet ihren Zug nicht.',
     say: {
       start: ['Vorhang auf, Darling! Heute Abend: DEIN Untergang!', 'Applaus bitte~ Ich bin da!'],
       attack: ['Und – TUSCH!', 'Na, Darling? War das nicht fabelhaft?!'],
@@ -213,7 +306,7 @@
   });
   enemy('bruiser', {
     name: 'Knochen-Kalle', role: 'Schläger', kind: 'battle', ai: 'pressure', pool: ['addieren', 'addieren', 'fluch'], bg: '#2c3038',
-    passive: null, passiveText: 'Kennt nur eine Taktik: draufhauen.',
+    passive: 'heavy-hand', passiveText: 'Schwere Hand: Seine 7en lassen dich 3 statt 2 Karten ziehen.',
     say: {
       start: ['Der Boss sagt, ich soll dir wehtun. Mit KARTEN!', 'Kalle spielt. Du verlierst. Klar?!'],
       attack: ['ZACK!!', 'Da! Friss Karten!'],
@@ -226,7 +319,7 @@
   });
   enemy('pianist', {
     name: 'Fingers', role: 'Pianist', kind: 'battle', ai: 'greedy', pool: ['spion', 'stillstand', 'zocken'], bg: '#1f2f44',
-    passive: null, passiveText: 'Spielt nach Gehör. Und nach deinem Blatt.',
+    passive: 'by-ear', passiveText: 'Nach Gehör: Kennt in seinen ersten 3 Zügen deine Hand.',
     say: {
       start: ['Setz dich, Kleiner … ich spiel dir was Trauriges ♪', 'Jeder Abend endet in Moll …'],
       attack: ['Und jetzt … der Refrain ♪', 'Hörst du das? Dein Schlussakkord.'],
@@ -239,7 +332,7 @@
   });
   enemy('bookie', {
     name: 'Quoten-Otto', role: 'Buchmacher', kind: 'battle', ai: 'gamble', pool: ['zocken', 'addieren', 'opfer'], bg: '#4a3a14',
-    passive: null, passiveText: 'Wettet auf alles. Vor allem gegen dich.',
+    passive: 'odds', passiveText: 'Wettschein: Schlägst du ihn, zahlt er 3 Mark extra.',
     say: {
       start: ['Drei zu eins gegen dich! Wer setzt?! Niemand?!', 'Schnell-schnell, die Quoten laufen!'],
       attack: ['Ha! Fünf zu eins!', 'Hab ich es gesagt?! Ich hab es gesagt!'],
@@ -407,10 +500,10 @@
 
   /* ---------- Startschachteln ---------- */
   ZU.STARTERS = [
-    { id: 'classic', name: 'Klassisch', money: 10, text: '7 zufällige Karten und 10 Mark. Solide.', cards: [], trinkets: [], color: '#2f7d5b' },
-    { id: 'igniter', name: 'Zündler', money: 5, text: '7 Karten, darunter zwei 7en. Dazu Flinke Finger: Gleiche Werte gehen zusammen raus.', cards: ['hearts-7', 'spades-7'], trinkets: ['nimble-fingers'], color: '#f08a24' },
-    { id: 'cheater', name: 'Falschspieler', money: 5, text: '6 Karten plus Tausch und Zocken.', cards: ['tausch', 'zocken'], trinkets: [], size: 8, color: '#a3271f' },
-    { id: 'alchemist', name: 'Alchemist', money: 4, text: '6 Karten plus Zytokinese und HODL. Wächst langsam, zahlt sich aus.', cards: ['zytokinese', 'hodl'], trinkets: [], size: 8, color: '#2a8c8c' }
+    { id: 'classic', name: 'Klassisch', money: 10, text: '7 zufällige Karten und das meiste Startgeld. Solide.', cards: [], trinkets: [], color: '#2f7d5b' },
+    { id: 'igniter', name: 'Zündler', money: 5, text: '7 Karten, darunter zwei 7en. Dazu das Privileg Flinke Finger: Gleiche Werte gehen zusammen raus.', cards: ['hearts-7', 'spades-7'], trinkets: [], perks: ['nimble-fingers'], color: '#f08a24' },
+    { id: 'cheater', name: 'Falschspieler', money: 5, text: '6 Karten plus Tausch und Zocken, beide an ein Symbol gebunden.', cards: ['tausch', 'zocken'], trinkets: [], size: 8, color: '#a3271f' },
+    { id: 'alchemist', name: 'Alchemist', money: 4, text: '6 Karten plus Zytokinese und HODL, beide an ein Symbol gebunden.', cards: ['zytokinese', 'hodl'], trinkets: [], size: 8, color: '#2a8c8c' }
   ];
 
   ZU.roman = function (n) {

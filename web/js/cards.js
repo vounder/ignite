@@ -16,11 +16,12 @@
     flame: ['....o...', '...oo...', '..ooo.o.', '..oyoooo', '.ooyyoo.', '.oyyyyo.', 'ooywwyoo', 'ooywwyoo', '.ooyyoo.', '..oooo..'],
     lock: ['..kkkk..', '.kk..kk.', '.kk..kk.', 'gggggggg', 'gyyGGyyg', 'gyyGGyyg', 'gyyyyyyg', 'gggggggg'],
     reroll: ['...xxxxx...', '..x.....x.x', '.x.......xx', '.x......xxx', 'x..........', 'x.........x', '..........x', 'xxx......x.', 'xx.......x.', 'x.x.....x..', '...xxxxx...'],
+    ash: ['....o...', '...oyo..', '...oo...', '..aAa...', '.aAaaAa.', 'aAaAaaAa', 'AaAAaAAA', 'AAAAAAAA'],
     deck: ['..wwwwww', '.wwwwwww', 'wwwwwwkw', 'wrwwwwkw', 'wwwwwwkw', 'wwwrwwkw', 'wwwwwwkw', 'wwwwwwk.', 'kkkkkkk.']
   };
   var COLORS = {
     x: '#000', r: '#e4572e', R: '#ff9f43', w: '#e9d8b0', k: '#2a2320', d: '#5a4a3c', g: '#e2b23c', G: '#9a6f24',
-    y: '#ffd75e', o: '#f08a24'
+    y: '#ffd75e', o: '#f08a24', a: '#b9b2a8', A: '#6b665f'
   };
   var cache = {};
 
@@ -52,14 +53,27 @@
   ZU.suitIcon = function (suit) { return ZU.icon(suit, ZU.SUITS[suit].red ? RED : BLACK); };
 
   /* ---------- Kartenflächen ---------- */
-  ZU.cardFace = function (def) {
+  /* Kleines Schild auf Spezialkarten: an welches Symbol bzw. welche Farbe die Karte gebunden ist. */
+  function bindBadge(bind) {
+    var badge = h('div', 'sp-bind t' + ZU.bindTier(bind));
+    ZU.bindSuits(bind).forEach(function (suit) {
+      var pip = h('i', 'bpip');
+      pip.style.backgroundImage = 'url(' + ZU.suitIcon(suit) + ')';
+      badge.appendChild(pip);
+    });
+    return badge;
+  }
+
+  /* bind: Bindung einer Spezialkarte ('hearts', 'red', 'wild' …); 'none' blendet das Schild aus. */
+  ZU.cardFace = function (def, bind) {
     var el;
     if (def.special) {
       el = h('div', 'card front special r' + def.rarity);
+      if (bind !== 'none') el.appendChild(bindBadge(bind || 'wild'));
       var title = h('div', 'sp-title', def.name);
       if (def.name.length > 9) title.style.fontSize = def.name.length > 11 ? '10px' : '12px';
       var art = h('div', 'sp-art');
-      art.style.backgroundImage = 'url(assets/special/' + def.id + '.png)';
+      art.style.backgroundImage = 'url(' + ZU.asset('special/' + def.id + '.png') + ')';
       el.appendChild(title);
       el.appendChild(art);
       el.appendChild(h('div', 'sp-tag', def.tag));
@@ -103,17 +117,17 @@
   /* Statische Karte für Laden, Deck und Belohnungen (kippt zur Maus). */
   ZU.cardStatic = function (def, opts) {
     opts = opts || {};
-    var inner = h('div', 'cs-inner', [ZU.cardFace(def)]);
+    var inner = h('div', 'cs-inner', [ZU.cardFace(def, opts.bind)]);
     var box = h('div', 'cardstatic' + (opts.cls ? ' ' + opts.cls : ''), [h('div', 'cs-shadow'), inner]);
     ZU.tilt(box, inner);
-    if (!opts.noTip) ZU.tip.bind(box, function () { return ZU.tip.card(def); });
+    if (!opts.noTip) ZU.tip.bind(box, function () { return ZU.tip.card(def, opts.bind); });
     return box;
   };
 
   ZU.trinketEl = function (id, extraTip) {
     var t = ZU.TRINKETS[id];
     var img = h('i', 'tk-img');
-    img.style.backgroundImage = 'url(assets/trinkets/' + id + '.png)';
+    img.style.backgroundImage = 'url(' + ZU.asset('trinkets/' + id + '.png') + ')';
     var el = h('div', 'trinket r' + t.rarity, [img]);
     el.dataset.id = id;
     ZU.tip.bind(el, function () { return ZU.tip.trinket(id, typeof extraTip === 'function' ? extraTip() : extraTip); });
@@ -122,10 +136,45 @@
 
   /* Animiertes Gegnerporträt: ein Sprite-Streifen mit sechs Ausdrücken (ZU.MOODS).
      setBase() legt die Grundstimmung fest, setMood() zeigt kurz eine Reaktion. */
+  /* Privileg: wie ein Trinket, aber als rundes Siegel dargestellt. */
+  ZU.perkEl = function (id) {
+    var perk = ZU.PERKS[id];
+    var img = h('i', 'tk-img');
+    img.style.backgroundImage = 'url(' + ZU.asset('perks/' + id + '.png') + ')';
+    var el = h('div', 'trinket perk', [img]);
+    el.dataset.id = id;
+    ZU.tip.bind(el, '<b>' + perk.name + '</b><i class="rar legendary">Privileg · gilt den ganzen Run</i><p>' + perk.text + '</p>');
+    return el;
+  };
+
+  /* Füllt eine Leiste mit allem, was der Spieler trägt: erst Privilegien, dann Trinkets.
+     Je mehr es sind, desto kleiner werden die Symbole. Liefert die Elemente nach Kennung. */
+  ZU.fillOwned = function (container, run, onTrinket) {
+    var map = {}, perks = run.s.perks || [], trinkets = run.s.trinkets, total = perks.length + trinkets.length;
+    container.innerHTML = '';
+    container.classList.toggle('many', total > 6 && total <= 12);
+    container.classList.toggle('lots', total > 12);
+    perks.forEach(function (id) {
+      map[id] = ZU.perkEl(id);
+      container.appendChild(map[id]);
+    });
+    trinkets.forEach(function (id) {
+      var el = ZU.trinketEl(id, onTrinket ? function () { return 'Klicken: verkaufen'; } : null);
+      if (onTrinket) {
+        el.classList.add('clickable');
+        el.addEventListener('click', function () { onTrinket(id); });
+      }
+      map[id] = el;
+      container.appendChild(el);
+    });
+    if (!total) container.appendChild(h('div', 'trinket empty'));
+    return map;
+  };
+
   ZU.portraitEl = function (enemyId, cls) {
     var enemy = ZU.ENEMIES[enemyId];
     var img = h('i', 'pt-img');
-    img.style.backgroundImage = 'url(assets/enemies/' + enemyId + '.png)';
+    img.style.backgroundImage = 'url(' + ZU.asset('enemies/' + enemyId + '.png') + ')';
     var el = h('div', 'portrait ' + (cls || '') + ' k-' + enemy.kind, [h('div', 'pt-react', [h('div', 'pt-bob', [img])])]);
     el.style.setProperty('--pbg', enemy.bg);
     var base = 'idle', shown = 'idle', timer = null, blinkTimer = null, wasConnected = false;
@@ -162,6 +211,42 @@
     return el;
   };
 
+  /* ---------- Vorladen: Bilder im Hintergrund holen, damit sie beim Erscheinen sofort da sind ---------- */
+  var queue = [], loading = 0, done = {}, keep = [];
+  function pump() {
+    while (loading < 2 && queue.length) {
+      var url = queue.shift();
+      if (done[url]) continue;
+      done[url] = true;
+      loading++;
+      var image = new Image();
+      image.onload = image.onerror = function () { loading--; pump(); };
+      image.src = url;
+      keep.push(image);
+    }
+  }
+  /* urgent = true stellt die Bilder an den Anfang der Warteschlange (z. B. die nächsten Gegner). */
+  ZU.preload = function (urls, urgent) {
+    urls = urls.filter(function (url) { return !done[url]; });
+    queue = urgent ? urls.concat(queue) : queue.concat(urls);
+    pump();
+  };
+  ZU.preloadEnemies = function (ids, urgent) {
+    ZU.preload(ids.map(function (id) { return ZU.asset('enemies/' + id + '.png'); }), urgent);
+  };
+  /* Alles, was im Lauf eines Runs gebraucht wird – in der Reihenfolge, in der es voraussichtlich erscheint. */
+  ZU.preloadAll = function () {
+    var urls = [ZU.asset('manfred/manfred.png')];
+    ZU.TRINKET_IDS.forEach(function (id) { urls.push(ZU.asset('trinkets/' + id + '.png')); });
+    ZU.PERK_IDS.forEach(function (id) { urls.push(ZU.asset('perks/' + id + '.png')); });
+    ZU.SPECIAL_IDS.forEach(function (id) { urls.push(ZU.asset('special/' + id + '.png')); });
+    ZU.BOSS_ACTS.forEach(function (act, index) {
+      if (index === 0) ZU.BATTLE_POOL.concat(ZU.ELITE_POOL).forEach(function (id) { urls.push(ZU.asset('enemies/' + id + '.png')); });
+      act.forEach(function (id) { urls.push(ZU.asset('enemies/' + id + '.png')); });
+    });
+    ZU.preload(urls, false);
+  };
+
   /* ---------- Sprite: eine Karte auf dem Tisch, bewegt über gedämpfte Federn ---------- */
   var CW = 104, CH = 146;
   ZU.CARD_W = CW;
@@ -170,6 +255,7 @@
   function Sprite(card, layer, x, y) {
     this.id = card.id;
     this.def = ZU.CARDS[card.def];
+    this.bind = card.bind;
     this.x = this.tx = x;
     this.y = this.ty = y;
     this.r = this.tr = 0;
@@ -188,7 +274,7 @@
     this.stiff = 190;
     this.damp = 20;
 
-    this.flipEl = h('div', 'spr-flip', [ZU.cardFace(this.def), ZU.cardBack()]);
+    this.flipEl = h('div', 'spr-flip', [ZU.cardFace(this.def, card.bind), ZU.cardBack()]);
     this.tiltEl = h('div', 'spr-tilt', [this.flipEl]);
     this.shadowEl = h('div', 'spr-shadow');
     this.badgeEl = h('div', 'spr-badge');

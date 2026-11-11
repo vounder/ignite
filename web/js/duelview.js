@@ -52,12 +52,19 @@
     var sortRank = h('button', 'btn small', 'Wert', { onclick: function () { self.setSort('rank'); } });
     var sortSuit = h('button', 'btn small', 'Farbe', { onclick: function () { self.setSort('suit'); } });
     this.sortButtons = { rank: sortRank, suit: sortSuit };
+    var rulesEl = h('div', 'rulerow');
+    this.duel.rules.forEach(function (rule) {
+      var chip = h('div', 'rulechip', ZU.RULES[rule].name);
+      ZU.tip.bind(chip, '<b>Hausregel: ' + ZU.RULES[rule].name + '</b><p>' + ZU.RULES[rule].text + '</p>');
+      rulesEl.appendChild(chip);
+    });
     var left = h('div', 'panel p-left', [
       h('div', 'kindtag k-' + e.kind, ZU.KIND_LABEL[e.kind]),
       this.portrait,
       h('div', 'ename', enemy.name),
       h('div', 'erole', enemy.role),
       h('div', 'epassive', enemy.passiveText),
+      rulesEl,
       h('div', 'ecount', ['Handkarten: ', this.oppCount]),
       this.oppStatus,
       h('div', 'grow'),
@@ -73,25 +80,15 @@
     this.bankEl = h('b', null, '0');
     this.bankMult = h('span', 'mult', '');
     this.moneyEl = h('b', null, ZU.fmt(run.s.money));
-    this.trinketEls = {};
     var slots = h('div', 'trinkets');
-    for (var i = 0; i < ZU.MAX_TRINKETS; i++) {
-      var id = run.s.trinkets[i];
-      if (id) {
-        var t = ZU.trinketEl(id);
-        this.trinketEls[id] = t;
-        slots.appendChild(t);
-      } else {
-        slots.appendChild(h('div', 'trinket empty'));
-      }
-    }
+    this.trinketEls = ZU.fillOwned(slots, run);
     this.playBtn = h('button', 'btn big ember', 'Ausspielen', { onclick: function () { self.onPlayButton(); } });
     this.multiBtn = h('button', 'btn small switch', 'An', { onclick: function () { self.setMulti(!self.multi); } });
     this.multiRow = h('div', 'multirow', [h('span', 'label', 'Mehrfachwahl'), this.multiBtn]);
     ZU.tip.bind(this.multiRow, '<b>Flinke Finger</b><p>Bei <b>An</b> wählst du Karten mit gleichem Wert aus und legst sie zusammen; Karten ohne passenden Partner werden weiter sofort gespielt. Bei <b>Aus</b> wird jede angeklickte Karte sofort gespielt.</p>');
     this.drawBtn = h('button', 'btn big felt', 'Ziehen', { onclick: function () { self.onDrawButton(); } });
     var lives = h('div', 'lives');
-    for (var l = 0; l < ZU.MAX_LIVES; l++) lives.appendChild(ZU.iconEl(l < run.s.lives ? 'match' : 'matchOut', 'match'));
+    for (var l = 0; l < run.maxLives(); l++) lives.appendChild(ZU.iconEl(l < run.s.lives ? 'match' : 'matchOut', 'match'));
     var right = h('div', 'panel p-right', [
       h('div', 'runline', [
         h('span', null, 'Akt ' + ZU.roman(run.s.act) + ' · Tisch ' + (run.s.table + 1) + '/3'),
@@ -99,7 +96,7 @@
       ]),
       h('div', 'statline', [ZU.iconEl('coin', 'coin'), this.moneyEl, h('span', 'unit', 'Mark'), h('div', 'grow'), lives]),
       h('div', 'statline bank', [h('span', 'label', 'Bank'), this.bankEl, h('span', 'unit', 'Mark'), this.bankMult]),
-      h('div', 'label', 'Trinkets'),
+      h('div', 'label', 'Privilegien und Trinkets'),
       slots,
       h('div', 'grow'),
       this.multiOwned ? this.multiRow : null,
@@ -115,8 +112,11 @@
     this.stockEl.appendChild(this.stockNum);
     this.stockEl.style.left = (STOCK.x - ZU.CARD_W / 2) + 'px';
     this.stockEl.style.top = (STOCK.y - ZU.CARD_H / 2) + 'px';
-    this.stockEl.addEventListener('click', function () { if (self.mode === 'play') self.onDrawButton(); });
-    ZU.tip.bind(this.stockEl, 'Nachziehstapel. Klicken oder Leertaste: eine Karte ziehen (beendet den Zug).');
+    this.stockEl.addEventListener('click', function () { if (self.mode === 'play' && !self.duel.afterDraw) self.onDrawButton(); });
+    var onePass = this.duel.rules.indexOf('one-pass') >= 0;
+    this.stockEl.classList.toggle('onepass', onePass);
+    ZU.tip.bind(this.stockEl, 'Nachziehstapel. Klicken oder Leertaste: eine Karte ziehen. Passt sie, darfst du sie sofort legen – sonst endet der Zug.' +
+      (onePass ? '<p><b>Letzter Stapel:</b> Es wird nicht neu gemischt. Ist er leer und muss jemand ziehen, gewinnt, wer weniger Karten hält.</p>' : ''));
     this.layer.appendChild(this.stockEl);
 
     this.chainEl = h('div', 'chain', [ZU.iconEl('flame', 'flame'), h('b', null, '×' + this.chain)]);
@@ -125,7 +125,7 @@
       h('div', 'label', 'Kette'), this.chainEl,
       h('div', 'label', 'Glut'), this.glutEl
     ]);
-    ZU.tip.bind(this.board, '<b>Glut</b> = Kartenwert × Kette. Jede gespielte Karte erhöht die Kette um 1, Ziehen setzt sie zurück. Je 150 Glut gibt es beim Sieg 1 Mark extra (max. 6).');
+    ZU.tip.bind(this.board, '<b>Glut</b> = Kartenwert × Kette. Jede gespielte Karte erhöht die Kette um 1, Ziehen setzt sie zurück. Je 250 Glut gibt es beim Sieg 1 Mark extra (höchstens 8).');
 
     this.promptEl = h('div', 'prompt');
     this.bubble = h('div', 'bubble');
@@ -173,7 +173,7 @@
     sp.el.addEventListener('pointerleave', function () { self.onHover(sp, false); });
     sp.el.addEventListener('pointermove', function (ev) { if (sp.hover) sp.pointer(ev); });
     sp.el.addEventListener('click', function () { self.onCardClick(sp); });
-    ZU.tip.bind(sp.el, function () { return sp.tflip === 0 ? ZU.tip.card(sp.def) : null; });
+    ZU.tip.bind(sp.el, function () { return sp.tflip === 0 ? ZU.tip.card(sp.def, sp.bind) : null; });
     return sp;
   };
 
@@ -595,7 +595,7 @@
       this.turnCount.classList.toggle('warn', ev.left <= 5);
     }
     if (ev.extra) {
-      fx.pop(ANCHOR.player.x, ANCHOR.player.y, 'Noch ein Zug!', 'good');
+      fx.pop(ANCHOR[ev.actor].x, ANCHOR[ev.actor].y, 'Noch ein Zug!', ev.actor === 'player' ? 'good' : 'bad');
       return wait(300);
     }
     return null;
@@ -636,11 +636,30 @@
     return wait(500 + ev.defs.length * 240);
   };
 
+  /* Die gerade gezogene Karte passt: Sie darf sofort gelegt werden. */
+  DuelView.prototype.on_drawfit = function (ev) {
+    var self = this;
+    ev.ids.forEach(function (id) { if (self.sprites[id]) self.sprites[id].punch(2.4); });
+    if (ev.actor === 'player') {
+      fx.pop(ANCHOR.player.x, ANCHOR.player.y, 'Passt! Legen oder passen', 'good small', 1600);
+      ZU.audio.select(true);
+      return wait(150);
+    }
+    return wait(380);
+  };
+
   DuelView.prototype.on_curfew = function () {
     ZU.audio.boss();
     return fx.banner('Sperrstunde!', 'swap', 1200);
   };
   DuelView.prototype.on_stalemate = DuelView.prototype.on_curfew;
+
+  DuelView.prototype.on_showdown = function () {
+    ZU.audio.boss();
+    fx.shake(8);
+    fx.smoke(STOCK.x, STOCK.y, 22);
+    return fx.banner('Stapel leer!', 'swap', 1300);
+  };
 
   /* ---------- Status-Anzeige ---------- */
   DuelView.prototype.renderStatus = function () {
@@ -732,7 +751,7 @@
     }
     if (this.mode !== 'play' || this.pHand.indexOf(sp) < 0) return;
     // Auch bei eingeschalteter Mehrfachwahl: Karten ohne Partner gleichen Werts gehen sofort raus.
-    if (!this.multi || (!this.selected.length && !this.hasPartner(sp))) { this.playNow(sp); return; }
+    if (this.duel.afterDraw || !this.multi || (!this.selected.length && !this.hasPartner(sp))) { this.playNow(sp); return; }
     this.toggle(sp, 99);
     this.refresh();
   };
@@ -813,7 +832,8 @@
     if (this.mode !== 'play') return;
     ZU.audio.click();
     this.clearSelection();
-    this.runEvents(this.duel.draw('player'));
+    // Nach dem Ziehen einer passenden Karte heißt der Knopf „Passen" und beendet den Zug.
+    this.runEvents(this.duel.afterDraw ? this.duel.pass('player') : this.duel.draw('player'));
   };
 
   DuelView.prototype.deny = function (reason) {
@@ -875,7 +895,7 @@
       else { draw.style.visibility = 'hidden'; }
     } else {
       play.textContent = ids.length > 1 ? 'Legen (' + ids.length + ')' : 'Ausspielen';
-      draw.textContent = 'Ziehen';
+      draw.textContent = d.afterDraw && d.afterDraw.actor === 'player' ? 'Passen' : 'Ziehen';
       var ok = mode === 'play' && !busy && ids.length > 0 && d.canPlay('player', ids).ok;
       play.disabled = !ok;
       play.classList.toggle('ready', ok);
@@ -896,7 +916,7 @@
       var order = self.selected.indexOf(sp);
       sp.badge(self.selected.length > 1 && order >= 0 ? String(order + 1) : '');
     });
-    this.stockEl.classList.toggle('active', mode === 'play' && !busy);
+    this.stockEl.classList.toggle('active', mode === 'play' && !busy && !d.afterDraw);
     this.root.classList.toggle('busy', busy);
   };
 

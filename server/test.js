@@ -89,10 +89,12 @@ async function waitFor(check, ms) {
   assert.strictEqual((await anon('GET', '/gibt-es-nicht.png')).status, 404);
   const etag = (await anon('GET', '/css/style.css')).headers.get('etag');
   assert.strictEqual((await anon('GET', '/css/style.css', undefined, { 'If-None-Match': etag })).status, 304);
-  const ranged = await fetch(base + '/assets/audio/shop.wav', { headers: { Range: 'bytes=0-99' } });
+  const ranged = await fetch(base + '/assets/audio/shop.mp3', { headers: { Range: 'bytes=0-99' } });
   assert.strictEqual(ranged.status, 206);
   assert.strictEqual((await ranged.arrayBuffer()).byteLength, 100);
   assert.strictEqual((await anon('POST', '/index.html', {})).status, 405);
+  assert.strictEqual((await anon('GET', '/css/style.css')).headers.get('cache-control'), 'no-cache');
+  assert.match((await anon('GET', '/assets/logo.png?v=abc123')).headers.get('cache-control'), /max-age=31536000, immutable/, 'versionierte Adressen werden dauerhaft gecacht');
 
   // --- ohne Anmeldung ---
   assert.strictEqual((await anon('GET', '/api/me')).status, 401);
@@ -115,7 +117,7 @@ async function waitFor(check, ms) {
   // --- Registrierung mit Übernahme lokaler Statistik ---
   r = await a('POST', '/api/register', { username: 'Zuendler', password: 'streichholz1', email: 'Zuendler@Example.org', local: { runs: 4, wins: 9, best: 1234, bestAct: 2 } });
   assert.strictEqual(r.status, 201);
-  assert.deepStrictEqual(r.data, { user: { username: 'Zuendler' }, stats: { runs: 4, wins: 4, best: 1234, bestAct: 2 } });
+  assert.deepStrictEqual(r.data, { user: { username: 'Zuendler' }, stats: { runs: 4, wins: 4, best: 1234, bestAct: 2 }, meta: {} });
   assert.match(r.setCookie, /HttpOnly/);
   assert.match(r.setCookie, /SameSite=Lax/);
   assert.doesNotMatch(r.setCookie, /Secure/, 'ohne HTTPS kein Secure-Flag');
@@ -140,6 +142,13 @@ async function waitFor(check, ms) {
   assert.deepStrictEqual(r.data.stats, { runs: 7, wins: 5, best: 7000, bestAct: 5 }, 'Unsinn wird nicht gezählt');
   r = await a('POST', '/api/run', { won: true, score: 1e300, act: 1e300 });
   assert.strictEqual(r.data.stats.best, 100000000);
+
+  // --- Meta-Fortschritt ---
+  assert.strictEqual((await anon('POST', '/api/meta', { meta: { ash: 5 } })).status, 401);
+  assert.strictEqual((await a('POST', '/api/meta', { meta: 'nein' })).status, 400);
+  assert.strictEqual((await a('POST', '/api/meta', { meta: { blob: 'x'.repeat(7000) } })).status, 413);
+  assert.strictEqual((await a('POST', '/api/meta', { meta: { ash: 12, earned: 30, unlocked: { 'trinket:heartblood': true }, upgrades: { startgeld: 2 }, maxStake: 1 } })).status, 200);
+  assert.deepStrictEqual((await a('GET', '/api/me')).data.meta, { ash: 12, earned: 30, unlocked: { 'trinket:heartblood': true }, upgrades: { startgeld: 2 }, maxStake: 1 });
 
   // --- Abmelden und Anmelden ---
   assert.strictEqual((await a('POST', '/api/logout', {})).status, 200);

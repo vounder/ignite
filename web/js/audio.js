@@ -132,7 +132,7 @@
       if (!name) return;
       var track = tracks[name];
       if (!track) {
-        var el = new Audio('assets/audio/' + name + '.wav');
+        var el = new Audio(ZU.asset('audio/' + name + '.mp3'));
         el.loop = true;
         el.preload = 'auto';
         el.volume = 0;

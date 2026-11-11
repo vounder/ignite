@@ -37,7 +37,7 @@
         '<h3>Speicher im Browser</h3>' +
         '<p>Spielstand, Statistik und Einstellungen liegen im lokalen Speicher deines Browsers und bleiben auf deinem Gerät. Es gibt keine Analyse, kein Tracking und keine Werbung.</p>' +
         '<h3>Konto (freiwillig)</h3>' +
-        '<p>Wenn du ein Konto anlegst, speichern wir Name, E-Mail-Adresse, ein nicht umkehrbar verschlüsseltes Passwort, das Registrierungsdatum und deine Spielstatistik (Runs, Siege, Bestwert, höchster Akt). ' +
+        '<p>Wenn du ein Konto anlegst, speichern wir Name, E-Mail-Adresse, ein nicht umkehrbar verschlüsseltes Passwort, das Registrierungsdatum, deine Spielstatistik (Runs, Siege, Bestwert, höchster Akt) und deinen Spielfortschritt (Asche, Freischaltungen, Upgrades, Einsätze, besiegte Gegner). ' +
         'Das dient der Anmeldung und dem Sichern der Statistik (Art. 6 Abs. 1 lit. b DSGVO). Die E-Mail-Adresse wird ausschließlich zum Zurücksetzen des Passworts verwendet.</p>' +
         '<p>Nach der Anmeldung setzt die Seite ein technisch notwendiges Sitzungs-Cookie (30 Tage). Weitere Cookies gibt es nicht.</p>' +
         '<p>Die Daten bleiben gespeichert, bis du dein Konto löschst. Das geht jederzeit im Spiel unter „Konto“.</p>' +

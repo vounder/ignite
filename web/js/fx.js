@@ -221,12 +221,16 @@
       tipOwner = null;
       tipEl.classList.remove('on');
     },
-    card: function (def) {
+    card: function (def, bind) {
       var rarity = ZU.RARITY[def.rarity];
+      if (!def.special) {
+        return '<b>' + def.name + '</b><i class="rar common">Glut ' + def.base + '</i>' + (def.text ? '<p>' + def.text + '</p>' : '');
+      }
+      var bound = bind && bind !== 'none';
       return '<b>' + def.name + '</b>' +
-        (def.special ? '<i class="rar ' + rarity.cls + '">' + rarity.name + ' · Spezialkarte · Joker</i>' : '<i class="rar common">Glut ' + def.base + '</i>') +
-        (def.text ? '<p>' + def.text + '</p>' : '') +
-        (def.special ? '<p class="dim">Passt auf jede Karte. Danach darf alles gelegt werden.</p>' : '');
+        '<i class="rar ' + rarity.cls + '">' + rarity.name + ' · Spezialkarte' + (bound ? ' · ' + ZU.bindLabel(bind) : '') + '</i>' +
+        '<p>' + def.text + '</p>' +
+        '<p class="dim">' + (bound ? ZU.bindText(bind) : 'Spezialkarten sind an ein Symbol, an eine Farbe oder gar nicht gebunden.') + '</p>';
     },
     trinket: function (id, extra) {
       var t = ZU.TRINKETS[id], rarity = ZU.RARITY[t.rarity];

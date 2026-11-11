@@ -43,7 +43,7 @@
     this.enemy = ZU.ENEMIES[opts.enemyId];
     this.kind = opts.kind;
     this.act = opts.act;
-    this.trinkets = opts.trinkets.slice();
+    this.trinkets = opts.trinkets.concat(opts.perks || []); // Privilegien wirken wie Trinkets
     this.collection = opts.collection;
     this.nextId = opts.nextId;
     this.cards = {};
@@ -70,6 +70,13 @@
     this.created = [];
     this.retired = [];
     this.turns = 0;
+    this.oppTurns = 0;
+    this.rules = opts.rules || [];
+    this.mods = opts.mods || {}; // Stellschrauben der Einsätze
+    this.specialPool = opts.specialPool || null;
+    this.turnLimit = this.enemy.passive === 'last-round' ? 36 : ZU.TURN_LIMIT;
+    this.showdown = false;
+    this.afterDraw = null; // nach dem Ziehen: { actor, ids } der Karten, die sofort gelegt werden dürfen
     this.stats = { played: 0, drawn: 0 };
   }
 
@@ -78,19 +85,23 @@
   Duel.prototype.def = function (id) { return ZU.CARDS[this.cards[id].def]; };
   Duel.prototype.top = function () { return this.pile[this.pile.length - 1]; };
 
-  Duel.prototype._register = function (defId, owner, persistent, id) {
+  Duel.prototype._register = function (defId, owner, persistent, id, bind) {
     var cid = id != null ? id : this.nextId++;
-    this.cards[cid] = { id: cid, def: defId, owner: owner, persistent: !!persistent, retired: false };
+    this.cards[cid] = {
+      id: cid, def: defId, owner: owner, persistent: !!persistent, retired: false,
+      bind: ZU.CARDS[defId].special ? (bind || 'wild') : null
+    };
     return cid;
   };
 
   /* ---------- Aufbau ---------- */
   Duel.prototype.start = function () {
     var self = this, ev = [], rng = this.rng;
-    var owned = this.collection.map(function (c) { return self._register(c.def, 'player', true, c.id); });
+    var owned = this.collection.map(function (c) { return self._register(c.def, 'player', true, c.id, c.bind); });
     rng.shuffle(owned);
-    var opening = owned.slice(0, ZU.HAND_SIZE);
-    var rest = owned.slice(ZU.HAND_SIZE);
+    var handSize = ZU.HAND_SIZE;
+    var opening = owned.slice(0, handSize);
+    var rest = owned.slice(handSize);
 
     // Ein gemeinsames 32er-Blatt: eigene Standardkarten belegen ihre Plätze.
     var house = ZU.STANDARD_IDS.slice();
@@ -112,7 +123,7 @@
     var tableDef = house.splice(tableIndex, 1)[0];
 
     house.forEach(function (defId) { self.stock.push(self._register(defId, 'house', false)); });
-    for (var s = 0; s < stockSpecials; s++) this.stock.push(this._register(rng.pick(this.enemy.pool), 'enemy', false));
+    for (var s = 0; s < stockSpecials; s++) this.stock.push(this._register(rng.pick(this.enemy.pool), 'enemy', false, null, ZU.rollBind(rng, this.act)));
     rest.forEach(function (id) { self.stock.push(id); });
     rng.shuffle(this.stock);
 
@@ -122,13 +133,25 @@
 
     var oppSize = ZU.OPP_HAND + (this.kind === 'battle' ? 1 : 0) + (this.enemy.handBonus || 0) -
       (this.enemy.passive === 'head-start' ? 2 : this.enemy.passive === 'house' ? 1 : 0);
+    oppSize = Math.max(4, oppSize + (this.mods.oppHand || 0));
     if (this.enemy.passive === 'jewels') counts.hand = 3;
     var oppOpening = [];
     for (var h = 0; h < counts.hand && oppOpening.length < oppSize; h++) {
-      oppOpening.push(this._register(rng.pick(this.enemy.pool), 'enemy', false));
+      oppOpening.push(this._register(rng.pick(this.enemy.pool), 'enemy', false, null, ZU.rollBind(rng, this.act)));
     }
     while (oppOpening.length < oppSize && this.stock.length) oppOpening.push(this.stock.pop());
-    while (opening.length < ZU.HAND_SIZE && this.stock.length) opening.push(this.stock.pop());
+    if (this.enemy.passive === 'light' && !oppOpening.some(function (id) { return self.def(id).rank === '7'; })) {
+      // Feuer gefällig: eine 7 aus dem Stapel gegen eine normale Handkarte tauschen
+      var seven = -1, plain = -1;
+      this.stock.forEach(function (id, index) { if (seven < 0 && self.def(id).rank === '7') seven = index; });
+      oppOpening.forEach(function (id, index) { if (plain < 0 && !self.def(id).special) plain = index; });
+      if (seven >= 0 && plain >= 0) {
+        var swapped = oppOpening[plain];
+        oppOpening[plain] = this.stock[seven];
+        this.stock[seven] = swapped;
+      }
+    }
+    while (opening.length < handSize && this.stock.length) opening.push(this.stock.pop());
 
     var rounds = Math.max(opening.length, oppOpening.length);
     for (var r = 0; r < rounds; r++) {
@@ -142,14 +165,24 @@
       }
     }
 
-    if (this.enemy.passive === 'house' || this.enemy.passive === 'venom') {
-      this.status.curse.player += this.enemy.passive === 'house' ? 3 : 2;
+    if (this.enemy.passive === 'house' || this.enemy.passive === 'venom' || this.enemy.passive === 'evil-eye') {
+      this.status.curse.player += this.enemy.passive === 'house' ? 3 : this.enemy.passive === 'venom' ? 2 : 1;
       ev.push({ t: 'passive', id: this.enemy.passive });
       ev.push(this._statusEvent());
     }
     if (this.enemy.passive === 'donna') {
       ev.push({ t: 'passive', id: 'donna' });
       this._drawInto('player', 2, 'deal', ev, false);
+    }
+    if (this.has('short-fuse')) {
+      this.status.skip.opp = 1;
+      ev.push({ t: 'trinket', id: 'short-fuse' });
+      ev.push(this._statusEvent());
+    }
+    if (this.has('hex-board')) {
+      this.status.curse.opp += 2;
+      ev.push({ t: 'trinket', id: 'hex-board' });
+      ev.push(this._statusEvent());
     }
     if (this.has('black-book')) {
       this.status.spy = 3;
@@ -182,19 +215,37 @@
   };
 
   /* ---------- Spielbarkeit ---------- */
-  Duel.prototype._wildFor = function (def, actor) {
-    return def.special || (actor === 'player' && def.rank === 'A' && this.has('ace-sleeve'));
+  /* Symbole, auf die eine Karte passt – und die sie vorgibt, wenn sie oben liegt (actor = null). */
+  Duel.prototype._suits = function (id, actor) {
+    var card = this.cards[id], def = ZU.CARDS[card.def];
+    if (def.special) {
+      if (actor === 'player') {
+        if (this.has('master-key')) return ZU.SUIT_ORDER;
+        if (ZU.SUITS[card.bind] && this.has('skeleton-key')) return ZU.bindSuits(ZU.SUITS[card.bind].red ? 'red' : 'black');
+      }
+      return ZU.bindSuits(card.bind);
+    }
+    if (def.rank === 'A' && ((actor === 'player' && this.has('ace-sleeve')) || (actor === 'opp' && this.enemy.passive === 'sleeve'))) {
+      return ZU.SUIT_ORDER;
+    }
+    return [def.suit];
+  };
+
+  /* Darf "id" auf "topId" gelegt werden? Gleicher Wert passt immer, sonst muss ein Symbol übereinstimmen. */
+  Duel.prototype._fits = function (id, actor, topId) {
+    var def = this.def(id), top = this.def(topId);
+    if (!def.special && !top.special && def.rank === top.rank) return true;
+    var mine = this._suits(id, actor), theirs = this._suits(topId, null);
+    for (var i = 0; i < mine.length; i++) if (theirs.indexOf(mine[i]) >= 0) return true;
+    return false;
   };
 
   Duel.prototype._matches = function (id, actor) {
-    var def = this.def(id);
-    if (this._wildFor(def, actor)) return true;
-    var top = this.def(this.top());
-    if (top.special) return true;
-    return def.suit === top.suit || def.rank === top.rank;
+    return this._fits(id, actor, this.top());
   };
 
   Duel.prototype.playable = function (actor, id) {
+    if (this.afterDraw && (this.afterDraw.actor !== actor || this.afterDraw.ids.indexOf(id) < 0)) return false;
     var def = this.def(id);
     if (def.id === 'opfer' && this.hand[actor].length < 3) return false;
     return this._matches(id, actor);
@@ -208,10 +259,15 @@
     for (var i = 0; i < ids.length; i++) {
       if (hand.indexOf(ids[i]) < 0 || ids.indexOf(ids[i]) !== i) return { ok: false, reason: 'Ungültige Auswahl.' };
     }
+    if (this.afterDraw && (ids.length !== 1 || this.afterDraw.ids.indexOf(ids[0]) < 0)) {
+      return { ok: false, reason: 'Jetzt darf nur die gezogene Karte gelegt werden.' };
+    }
     if (ids.length === 1) {
       var single = this.def(ids[0]);
       if (single.id === 'opfer' && hand.length < 3) return { ok: false, reason: 'Opfer braucht 2 weitere Handkarten.' };
-      if (!this._matches(ids[0], actor)) return { ok: false, reason: 'Passt nicht: gleiche Farbe oder gleicher Wert.' };
+      if (!this._matches(ids[0], actor)) {
+        return { ok: false, reason: single.special ? 'Passt nicht: ' + ZU.bindLabel(this.cards[ids[0]].bind) + '-Karte braucht ihr Symbol.' : 'Passt nicht: gleiches Symbol oder gleicher Wert.' };
+      }
       return { ok: true, order: ids.slice() };
     }
     var limit = actor === 'player' ? (this.has('nimble-fingers') ? 99 : 1) : this.enemy.chain;
@@ -249,6 +305,7 @@
     var check = this.canPlay(actor, ids);
     if (!check.ok) throw new Error(check.reason);
     var ev = [], self = this;
+    this.afterDraw = null;
     this.root = actor;
     this.noProgress = 0;
     this.triggered = 0;
@@ -260,6 +317,11 @@
       this.retain = true;
       ev.push({ t: 'trinket', id: 'hot-wire' });
     }
+    if (single && actor === 'opp' && this.enemy.passive === 'encore' && !this.used.encore) {
+      this.used.encore = true;
+      this.retain = true;
+      ev.push({ t: 'passive', id: 'encore' });
+    }
     if (single && actor === 'player' && this.enemy.passive === 'void-special' && !this.used['void-special']) {
       this.used['void-special'] = true;
       ev.push({ t: 'passive', id: 'void-special' });
@@ -267,23 +329,53 @@
     } else {
       this._queueEffects(actor, check.order, false);
     }
+    if (actor === 'player' && check.order.length >= 2 && this.has('pair-king')) {
+      this.queue.push({ type: 'note', trinket: 'pair-king', src: actor });
+      this.queue.push({ type: 'draw', amount: 1, reflectable: true, src: actor });
+    }
     this._resolve(ev);
     return ev;
   };
 
+  /* Zieht eine Karte. Passt sie, darf sie sofort gelegt werden (oder man passt); sonst endet der Zug. */
   Duel.prototype.draw = function (actor) {
     this._requireAction(actor);
-    var ev = [];
+    if (this.afterDraw) throw new Error('Erst die gezogene Karte legen oder passen.');
+    var ev = [], self = this, before = this.hand[actor].length;
     var drawn = this._drawInto(actor, 1, 'draw', ev, true);
     this.noProgress = drawn === 0 ? this.noProgress + 1 : 0;
+    var fresh = drawn > 0 && !this.showdown
+      ? this.hand[actor].slice(before).filter(function (id) { return self.playable(actor, id); })
+      : [];
     if (actor === 'player') {
-      var floor = this.chainFloor();
-      var next = this.has('slow-burner') ? Math.max(floor, Math.ceil(this.chain / 2)) : floor;
-      if (next !== this.chain) {
-        this.chain = next;
-        ev.push({ t: 'chain', chain: this.chain, reset: true });
+      if (fresh.length && this.has('card-shark')) {
+        ev.push({ t: 'trinket', id: 'card-shark' });
+      } else {
+        var floor = this.chainFloor();
+        var next = this.has('slow-burner') ? Math.max(floor, Math.ceil(this.chain / 2)) : floor;
+        if (next !== this.chain) {
+          this.chain = next;
+          ev.push({ t: 'chain', chain: this.chain, reset: true });
+        }
       }
     }
+    if (fresh.length) {
+      {
+        this.afterDraw = { actor: actor, ids: fresh };
+        ev.push({ t: 'drawfit', actor: actor, ids: fresh });
+        return ev;
+      }
+    }
+    this._finishTurn(actor, ev);
+    return ev;
+  };
+
+  /* Nach dem Ziehen: die passende Karte nicht legen, Zug beenden. */
+  Duel.prototype.pass = function (actor) {
+    this._requireAction(actor);
+    if (!this.afterDraw) throw new Error('Passen geht nur nach dem Ziehen.');
+    var ev = [];
+    this.afterDraw = null;
     this._finishTurn(actor, ev);
     return ev;
   };
@@ -320,6 +412,11 @@
   /* ---------- Kartenbewegung ---------- */
   Duel.prototype._take = function (ev) {
     if (!this.stock.length) {
+      if (this.rules.indexOf('one-pass') >= 0) {
+        // Letzter Stapel: nichts wird neu gemischt, das Duell endet mit dem Kartenvergleich.
+        this.showdown = true;
+        return null;
+      }
       if (this.pile.length <= 1) return null;
       var top = this.pile.pop(), self = this;
       this.stock = this.pile.filter(function (id) {
@@ -337,7 +434,7 @@
   Duel.prototype._drawInto = function (actor, amount, cause, ev, applyCurse) {
     if (applyCurse && this.status.curse[actor] > 0) {
       this.status.curse[actor]--;
-      amount += 1;
+      amount += actor === 'opp' && this.has('voodoo') ? 2 : 1;
       ev.push({ t: 'curse', target: actor, left: this.status.curse[actor] });
       ev.push(this._statusEvent());
     }
@@ -370,14 +467,21 @@
     if (actor === 'player') {
       var points = def.base * this.chain, doubled = false;
       if (def.suit === 'hearts' && this.has('heartblood')) { points *= 2; doubled = true; }
+      if ((def.suit === 'spades' || def.suit === 'clubs') && this.has('black-series')) points = Math.round(points * 1.5);
       this.glut += points;
       event.score = { base: def.base, chain: this.chain, points: points, glut: this.glut, doubled: doubled };
-      this.chain++;
+      this.chain += this.has('afterburner') ? 2 : 1;
       if (this.chain > this.maxChain) this.maxChain = this.chain;
       event.score.next = this.chain;
       this.stats.played++;
     }
     ev.push(event);
+    if (actor === 'player' && def.suit === 'diamonds' && this.has('diamond-cut') && (this.used.diamonds || 0) < 5) {
+      this.used.diamonds = (this.used.diamonds || 0) + 1;
+      this.bank += 1;
+      ev.push({ t: 'trinket', id: 'diamond-cut' });
+      ev.push(this._statusEvent());
+    }
   };
 
   /* ---------- Effekte ---------- */
@@ -386,7 +490,8 @@
     ids.forEach(function (id) {
       var def = self.def(id);
       def.effects.forEach(function (effect) {
-        if (effect.type === 'draw') draw += effect.amount;
+        if (effect.type === 'draw') draw += effect.amount + (actor === 'opp' && def.rank === '7' && self.enemy.passive === 'heavy-hand' ? 1 : 0) +
+            (actor === 'player' && def.rank === '7' && self.has('seven-sleeper') ? 1 : 0);
         else if (effect.type === 'skip') skip = true;
         else rest.push({ type: effect.type, amount: effect.amount || 0, duration: effect.duration || 0, reflectable: !!effect.reflectable, src: actor, card: id });
       });
@@ -517,11 +622,15 @@
       case 'createSpecial':
         if (src === 'player') {
           this._retire(item.card);
-          var pool = ZU.SPECIAL_IDS.filter(function (id) { return id !== 'zytokinese_2'; });
-          var defs = [];
-          for (var i = 0; i < item.amount; i++) defs.push(this.rng.pick(pool));
-          defs.forEach(function (d) { self.created.push(d); });
-          ev.push({ t: 'created', defs: defs, via: 'zytokinese_2' });
+          var pool = (this.specialPool || ZU.SPECIAL_IDS).filter(function (id) { return id !== 'zytokinese_2'; });
+          if (!pool.length) pool = ['stillstand'];
+          var defs = [], binds = [];
+          for (var i = 0; i < item.amount; i++) {
+            defs.push(this.rng.pick(pool));
+            binds.push(ZU.rollBind(this.rng, this.act));
+          }
+          defs.forEach(function (d, index) { self.created.push({ def: d, bind: binds[index] }); });
+          ev.push({ t: 'created', defs: defs, binds: binds, via: 'zytokinese_2' });
         } else {
           ev.push({ t: 'effect', type: 'idle', src: src, tgt: src });
         }
@@ -599,9 +708,9 @@
   };
 
   Duel.prototype._clone = function (id, ev) {
-    var defId = this.cards[id].def;
-    this.created.push(defId);
-    ev.push({ t: 'created', defs: [defId], via: 'zytokinese', source: id });
+    var defId = this.cards[id].def, bind = this.cards[id].bind;
+    this.created.push({ def: defId, bind: bind });
+    ev.push({ t: 'created', defs: [defId], binds: [bind], via: 'zytokinese', source: id });
   };
 
   /* ---------- Zugfolge ---------- */
@@ -609,22 +718,35 @@
     var root = this.root;
     if (!this.hand[root].length) return this._end(root, ev);
     if (!this.hand[other(root)].length) return this._end(other(root), ev);
+    if (this.showdown) return this._showdown(ev);
     this.root = null;
     if (this.retain) {
       this.retain = false;
       this.active = root;
       this.phase = 'action';
-      ev.push({ t: 'turn', actor: root, extra: true, left: ZU.TURN_LIMIT - this.turns + 1 });
+      ev.push({ t: 'turn', actor: root, extra: true, left: this.turnLimit - this.turns + 1 });
     } else {
       this._finishTurn(root, ev);
     }
   };
 
+  /* Wer hält weniger Karten? Gleichstand geht ans Haus – außer mit Kellerschlüssel. */
+  Duel.prototype._fewer = function () {
+    var p = this.hand.player.length, o = this.hand.opp.length;
+    return p < o || (p === o && this.has('cellar-key')) ? 'player' : 'opp';
+  };
+
+  /* Letzter Stapel aufgebraucht: Wer weniger Karten hält, gewinnt. Gleichstand geht ans Haus. */
+  Duel.prototype._showdown = function (ev) {
+    ev.push({ t: 'showdown' });
+    return this._end(this._fewer(), ev);
+  };
+
   Duel.prototype._finishTurn = function (actor, ev) {
+    if (this.showdown) return this._showdown(ev);
     if (this.noProgress >= 2) {
-      var p = this.hand.player.length, o = this.hand.opp.length;
       ev.push({ t: 'stalemate' });
-      return this._end(p < o ? 'player' : 'opp', ev);
+      return this._end(this._fewer(), ev);
     }
     this._beginTurn(other(actor), ev, 0);
   };
@@ -633,17 +755,22 @@
     if (this.status.skip[actor] > 0 && guard < 3) {
       this.status.skip[actor] = 0;
       ev.push({ t: 'skipped', actor: actor });
+      if (actor === 'opp' && this.has('stopwatch')) {
+        this.bank += 1;
+        ev.push({ t: 'trinket', id: 'stopwatch' });
+      }
       ev.push(this._statusEvent());
       return this._beginTurn(other(actor), ev, guard + 1);
     }
-    if (this.turns >= ZU.TURN_LIMIT) {
+    if (this.turns >= this.turnLimit) {
       // Sperrstunde: Wer weniger Karten hält, gewinnt. Gleichstand geht ans Haus.
       ev.push({ t: 'curfew' });
-      return this._end(this.hand.player.length < this.hand.opp.length ? 'player' : 'opp', ev);
+      return this._end(this._fewer(), ev);
     }
     this.active = actor;
     this.phase = 'action';
     this.turns++;
+    if (actor === 'opp') this.oppTurns++;
     if (actor === 'player') {
       var changed = false, self = this;
       if (this.status.spy > 0) { this.status.spy--; changed = true; }
@@ -657,12 +784,13 @@
       });
       if (changed) ev.push(this._statusEvent());
     }
-    ev.push({ t: 'turn', actor: actor, left: ZU.TURN_LIMIT - this.turns + 1 });
+    ev.push({ t: 'turn', actor: actor, left: this.turnLimit - this.turns + 1 });
   };
 
   Duel.prototype._end = function (winner, ev) {
     this.winner = winner;
     this.phase = 'ended';
+    this.afterDraw = null;
     this.pending = null;
     this.queue = [];
     ev.push({ t: 'end', winner: winner });
@@ -698,20 +826,18 @@
 
   Duel.prototype._aiPlan = function () {
     var self = this, hand = this.hand.opp, best = null;
-    var sees = this.enemy.passive === 'sees-hand';
+    var sees = this.enemy.passive === 'sees-hand' || (this.enemy.passive === 'by-ear' && this.oppTurns <= 3);
     var chainCap = this.enemy.chain, chains = chainCap > 1; // nur wenige Gegner legen mehrere Karten
-    var playerDefs = this.hand.player.map(function (id) { return self.def(id); });
 
-    function follow(def) { // wie viele Spielerkarten könnten direkt anlegen?
-      if (def.special) return playerDefs.length;
+    function follow(cardId) { // wie viele Spielerkarten könnten direkt anlegen?
       var n = 0;
-      playerDefs.forEach(function (p) { if (p.special || p.suit === def.suit || p.rank === def.rank) n++; });
+      self.hand.player.forEach(function (pid) { if (self._fits(pid, 'player', cardId)) n++; });
       return n;
     }
-    function suitCount(suit, exclude) {
+    function own(cardId, exclude) { // wie viele eigene Karten könnten danach anlegen?
       var n = 0;
       hand.forEach(function (id) {
-        if (exclude.indexOf(id) < 0 && self.def(id).suit === suit) n++;
+        if (exclude.indexOf(id) < 0 && self._fits(id, 'opp', cardId)) n++;
       });
       return n;
     }
@@ -728,18 +854,18 @@
       var order = group.slice();
       if (order.length > 1) {
         var tail = order.slice(1).sort(function (a, b) {
-          var sa = suitCount(self.def(a).suit, group) - (sees ? follow(self.def(a)) : 0);
-          var sb = suitCount(self.def(b).suit, group) - (sees ? follow(self.def(b)) : 0);
+          var sa = own(a, group) - (sees ? follow(a) : 0);
+          var sb = own(b, group) - (sees ? follow(b) : 0);
           return sa - sb;
         });
         order = [id].concat(tail);
       }
-      var topDef = self.def(order[order.length - 1]);
+      var topId = order[order.length - 1];
       var value = 0;
       order.forEach(function (cid) { value += self._aiValue(cid); });
       value += (order.length - 1) * 35;
-      value += suitCount(topDef.suit, group) * 6;
-      if (sees) value -= follow(topDef) * 14;
+      value += own(topId, group) * 6;
+      if (sees) value -= follow(topId) * 14;
       if (order.length === hand.length) value += 1000; // Sieg
       if (!best || value > best.value) best = { value: value, order: order };
     });
@@ -750,8 +876,14 @@
     this._requireAction('opp');
     var order = this._aiPlan();
     // Schwächere Gegner zögern gelegentlich und ziehen, obwohl sie legen könnten.
-    if (order && order.length < this.hand.opp.length && this.rng.next() < ZU.aiHesitation(this.kind, this.act)) order = null;
-    return order ? this.play('opp', order) : this.draw('opp');
+    if (order && order.length < this.hand.opp.length && this.rng.next() < ZU.aiHesitation(this.kind, this.act) * (this.mods.hesitation == null ? 1 : this.mods.hesitation)) order = null;
+    var ev = order ? this.play('opp', order) : this.draw('opp');
+    // Hat er gezogen und die Karte passt, legt er sie – außer sie würde ihm schaden (etwa ein schlechter Tausch).
+    if (this.afterDraw && this.afterDraw.actor === 'opp' && this.phase === 'action') {
+      var self = this, pick = this.afterDraw.ids.slice().sort(function (a, b) { return self._aiValue(b) - self._aiValue(a); })[0];
+      ev = ev.concat(this._aiValue(pick) > -200 ? this.play('opp', [pick]) : this.pass('opp'));
+    }
+    return ev;
   };
 
   /* Vorschlag für den Spieler (Tipp-Funktion und Simulationstests). */
