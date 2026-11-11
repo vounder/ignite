@@ -32,6 +32,7 @@
       // Erst die Gegner eines gespeicherten Runs, dann nach und nach alles Übrige.
       var saved = ZU.Run.load();
       if (saved) ZU.preloadEnemies(saved.s.encounters.map(function (e) { return e.enemy; }), true);
+      ZU.preload([ZU.cardAtlas()], true); // die Karten zuerst: sie sind schon im Menü zu sehen
       setTimeout(function () { ZU.preloadAll(); }, 1200);
       ZU.account.init().then(function () {
         var token = new URLSearchParams(location.search).get('reset');

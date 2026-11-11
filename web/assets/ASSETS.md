@@ -101,11 +101,41 @@ Kurze Lunte, Falschgeld, Stempelkarte.
 Privilegien: Flinke Finger (behandschuhte Hand mit Kartenfächer), Großes Regal,
 Vitrine, Stammplatz, Schleifer, Glockenrecht, Aschekasten, Zündholzbrief.
 
+### Hoffiguren und Asse (`cards/faces.png`)
+
+Zwölf Hoffiguren (Bube, Dame, König je Symbol) und vier Ass-Embleme, ebenfalls
+mit der Codex CLI am 11.11.2026 auf Chroma-Grün generiert: je Symbol ein Bogen
+mit drei Büsten, dazu ein 2×2-Bogen mit den Emblemen. Jedes Symbol ist ein
+eigenes Haus mit eigener Stilwelt:
+
+- **Herz – romantisch:** Karmin, Rosé, Elfenbein, etwas Gold. Troubadour mit
+  Rose, Königin mit Rosen im Haar und Herzmedaillon, gütiger König im Hermelin.
+  Ass: Herz mit Schleife und Rosen.
+- **Karo – prunkvoll:** Zinnober, Bernstein, Gold. Page mit Juwelenturban,
+  Königin voller Diamanten, Kaufmannskönig mit Goldketten. Ass: gefasster
+  Edelstein im Art-déco-Rahmen.
+- **Pik – kühl und soldatisch:** Nachtblau, Stahl, Silber. Knappe mit
+  Hellebarde, Kriegerkönigin mit Dolch, König in Plattenrüstung. Ass: Klinge
+  vor gekreuzten Schwertern.
+- **Kreuz – gotisch:** Schwarz, Moosgrün, Knochenweiß, Grauviolett. Page mit
+  Laterne, Königin mit Dornenkrone, Schleier und Rabe, hagerer König mit
+  Streitkolben. Ass: Kreuz in Dornenranken mit Rabe.
+
+`web/tools/make_cards.py --import <Ordner>` stellt die Bögen frei und legt die
+Figuren verkleinert unter `web/tools/cardart/` ab; daraus und aus den selbst
+gezeichneten Rahmen entsteht der Atlas (siehe unten).
+
 ## Im Projekt erzeugt
 
 - `fonts/zuendung_pixel.ttf` – eigener Pixel-Font, aus den Bitmap-Definitionen
   in `web/tools/make_font.py` gebaut.
-- Kartenflächen, Kartenrücken, Farbsymbole, Streichholz-, Münz- und
-  Flammen-Symbole sowie der Hintergrund entstehen zur Laufzeit aus CSS, kleinen
-  Bitmaps (`js/cards.js`) und einem WebGL-Shader (`js/bg.js`).
+- `cards/faces.png` – Atlas aller Kartenflächen (8 × 5 Felder), gebaut von
+  `web/tools/make_cards.py`: Papier, Rahmen, Zierrat, Symbole und Eckindizes
+  sind dort Pixel für Pixel gezeichnet (52 × 73 Kartenpixel je Karte), die
+  generierten Hoffiguren und Ass-Embleme werden eingesetzt. Die fünfte Zeile
+  enthält die Rahmen der Spezialkarten: je Symbol einer, je Farbe ein schräg
+  geteilter, dazu „frei“ (schwarzer Lack mit Gold) und ein neutraler Hausrahmen.
+- Kartenrücken, kleine Farbsymbole, Streichholz-, Münz- und Flammen-Symbole
+  sowie der Hintergrund entstehen zur Laufzeit aus CSS, kleinen Bitmaps
+  (`js/cards.js`) und einem WebGL-Shader (`js/bg.js`).
 - Alle Soundeffekte werden zur Laufzeit synthetisiert (`js/audio.js`).
