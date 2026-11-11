@@ -5,10 +5,11 @@
 
   /* ---------- Pixel-Symbole aus Bitmaps ---------- */
   var BITMAPS = {
-    hearts: ['...........', '.xxx...xxx.', 'xxxxx.xxxxx', 'xxxxxxxxxxx', 'xxxxxxxxxxx', 'xxxxxxxxxxx', '.xxxxxxxxx.', '..xxxxxxx..', '...xxxxx...', '....xxx....', '.....x.....'],
-    diamonds: ['.....x.....', '....xxx....', '...xxxxx...', '..xxxxxxx..', '.xxxxxxxxx.', 'xxxxxxxxxxx', '.xxxxxxxxx.', '..xxxxxxx..', '...xxxxx...', '....xxx....', '.....x.....'],
-    spades: ['.....x.....', '....xxx....', '...xxxxx...', '..xxxxxxx..', '.xxxxxxxxx.', 'xxxxxxxxxxx', 'xxxxxxxxxxx', 'xxxx.x.xxxx', '.xx..x..xx.', '....xxx....', '...xxxxx...'],
-    clubs: ['....xxx....', '...xxxxx...', '...xxxxx...', '...xxxxx...', '.xx.xxx.xx.', 'xxxxxxxxxxx', 'xxxxxxxxxxx', 'xxxx.x.xxxx', '.xx..x..xx.', '....xxx....', '...xxxxx...'],
+    /* Symbole mit Glanzlicht (h) und Schatten (s); dieselben Bitmaps zeichnet web/tools/make_cards.py auf die Karten. */
+    hearts: ['.xxx...xxx.', 'xhhxx.xxxxx', 'xhxxxxxxxxx', 'xxxxxxxxxxs', 'xxxxxxxxxxs', 'xxxxxxxxxss', '.xxxxxxxss.', '..xxxxxss..', '...xxxss...', '....xss....', '.....s.....'],
+    diamonds: ['.....x.....', '....hxx....', '...hhxxx...', '..hhhxxxx..', '.hhhhxxxxx.', 'hhhhhxxxxxx', '.xxxxxssss.', '..xxxxsss..', '...xxxss...', '....xxs....', '.....s.....'],
+    spades: ['.....x.....', '....xhx....', '...xxhxx...', '..xxxhxxx..', '.xxxxhxxxx.', 'xxxxxhxxxxx', 'xxxxxhxxxxs', 'xxxx.x.xxss', '.xx..x..ss.', '....xxx....', '...hhhhh...'],
+    clubs: ['.....x.....', '....xxx....', '...xhxxx...', '...xxxxx...', '.xx.xxx.xx.', 'xxxxxxxxxxx', 'xhxxxxxxhxx', 'xxxx.x.xxxx', '.xx..x..xx.', '....xxx....', '...hhhhh...'],
     match: ['.rr.', 'rRRr', 'rRRr', '.rr.', '.ww.', '.ww.', '.ww.', '.ww.', '.ww.', '.ww.', '.ww.', '.ww.'],
     matchOut: ['....', '.kk.', '.kk.', '.kk.', '.dd.', '.dd.', '.dd.', '.dd.', '.dd.', '.dd.', '.dd.', '.dd.'],
     matchGold: ['.yy.', 'yggy', 'yggy', '.yy.', '.gg.', '.gg.', '.gg.', '.gg.', '.gg.', '.gg.', '.gg.', '.gg.'],
@@ -25,9 +26,11 @@
   };
   var cache = {};
 
-  /* Liefert eine data:-URL für ein Symbol; "tint" färbt einfarbige Bitmaps (x) um. */
+  /* Liefert eine data:-URL für ein Symbol. "tint" färbt einfarbige Bitmaps (x) um;
+     ein Objekt ({ x, h, s }) ersetzt einzelne Farben. */
   ZU.icon = function (name, tint) {
-    var key = name + '|' + (tint || '');
+    var map = tint && typeof tint === 'object' ? tint : tint ? { x: tint } : {};
+    var key = name + '|' + (typeof tint === 'object' ? JSON.stringify(tint) : tint || '');
     if (cache[key]) return cache[key];
     var rows = BITMAPS[name], canvas = document.createElement('canvas');
     canvas.width = rows[0].length;
@@ -37,7 +40,7 @@
       for (var x = 0; x < row.length; x++) {
         var ch = row[x];
         if (ch === '.') continue;
-        ctx.fillStyle = ch === 'x' && tint ? tint : COLORS[ch] || '#f0f';
+        ctx.fillStyle = map[ch] || COLORS[ch] || '#f0f';
         ctx.fillRect(x, y, 1, 1);
       }
     });
@@ -49,11 +52,28 @@
     return el;
   };
 
-  var RED = '#b3261e', BLACK = '#1f2a2c';
-  ZU.suitIcon = function (suit) { return ZU.icon(suit, ZU.SUITS[suit].red ? RED : BLACK); };
+  /* Jedes Symbol hat seine eigenen Farben: Herz karmin, Karo zinnober, Pik nachtblau, Kreuz schwarz mit Moos. */
+  var SUIT_INK = {
+    hearts: { x: '#c8273a', h: '#ff9fb0', s: '#7d1027' },
+    diamonds: { x: '#dc4a1c', h: '#ffae42', s: '#96280f' },
+    spades: { x: '#1f2f57', h: '#8fb0de', s: '#0e1730' },
+    clubs: { x: '#1c1f18', h: '#6f8748', s: '#0a0b08' }
+  };
+  ZU.suitIcon = function (suit) { return ZU.icon(suit, SUIT_INK[suit]); };
+
+  /* Alle Kartenflächen liegen in einem Atlas (web/tools/make_cards.py): 8 Spalten, 5 Zeilen.
+     Zeilen 0–3: die vier Symbole mit 7 bis Ass; Zeile 4: Rahmen der Spezialkarten je Bindung. */
+  var FACE_SUITS = ['hearts', 'diamonds', 'spades', 'clubs'];
+  var FACE_RANKS = ['7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+  var FRAMES = ['hearts', 'diamonds', 'spades', 'clubs', 'red', 'black', 'wild', 'none'];
+  ZU.cardAtlas = function () { return ZU.asset('cards/faces.png'); };
+  function atlasCell(el, column, row) {
+    el.style.backgroundImage = 'url(' + ZU.cardAtlas() + ')';
+    el.style.backgroundPosition = (column * 100 / 7) + '% ' + (row * 100 / 4) + '%';
+  }
 
   /* ---------- Kartenflächen ---------- */
-  /* Kleines Schild auf Spezialkarten: an welches Symbol bzw. welche Farbe die Karte gebunden ist. */
+  /* Wimpel auf Spezialkarten: an welches Symbol bzw. welche Farbe die Karte gebunden ist. */
   function bindBadge(bind) {
     var badge = h('div', 'sp-bind t' + ZU.bindTier(bind));
     ZU.bindSuits(bind).forEach(function (suit) {
@@ -64,48 +84,30 @@
     return badge;
   }
 
-  /* bind: Bindung einer Spezialkarte ('hearts', 'red', 'wild' …); 'none' blendet das Schild aus. */
+  /* bind: Bindung einer Spezialkarte ('hearts', 'red', 'wild' …). Der Rahmen zeigt sie:
+     ein Symbol = dessen Stilwelt, eine Farbe = zwei Welten schräg geteilt, frei = schwarzer Lack mit Gold.
+     'none' zeigt den neutralen Hausrahmen ohne Wimpel. */
   ZU.cardFace = function (def, bind) {
     var el;
     if (def.special) {
-      el = h('div', 'card front special r' + def.rarity);
-      if (bind !== 'none') el.appendChild(bindBadge(bind || 'wild'));
+      bind = bind || 'wild';
+      var frame = FRAMES.indexOf(bind) >= 0 ? bind : 'wild';
+      el = h('div', 'card front special r' + def.rarity + ' b-' + frame);
+      atlasCell(el, FRAMES.indexOf(frame), 4);
       var title = h('div', 'sp-title', def.name);
       if (def.name.length > 9) title.style.fontSize = def.name.length > 11 ? '10px' : '12px';
       var art = h('div', 'sp-art');
       art.style.backgroundImage = 'url(' + ZU.asset('special/' + def.id + '.png') + ')';
       el.appendChild(title);
       el.appendChild(art);
+      if (bind !== 'none') el.appendChild(bindBadge(bind));
       el.appendChild(h('div', 'sp-tag', def.tag));
       el.appendChild(h('div', 'shine'));
       return el;
     }
-    var suit = ZU.SUITS[def.suit], rank = ZU.RANKS[def.rank], url = 'url(' + ZU.suitIcon(def.suit) + ')';
-    el = h('div', 'card front std ' + (suit.red ? 'red' : 'black') + ' rank-' + def.rank);
-    function corner(cls) {
-      var pip = h('i', 'pip');
-      pip.style.backgroundImage = url;
-      return h('div', 'corner ' + cls, [h('b', rank.label.length > 1 ? 'two' : null, rank.label), pip]);
-    }
-    el.appendChild(corner('tl'));
-    el.appendChild(corner('br'));
-    var center = h('div', 'center');
-    if (def.rank === 'J' || def.rank === 'Q' || def.rank === 'K') {
-      var frame = h('div', 'court', [h('b', null, rank.label)]);
-      var mini = h('i', 'pip');
-      mini.style.backgroundImage = url;
-      frame.appendChild(mini);
-      center.appendChild(frame);
-    } else {
-      var big = h('i', 'bigpip' + (def.rank === 'A' ? ' ace' : ''));
-      big.style.backgroundImage = url;
-      center.appendChild(big);
-    }
-    el.appendChild(center);
-    if (def.rank === '7') {
-      var mark = h('div', 'fxmark', '+2');
-      el.appendChild(mark);
-    }
+    el = h('div', 'card front std s-' + def.suit + ' rank-' + def.rank);
+    atlasCell(el, FACE_RANKS.indexOf(def.rank), FACE_SUITS.indexOf(def.suit));
+    if (def.rank === '7') el.appendChild(h('div', 'fxmark', '+2'));
     el.appendChild(h('div', 'shine'));
     return el;
   };
@@ -236,7 +238,7 @@
   };
   /* Alles, was im Lauf eines Runs gebraucht wird – in der Reihenfolge, in der es voraussichtlich erscheint. */
   ZU.preloadAll = function () {
-    var urls = [ZU.asset('manfred/manfred.png')];
+    var urls = [ZU.cardAtlas(), ZU.asset('manfred/manfred.png')];
     ZU.TRINKET_IDS.forEach(function (id) { urls.push(ZU.asset('trinkets/' + id + '.png')); });
     ZU.PERK_IDS.forEach(function (id) { urls.push(ZU.asset('perks/' + id + '.png')); });
     ZU.SPECIAL_IDS.forEach(function (id) { urls.push(ZU.asset('special/' + id + '.png')); });

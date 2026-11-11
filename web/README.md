@@ -40,7 +40,9 @@ zugehörigen Elemente blenden sich selbst aus.
   Effekt und eine Bindung: an ein Symbol, an Rot oder Schwarz – oder gar nicht
   (Joker). Sie passen nur auf ihre Symbole und geben sie danach vor. Früh im
   Run tauchen fast nur symbolgebundene Karten auf, später farbgebundene, am
-  Ende Joker.
+  Ende Joker. Der Rahmen zeigt die Bindung: ein Symbol = dessen Stilwelt und
+  Farbe, Rot/Schwarz = zwei Welten schräg geteilt, Joker = schwarzer Lack mit
+  Gold; ein Wimpel oben links trägt die passenden Symbole.
 - **Hausregeln:** Einzelne Tische haben eine Zusatzregel, mit jedem Akt
   häufiger. Bisher gibt es „Letzter Stapel": Es wird nicht neu gemischt; ist
   der Stapel leer und muss jemand ziehen, gewinnt, wer weniger Karten hält.
@@ -81,7 +83,7 @@ Tasten: `1`–`9` spielt Handkarten, `Leertaste` zieht, `Enter` legt die Auswahl
 | `js/run.js` | Akte, Auszahlung, Belohnungen, Laden, Speichern |
 | `js/meta.js` | Meta-Progression: Asche, Freischaltungen, Upgrades, Einsätze |
 | `js/duelview.js` | spielt die Ereignisse als Animationen ab, nimmt Eingaben an |
-| `js/cards.js` | Kartenflächen und gefederte Karten-Sprites |
+| `js/cards.js` | Kartenflächen (aus dem Atlas) und gefederte Karten-Sprites |
 | `js/fx.js` | Bühne, Partikel, Popups, Bildschirmwackeln, Tooltips |
 | `js/bg.js` | WebGL-Hintergrund (verpixelter Rauch mit Glutfunken) |
 | `js/audio.js` | synthetische Effekte (WebAudio) und Musik |
@@ -128,6 +130,10 @@ Die Werkzeuge liegen unter `tools/`:
   in Sprite-Streifen und rechnet die Musik herunter.
 - `make_font.py` – erzeugt den Pixel-Font aus Bitmap-Definitionen (braucht
   `fontTools`).
+- `make_cards.py` – zeichnet den Karten-Atlas `assets/cards/faces.png`: die
+  vier Symbolwelten (Herz romantisch, Karo prunkvoll, Pik soldatisch, Kreuz
+  gotisch), die Hoffiguren aus `tools/cardart/` und die Rahmen der
+  Spezialkarten je Bindung.
 
 - `stamp_version.py` – setzt die Build-Kennung (siehe unten).
 

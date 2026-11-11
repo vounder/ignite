@@ -196,35 +196,26 @@ h1, h2, h3 { margin: 0; font-family: var(--px-wide); font-weight: normal; letter
 
 /* ---------- Karten ---------- */
 .card { position: absolute; inset: 0; border-radius: 9px; overflow: hidden; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
-.card.front { background: linear-gradient(160deg, #fbf3df, #ecdfc0); box-shadow: inset 0 0 0 2px #fffaf0, inset 0 0 0 4px #cdbb92; }
-.card.red { color: #b3261e; }
-.card.black { color: #1f2a2c; }
-.card .corner { position: absolute; left: 9px; top: 8px; width: 24px; display: flex; flex-direction: column; align-items: center; gap: 3px; }
-.card .corner b { font-family: var(--px-wide); font-weight: normal; font-size: 21px; line-height: 1; }
-.card .corner b.two { font-family: var(--px); font-size: 21px; letter-spacing: -1px; }
-.card .corner.br { left: auto; top: auto; right: 9px; bottom: 8px; transform: rotate(180deg); }
-.card .pip { width: 22px; height: 22px; background-size: contain; background-repeat: no-repeat; image-rendering: pixelated; display: block; }
-.card .center { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; align-items: center; justify-content: center; }
-.card .bigpip { width: 44px; height: 44px; background-size: contain; background-repeat: no-repeat; image-rendering: pixelated; display: block; }
-.card .bigpip.ace { width: 66px; height: 66px; filter: drop-shadow(0 3px 0 rgba(0,0,0,.18)); }
-.card .court { width: 50px; height: 70px; border-radius: 6px; border: 3px solid currentColor; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
-  background: repeating-linear-gradient(45deg, rgba(0,0,0,.05) 0 4px, transparent 4px 8px); }
-.card .court b { font-family: var(--px-wide); font-weight: normal; font-size: 26px; line-height: 1; }
-.card .fxmark { position: absolute; left: 50%; bottom: 9px; transform: translateX(-50%); font-family: var(--px); font-size: 12px; padding: 2px 6px 1px; border-radius: 5px; background: var(--ember); color: #3a1602; }
+/* Alle Kartenflächen kommen aus dem Atlas assets/cards/faces.png (8 x 5 Felder, doppelte Auflösung). */
+.card.front { background-color: #f1e7cf; background-repeat: no-repeat; background-size: 800% 500%; }
+.card .fxmark { position: absolute; right: 8px; top: 8px; font-family: var(--px); font-size: 12px; padding: 2px 5px 1px; border-radius: 5px; background: var(--ember); color: #3a1602; box-shadow: 0 0 0 2px #3a1602; }
 .card .shine { position: absolute; inset: 0; background: linear-gradient(115deg, transparent 30%, rgba(255,255,255,.34) 46%, transparent 60%); opacity: 0; transition: opacity .15s; pointer-events: none; }
 
-.card.special { background: linear-gradient(170deg, #f8eed6, #e6d3a8); box-shadow: inset 0 0 0 4px var(--burgundy), inset 0 0 0 6px var(--brass); }
-.card.special.r1 { box-shadow: inset 0 0 0 4px #1f6f66, inset 0 0 0 6px var(--brass); }
-.card.special.r2 { box-shadow: inset 0 0 0 4px #b8842a, inset 0 0 0 6px #ffe08a; }
-.card.special.r3 { background: linear-gradient(170deg, #3a2418, #170d08); box-shadow: inset 0 0 0 4px #ff7b3a, inset 0 0 0 6px #ffd75e; }
-.card .sp-title { position: absolute; left: 6px; right: 6px; top: 11px; text-align: center; font-family: var(--px); font-size: 14px; letter-spacing: .5px; color: var(--burgundy); white-space: nowrap; }
-.card.special.r1 .sp-title { color: #17544d; }
-.card.special.r2 .sp-title { color: #7a5210; }
-.card.special.r3 .sp-title { color: var(--ember-hot); }
-.card .sp-art { position: absolute; left: 50%; top: 28px; width: 84px; height: 84px; transform: translateX(-50%); background-size: contain; background-repeat: no-repeat; image-rendering: pixelated; }
-.card .sp-tag { position: absolute; left: 10px; right: 10px; bottom: 11px; text-align: center; font-family: var(--px); font-size: 11px; letter-spacing: .5px; padding: 3px 2px 2px; border-radius: 5px; background: var(--burgundy); color: var(--ivory); white-space: nowrap; }
-.card.special.r1 .sp-tag { background: #1f6f66; }
-.card.special.r2 .sp-tag { background: #9a6c1c; }
+/* Spezialkarten: Der Rahmen (aus dem Atlas) zeigt die Bindung, das Schild unten die Seltenheit. */
+.card.special { --ink: #7a1f2b; --paper: #f6ead0; --title: #fff6e0; }
+.card.special.b-hearts { --ink: #c8273a; --paper: #fff0e9; }
+.card.special.b-diamonds { --ink: #dc4a1c; --paper: #fff2cf; }
+.card.special.b-spades { --ink: #1f2f57; --paper: #e9eef3; }
+.card.special.b-clubs { --ink: #1c1f18; --paper: #e6e4d0; }
+.card.special.b-red { --ink: #c8273a; --paper: #fff0e9; }
+.card.special.b-black { --ink: #1f2f57; --paper: #e9eef3; }
+.card.special.b-wild { --ink: #d9a441; --paper: #2b201a; --title: #2a1a08; }
+.card .sp-title { position: absolute; left: 7px; right: 7px; top: 10px; text-align: center; font-family: var(--px); font-size: 14px; letter-spacing: .5px; color: var(--title); text-shadow: 0 1px 0 rgba(0,0,0,.45); white-space: nowrap; }
+.card.special.b-wild .sp-title { text-shadow: 0 1px 0 rgba(255,255,255,.35); }
+.card .sp-art { position: absolute; left: 50%; top: 31px; width: 84px; height: 84px; transform: translateX(-50%); background-size: contain; background-repeat: no-repeat; image-rendering: pixelated; }
+.card .sp-tag { position: absolute; left: 10px; right: 10px; bottom: 10px; text-align: center; font-family: var(--px); font-size: 11px; letter-spacing: .5px; padding: 3px 2px 2px; border-radius: 5px; background: #f4e6c4; color: #3a2414; white-space: nowrap; box-shadow: 0 0 0 2px #1a110c; }
+.card.special.r1 .sp-tag { background: #2a8f83; color: #f2fffb; }
+.card.special.r2 .sp-tag { background: #e2b23c; color: #3a2408; }
 .card.special.r3 .sp-tag { background: #ff7b3a; color: #2a1202; }
 
 .card.back { background: #123c30; box-shadow: inset 0 0 0 4px var(--burgundy), inset 0 0 0 6px var(--brass); }
@@ -524,11 +515,15 @@ h1, h2, h3 { margin: 0; font-family: var(--px-wide); font-weight: normal; letter
 .endcta { display: flex; align-items: center; gap: 12px; padding: 8px 10px 8px 16px; border-radius: 12px; background: rgba(0,0,0,.42); font-size: 14px; color: var(--ivory); }
 
 /* ---------- Bindung der Spezialkarten ---------- */
-.card .sp-bind { position: absolute; left: 6px; top: 26px; display: grid; gap: 1px; padding: 3px; border-radius: 7px; background: #fffaf0; border: 2px solid #2a2320; box-shadow: 0 2px 0 rgba(0,0,0,.35); z-index: 2; }
-.card .sp-bind .bpip { display: block; width: 14px; height: 14px; background-size: contain; background-repeat: no-repeat; image-rendering: pixelated; }
-.card .sp-bind.t1 .bpip { width: 12px; height: 12px; }
-.card .sp-bind.t2 { grid-template-columns: 1fr 1fr; border-color: #b8842a; background: #fff3c4; }
-.card .sp-bind.t2 .bpip { width: 9px; height: 9px; }
+/* Wimpel unter dem Kopfband: zeigt wie der Eckindex einer normalen Karte, worauf die Spezialkarte passt. */
+.card .sp-bind { position: absolute; left: 8px; top: 26px; width: 28px; display: grid; justify-items: center; gap: 1px; padding: 4px 0 9px; background: var(--ink); z-index: 2;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% calc(100% - 7px), 0 100%); filter: drop-shadow(0 2px 0 rgba(0,0,0,.35)); }
+.card .sp-bind::before { content: ''; position: absolute; inset: 0 2px 2px; background: var(--paper); clip-path: polygon(0 0, 100% 0, 100% 100%, 50% calc(100% - 7px), 0 100%); }
+.card .sp-bind .bpip { position: relative; display: block; width: 22px; height: 22px; background-size: contain; background-repeat: no-repeat; image-rendering: pixelated; }
+.card .sp-bind.t1 .bpip { width: 18px; height: 18px; }
+.card .sp-bind.t2 { grid-template-columns: 11px 11px; justify-content: center; gap: 2px 1px; background: #d9a441; }
+.card .sp-bind.t2::before { background: #f6ead0; }
+.card .sp-bind.t2 .bpip { width: 11px; height: 11px; }
 
 /* ---------- Hausregeln ---------- */
 .rulerow { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; min-height: 0; }
