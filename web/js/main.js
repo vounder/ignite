@@ -29,6 +29,10 @@
         }
       });
       this.go('menu');
+      ZU.account.init().then(function () {
+        var token = new URLSearchParams(location.search).get('reset');
+        if (token && ZU.account.available) ZU.resetModal(token);
+      });
     },
 
     applySettings: function () {
@@ -90,7 +94,10 @@
     },
 
     abandon: function () {
-      if (this.run) this.run.recordScore();
+      if (this.run) {
+        this.run.recordScore();
+        ZU.account.reportRun({ countRun: false, score: this.run.s.score, act: this.run.s.act });
+      }
       ZU.Run.clearSave();
       this.run = null;
       this.go('menu');
@@ -102,7 +109,9 @@
       var result = run.finishDuel(view.duel);
       if (result.won) {
         ZU.payout(this, result).then(function () {
-          self.go(run.afterPayout());
+          var phase = run.afterPayout();
+          if (phase === 'victory') ZU.account.reportRun({ won: true, score: run.s.score, act: run.s.act });
+          self.go(phase);
         });
         return;
       }
@@ -112,7 +121,13 @@
         return;
       }
       ZU.audio.match();
-      if (run.s.phase === 'defeat') this.go('defeat'); else this.go('select');
+      if (run.s.phase === 'defeat') {
+        // In der Nachglut zählt der Run schon als Sieg; dann wird nur noch der Bestwert gemeldet.
+        ZU.account.reportRun({ won: false, score: run.s.score, act: run.s.act, countRun: !run.s.endless });
+        this.go('defeat');
+      } else {
+        this.go('select');
+      }
     }
   };
 

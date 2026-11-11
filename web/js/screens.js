@@ -207,10 +207,219 @@
       })]));
     }
     rows.push(h('div', 'btnrow', buttons));
+    rows.push(h('div', 'legalrow', [linkBtn('Rechtliches', legalMenu)]));
     entry = ZU.modal.open(rows, { cls: 'small settings' });
     return entry;
   }
   ZU.settingsModal = settingsModal;
+
+  /* ---------- Rechtliches (Untermenü der Einstellungen) ---------- */
+  function linkBtn(label, onclick) {
+    var el = h('button', 'linkbtn', label, { type: 'button' });
+    el.addEventListener('click', function () { ZU.audio.click(); onclick(); });
+    return el;
+  }
+
+  function legalText(title, html) {
+    var entry = ZU.modal.open([
+      h('h2', null, title),
+      h('div', 'legaltext', null, { html: html }),
+      h('div', 'btnrow', [btn('Zurück', 'felt', function () { ZU.modal.close(entry); })])
+    ], { cls: 'legal' });
+  }
+
+  function legalMenu() {
+    var entry = ZU.modal.open([
+      h('h2', null, 'Rechtliches'),
+      h('div', 'legalmenu', [
+        btn('Impressum', 'felt', function () { legalText('Impressum', ZU.LEGAL.imprint()); }),
+        btn('Datenschutz', 'felt', function () { legalText('Datenschutz', ZU.LEGAL.privacy()); }),
+        btn('Lizenzen', 'felt', function () { legalText('Lizenzen', ZU.LEGAL.licenses()); })
+      ]),
+      h('div', 'btnrow', [btn('Zurück', 'felt', function () { ZU.modal.close(entry); })])
+    ], { cls: 'small' });
+  }
+
+  /* ---------- Konto ---------- */
+  var ACCOUNT_ERRORS = {
+    bad_name: 'Name: 3–20 Zeichen, nur Buchstaben, Ziffern, _ und -.',
+    bad_password: 'Passwort: mindestens 8 Zeichen.',
+    bad_email: 'E-Mail ungültig.',
+    taken_name: 'Name vergeben.',
+    taken_email: 'E-Mail vergeben.',
+    bad_login: 'Name oder Passwort falsch.',
+    bad_token: 'Link abgelaufen.',
+    rate: 'Zu viele Versuche. Kurz warten.',
+    offline: 'Keine Verbindung.',
+    fallback: 'Das hat nicht geklappt.'
+  };
+
+  function field(type, placeholder, autocomplete, name) {
+    return h('input', 'field', null, {
+      type: type, placeholder: placeholder, autocomplete: autocomplete, name: name,
+      spellcheck: 'false', autocapitalize: 'off', maxlength: '254'
+    });
+  }
+
+  /* Formular mit Fehlerzeile; "send" liefert ein Promise mit { ok, error }. */
+  function accountForm(fields, submitLabel, send, onOk) {
+    var error = h('div', 'formerror', '');
+    var submit = btn(submitLabel, 'ember', function () {});
+    var form = h('form', 'form', fields.concat([error, h('div', 'btnrow', [submit])]), { novalidate: 'novalidate' });
+    var busy = false;
+    form.addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      if (busy) return;
+      busy = true;
+      submit.disabled = true;
+      error.textContent = '';
+      send().then(function (result) {
+        busy = false;
+        submit.disabled = false;
+        if (result.ok) {
+          ZU.audio.chip();
+          onOk();
+        } else {
+          error.textContent = ACCOUNT_ERRORS[result.error] || ACCOUNT_ERRORS.fallback;
+          fx.punch(form, 'shake');
+          ZU.audio.error();
+        }
+      });
+    });
+    form._submit = submit;
+    form._error = error;
+    return form;
+  }
+
+  function authModal(mode) {
+    var entry;
+    var name = field('text', 'Name', 'username', 'username');
+    var pass = field('password', 'Passwort', 'current-password', 'password');
+    var email = field('email', 'E-Mail', 'email', 'email');
+    var note = h('div', 'formnote', 'Nur zum Zurücksetzen des Passworts.');
+    var forgot = linkBtn('Passwort vergessen?', function () {
+      ZU.modal.close(entry);
+      forgotModal();
+    });
+    var tabLogin = h('button', 'btn small', 'Anmelden', { type: 'button' });
+    var tabNew = h('button', 'btn small', 'Neu', { type: 'button' });
+    var form = accountForm([name, pass, email, note], 'Anmelden', function () {
+      return mode === 'register'
+        ? ZU.account.register(name.value.trim(), pass.value, email.value.trim())
+        : ZU.account.login(name.value.trim(), pass.value);
+    }, function () { ZU.modal.close(entry); });
+    function setMode(next) {
+      mode = next;
+      var register = mode === 'register';
+      email.style.display = note.style.display = register ? '' : 'none';
+      forgot.style.display = register ? 'none' : '';
+      pass.autocomplete = register ? 'new-password' : 'current-password';
+      form._submit.textContent = register ? 'Registrieren' : 'Anmelden';
+      form._error.textContent = '';
+      tabLogin.classList.toggle('on', !register);
+      tabNew.classList.toggle('on', register);
+    }
+    tabLogin.addEventListener('click', function () { ZU.audio.click(); setMode('login'); });
+    tabNew.addEventListener('click', function () { ZU.audio.click(); setMode('register'); });
+    entry = ZU.modal.open([
+      h('h2', null, 'Konto'),
+      h('div', 'segmented center', [tabLogin, tabNew]),
+      form,
+      h('div', 'legalrow', [forgot])
+    ], { cls: 'small auth' });
+    setMode(mode === 'register' ? 'register' : 'login');
+    setTimeout(function () { name.focus(); }, 60);
+  }
+  ZU.authModal = authModal;
+
+  function forgotModal() {
+    var entry;
+    var email = field('email', 'E-Mail', 'email', 'email');
+    var form = accountForm([email], 'Link senden', function () {
+      return ZU.account.requestReset(email.value.trim());
+    }, function () {
+      ZU.modal.close(entry);
+      var done = ZU.modal.open([
+        h('h2', null, 'Passwort zurücksetzen'),
+        h('p', 'modal-text', 'Falls es ein Konto dazu gibt, ist die Mail unterwegs.'),
+        h('div', 'btnrow', [btn('Okay', 'ember', function () { ZU.modal.close(done); })])
+      ], { cls: 'small' });
+    });
+    entry = ZU.modal.open([h('h2', null, 'Passwort zurücksetzen'), form], { cls: 'small auth' });
+    setTimeout(function () { email.focus(); }, 60);
+  }
+
+  /* Wird geöffnet, wenn die Seite über einen Reset-Link (?reset=…) aufgerufen wurde. */
+  ZU.resetModal = function (token) {
+    var entry;
+    var pass = field('password', 'Neues Passwort', 'new-password', 'password');
+    function clean() {
+      if (window.history && history.replaceState) history.replaceState(null, '', location.pathname);
+    }
+    var form = accountForm([pass], 'Speichern', function () {
+      return ZU.account.confirmReset(token, pass.value);
+    }, function () {
+      clean();
+      ZU.modal.close(entry);
+    });
+    entry = ZU.modal.open([h('h2', null, 'Neues Passwort'), form], { cls: 'small auth', onClose: clean });
+    setTimeout(function () { pass.focus(); }, 60);
+  };
+
+  function accountModal() {
+    var entry, account = ZU.account, stats = account.stats || { runs: 0, wins: 0, best: 0 };
+    var pass = field('password', 'Passwort', 'current-password', 'password');
+    var removeForm = accountForm([pass], 'Endgültig löschen', function () {
+      return account.remove(pass.value);
+    }, function () { ZU.modal.close(entry); });
+    removeForm.style.display = 'none';
+    removeForm._submit.classList.remove('ember');
+    removeForm._submit.classList.add('danger');
+    entry = ZU.modal.open([
+      h('h2', null, account.user.username),
+      h('div', 'statsline', [
+        h('span', null, ['Runs ', h('b', null, ZU.fmt(stats.runs))]),
+        h('span', null, ['Siege ', h('b', null, ZU.fmt(stats.wins))]),
+        h('span', null, ['Bestwert ', h('b', null, ZU.fmt(stats.best))])
+      ]),
+      h('div', 'btnrow', [
+        btn('Abmelden', 'felt', function () { account.logout().then(function () { ZU.modal.close(entry); }); }),
+        btn('Schließen', 'ember', function () { ZU.modal.close(entry); })
+      ]),
+      removeForm,
+      h('div', 'legalrow', [linkBtn('Konto löschen', function () {
+        removeForm.style.display = '';
+        pass.focus();
+      })])
+    ], { cls: 'small auth' });
+  }
+
+  /* Kleiner Knopf oben rechts im Hauptmenü: "Anmelden" oder der eigene Name. */
+  function accountSlot() {
+    var slot = h('div', 'account-slot');
+    function render() {
+      slot.innerHTML = '';
+      if (!ZU.account.available) return;
+      if (ZU.account.user) slot.appendChild(btn(ZU.account.user.username, 'small on', accountModal));
+      else slot.appendChild(btn('Anmelden', 'small felt', function () { authModal('login'); }));
+    }
+    slot._off = ZU.account.onChange(render);
+    render();
+    return slot;
+  }
+
+  /* Einziger Hinweis aufs Konto: am Ende eines Runs, solange man nicht angemeldet ist. */
+  function accountCta() {
+    if (!ZU.account.available || ZU.account.user) return null;
+    var el = h('div', 'endcta', [
+      h('span', null, 'Bestwert sichern?'),
+      btn('Konto anlegen', 'small ember', function () { authModal('register'); })
+    ]);
+    var off = ZU.account.onChange(function () {
+      if (ZU.account.user || !el.isConnected) { el.remove(); off(); }
+    });
+    return el;
+  }
 
   /* ---------- Kopfzeile außerhalb des Duells ---------- */
   function hud(game, opts) {
@@ -273,33 +482,28 @@
       deco.appendChild(c);
     });
     var buttons = h('div', 'menu-buttons');
-    if (saved) {
-      buttons.appendChild(btn('Weiterspielen', 'big ember', function () { game.continueRun(saved); }));
-      buttons.appendChild(h('div', 'menu-save', 'Akt ' + ZU.roman(saved.s.act) + ' · Tisch ' + (saved.s.table + 1) + ' · ' + ZU.fmt(saved.s.score) + ' Glut'));
-    }
+    if (saved) buttons.appendChild(btn('Weiterspielen', 'big ember', function () { game.continueRun(saved); }));
     buttons.appendChild(btn('Neuer Run', 'big ' + (saved ? 'felt' : 'ember'), function () {
       if (!saved) { game.go('starter'); return; }
       confirmBox('Neuen Run beginnen?', 'Der gespeicherte Run wird dabei überschrieben.', 'Neu beginnen').then(function (yes) {
         if (yes) game.go('starter');
       });
     }));
-    buttons.appendChild(btn('Anleitung', 'felt', function () { helpModal(); }));
+    buttons.appendChild(btn('So wird gezündet', 'felt', function () { helpModal(); }));
     buttons.appendChild(btn('Einstellungen', 'felt', function () { settingsModal(game, false); }));
-    var logo = h('img', 'logo', null, { src: 'assets/logo.png', alt: 'Zündung', draggable: 'false' });
+    var slot = accountSlot();
     root.appendChild(h('div', 'screen menu', [
       deco,
-      logo,
-      h('div', 'tagline', 'Das Mau-Mau-Roguelite'),
-      buttons,
-      h('div', 'menu-stats', profile.runs
-        ? 'Bestwert ' + ZU.fmt(profile.best) + ' Glut · ' + profile.runs + ' Runs · ' + profile.wins + (profile.wins === 1 ? ' Sieg' : ' Siege')
-        : 'Drei Akte. Drei Streichhölzer. Ein Haus, das brennen soll.')
+      slot,
+      h('img', 'logo', null, { src: 'assets/logo.png', alt: 'Zündung', draggable: 'false' }),
+      buttons
     ]));
     if (!profile.seenHelp) {
       profile.seenHelp = true;
       game.saveProfile();
       setTimeout(function () { if (game.screen === 'menu' && !ZU.modal.isOpen()) helpModal(); }, 600);
     }
+    return function () { slot._off(); };
   };
 
   /* ---------- Startschachtel ---------- */
@@ -496,30 +700,108 @@
     bye: ['Mach sie fertig.', 'Bring mir was Schönes mit.']
   };
 
+  /* Manfred: ein Sprite-Streifen mit zwölf Posen (assets/manfred/manfred.png) und kleine Abläufe daraus. */
+  var MANFRED_FRAMES = ['idle', 'blink', 'talk', 'grin', 'annoyed', 'surprised', 'hat', 'coin', 'match', 'cards', 'side', 'wink'];
+  var MANFRED_ACTS = {
+    greet: [['hat', 1100]],
+    buy: [['grin', 450], ['coin', 900], ['grin', 450]],
+    bigbuy: [['surprised', 550], ['grin', 500], ['coin', 900]],
+    poor: [['annoyed', 1600]],
+    burn: [['match', 1800]],
+    reroll: [['cards', 1400]],
+    heal: [['wink', 1400]],
+    sell: [['coin', 900], ['grin', 500]],
+    bye: [['hat', 1200]],
+    glance: [['side', 1100]],
+    rub: [['grin', 800]]
+  };
+
+  function manfredActor() {
+    var img = h('i', 'mf-img');
+    var el = h('div', 'manfred', [h('div', 'mf-bob', [img])]);
+    var shown = 'idle', queue = [], timer = null, idleTimer = null, talkTimer = null, talkUntil = 0, dead = false;
+
+    function show(name) {
+      shown = name;
+      img.style.backgroundPosition = (MANFRED_FRAMES.indexOf(name) * 100 / (MANFRED_FRAMES.length - 1)) + '% 0';
+    }
+    function next() {
+      timer = null;
+      if (dead) return;
+      var step = queue.shift();
+      if (!step) { show('idle'); flap(); return; }
+      show(step[0]);
+      fx.punch(img, 'pose');
+      timer = setTimeout(next, step[1] / ZU.speed);
+    }
+    // Mundbewegung, solange er spricht und gerade keine Pose läuft
+    function flap() {
+      clearTimeout(talkTimer);
+      if (dead || timer) return;
+      if (performance.now() < talkUntil) {
+        show(shown === 'talk' ? 'idle' : 'talk');
+        talkTimer = setTimeout(flap, 130);
+      } else if (shown === 'talk') {
+        show('idle');
+      }
+    }
+    // Leerlauf: blinzeln, zur Seite schielen, Hände reiben
+    function idle() {
+      if (dead) return;
+      if (!timer && shown === 'idle' && performance.now() >= talkUntil) {
+        var roll = Math.random();
+        if (roll < 0.6) {
+          show('blink');
+          setTimeout(function () { if (shown === 'blink') show('idle'); }, 140);
+        } else {
+          api.act(roll < 0.84 ? 'glance' : 'rub');
+        }
+      }
+      idleTimer = setTimeout(idle, 1500 + Math.random() * 2600);
+    }
+    var api = {
+      el: el,
+      act: function (name, shake) {
+        queue = MANFRED_ACTS[name].slice();
+        clearTimeout(timer);
+        clearTimeout(talkTimer);
+        if (shake) fx.punch(el, 'shake');
+        next();
+      },
+      talk: function (ms) {
+        talkUntil = performance.now() + ms;
+        flap();
+      },
+      stop: function () {
+        dead = true;
+        clearTimeout(timer);
+        clearTimeout(idleTimer);
+        clearTimeout(talkTimer);
+      }
+    };
+    show('idle');
+    idleTimer = setTimeout(idle, 1400);
+    return api;
+  }
+
   screens.shop = function (game, root) {
     var run = game.run, s = run.s;
     ZU.bg.set('shop');
     ZU.audio.music('shop');
     var bar = hud(game, { onTrinket: sell });
-    var manfred = h('div', 'manfred');
+    var mf = manfredActor(), manfred = mf.el;
     var bubble = h('div', 'bubble shopbubble');
-    var poseTimer = null;
-    function setPose(n, ms) {
-      manfred.style.backgroundImage = 'url(assets/manfred/manfred_' + n + '.png)';
-      fx.punch(manfred, 'hop');
-      clearTimeout(poseTimer);
-      if (n !== 0) poseTimer = setTimeout(function () { manfred.style.backgroundImage = 'url(assets/manfred/manfred_0.png)'; }, ms || 1000);
-    }
     function say(kind) {
-      var lines = MANFRED[kind];
-      bubble.textContent = lines[Math.floor(Math.random() * lines.length)];
+      var lines = MANFRED[kind], text = lines[Math.floor(Math.random() * lines.length)];
+      bubble.textContent = text;
       fx.punch(bubble, 'on');
+      mf.talk(Math.min(2000, 500 + text.length * 35));
     }
     function poor(el) {
       ZU.audio.error();
       fx.punch(el, 'shake');
+      mf.act('poor', true);
       say('poor');
-      setPose(2, 800);
     }
 
     var cardsRow = h('div', 'shelf-row'), trinketRow = h('div', 'shelf-row'), services = h('div', 'services');
@@ -554,8 +836,8 @@
           slot.appendChild(priceBtn(price, 'tag', function () {
             run.buyCard(index);
             ZU.audio.coin(2);
+            mf.act('buy');
             say('buy');
-            setPose(1);
             var p = ZU.stagePos(card);
             fx.coins(p.x, p.y, 12);
             fx.flyTo(card, bar.deckBtn, 480);
@@ -575,8 +857,8 @@
         run.reroll();
         ZU.audio.chip();
         ZU.audio.shuffle();
+        mf.act('reroll');
         say('reroll');
-        setPose(2);
         render();
         fx.punch(rerollBox.querySelector('.reroll'), 'spin');
         Array.prototype.forEach.call(root.querySelectorAll('.offer'), function (el, i) {
@@ -604,8 +886,8 @@
             var finish = function (replace) {
               run.buyTrinket(index, replace);
               ZU.audio.coin(4);
+              mf.act(offer.price >= 18 ? 'bigbuy' : 'buy');
               say('buy');
-              setPose(1);
               var p = ZU.stagePos(el);
               fx.coins(p.x, p.y, 14);
               fx.flyTo(el, bar.slots, 480);
@@ -631,8 +913,8 @@
           deckModal(game, true).then(function (cardId) {
             if (cardId == null) return;
             run.burn(cardId);
+            mf.act('burn');
             say('burn');
-            setPose(3);
             render();
           });
         }, burnOff)
@@ -644,8 +926,8 @@
         priceBtn(run.healPrice(), 'green', function () {
           run.heal();
           ZU.audio.match();
+          mf.act('heal');
           say('heal');
-          setPose(1);
           render();
           var p = ZU.stagePos(bar.el.querySelector('.lives'));
           fx.burst(p.x, p.y, { n: 24, speed: 240 });
@@ -659,6 +941,7 @@
         if (!yes) return;
         run.sellTrinket(id);
         ZU.audio.coin(1);
+        mf.act('sell');
         say('sell');
         render();
       });
@@ -675,15 +958,15 @@
         ])
       ]),
       btn('Weiter zum nächsten Tisch', 'big ember shop-next', function () {
+        mf.act('bye');
         say('bye');
         run.leaveShop();
         game.go('select');
       })
     ]));
-    manfred.style.backgroundImage = 'url(assets/manfred/manfred_0.png)';
     render();
-    setTimeout(function () { say('greet'); }, 350);
-    return function () { clearTimeout(poseTimer); };
+    var greeting = setTimeout(function () { mf.act('greet'); say('greet'); }, 350);
+    return function () { clearTimeout(greeting); mf.stop(); };
   };
 
   /* ---------- Ende ---------- */
@@ -708,6 +991,7 @@
       h('h1', 'huge', 'Das Haus brennt!'),
       h('p', 'sub', 'Du hast den Hausherrn an seinem eigenen Tisch geschlagen.'),
       statsBlock(run),
+      accountCta(),
       h('div', 'btnrow', [
         btn('Hauptmenü', 'felt', function () { game.toMenu(); }),
         btn('Nachglut · endlos weiterspielen', 'big ember', function () {
@@ -732,6 +1016,7 @@
       h('h1', 'huge', 'Ausgebrannt'),
       h('p', 'sub', 'Das letzte Streichholz ist erloschen. ' + (run.s.score >= game.profile.best && run.s.score > 0 ? 'Aber: neuer Bestwert!' : 'Das Haus gewinnt – diesmal.')),
       statsBlock(run),
+      accountCta(),
       h('div', 'btnrow', [
         btn('Hauptmenü', 'felt', function () { game.toMenu(); }),
         btn('Neuer Run', 'big ember', function () { game.go('starter'); })

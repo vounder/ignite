@@ -10,7 +10,6 @@ Quelle ist jeweils `godot/game/Assets/`; aufbereitet mit
 | Ziel | Quelle | Aufbereitung |
 |---|---|---|
 | `special/*.png` | `Cards/Special/*_v2.png` | auf 128×128 verkleinert |
-| `manfred/manfred_0–3.png` | `Characters/Manfred/` | auf 256×256 verkleinert, harte Alphakante |
 | `logo.png` | `UI/logo.png` | zugeschnitten, 640 px breit |
 | `audio/*.wav` | `Audio/*.wav` | 24 kHz, Mono, 16 Bit |
 
@@ -69,6 +68,19 @@ Figuren:
 - boss-consigliere.png - a cold elegant mafia consigliere in his fifties: slicked dark hair with silver temples, thin round glasses, sharp cheekbones, charcoal three-piece suit, burgundy tie with a gold pin, a closed leather ledger held to his chest.
 - boss-donna.png - a stunningly beautiful ice-cold mafia donna: long dark wavy hair over one shoulder, deep red lips, sharp confident eyes, red evening dress, ruby necklace, black opera gloves, a single red rose held near her shoulder.
 - ember-croupier.png - a calm professional casino croupier with a dark teal dealer eyeshade visor, black waistcoat, ivory shirt, red bow tie, thin mustache, brown wavy hair.
+
+### Manfred (`manfred/manfred.png`, 12 Posen)
+
+Der Ladenbesitzer wurde am 11.11.2026 nach dem Vorbild der bisherigen
+Projektgrafik (`godot/game/Assets/Characters/Manfred/manfred_0.png`) im Stil der
+Gegner neu erzeugt: zwei Posen-Sheets mit je 3×2 Feldern, die
+`prepare_assets.py --manfred` an der Rumpfmitte ausrichtet und zu einem Streifen
+von 12 × 256 Pixeln zusammensetzt. Die alten vier Einzelposen entfallen; ihr
+halbtransparentes Hemd ließ sich nicht sauber freistellen.
+
+Posen in Reihenfolge: Ruhe, Blinzeln, Sprechen, Händereiben, verärgert mit
+verschränkten Armen, überrascht, Hut ziehen, Münze zeigen, brennendes
+Streichholz, Karten auffächern, Seitenblick, Zwinkern mit Daumen hoch.
 
 ### Trinket-Icons (`trinkets/`, 18 Stück)
 

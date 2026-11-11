@@ -5,10 +5,10 @@
 
   /* ---------- Pixel-Symbole aus Bitmaps ---------- */
   var BITMAPS = {
-    hearts: ['.xx...xx.', 'xxxx.xxxx', 'xxxxxxxxx', 'xxxxxxxxx', 'xxxxxxxxx', '.xxxxxxx.', '..xxxxx..', '...xxx...', '....x....'],
-    diamonds: ['....x....', '...xxx...', '..xxxxx..', '.xxxxxxx.', 'xxxxxxxxx', '.xxxxxxx.', '..xxxxx..', '...xxx...', '....x....'],
-    spades: ['....x....', '...xxx...', '..xxxxx..', '.xxxxxxx.', 'xxxxxxxxx', 'xxxxxxxxx', '.xx.x.xx.', '....x....', '...xxx...'],
-    clubs: ['...xxx...', '..xxxxx..', '..xxxxx..', '.xx.x.xx.', 'xxxxxxxxx', 'xxxxxxxxx', '.xx.x.xx.', '....x....', '...xxx...'],
+    hearts: ['...........', '.xxx...xxx.', 'xxxxx.xxxxx', 'xxxxxxxxxxx', 'xxxxxxxxxxx', 'xxxxxxxxxxx', '.xxxxxxxxx.', '..xxxxxxx..', '...xxxxx...', '....xxx....', '.....x.....'],
+    diamonds: ['.....x.....', '....xxx....', '...xxxxx...', '..xxxxxxx..', '.xxxxxxxxx.', 'xxxxxxxxxxx', '.xxxxxxxxx.', '..xxxxxxx..', '...xxxxx...', '....xxx....', '.....x.....'],
+    spades: ['.....x.....', '....xxx....', '...xxxxx...', '..xxxxxxx..', '.xxxxxxxxx.', 'xxxxxxxxxxx', 'xxxxxxxxxxx', 'xxxx.x.xxxx', '.xx..x..xx.', '....xxx....', '...xxxxx...'],
+    clubs: ['....xxx....', '...xxxxx...', '...xxxxx...', '...xxxxx...', '.xx.xxx.xx.', 'xxxxxxxxxxx', 'xxxxxxxxxxx', 'xxxx.x.xxxx', '.xx..x..xx.', '....xxx....', '...xxxxx...'],
     match: ['.rr.', 'rRRr', 'rRRr', '.rr.', '.ww.', '.ww.', '.ww.', '.ww.', '.ww.', '.ww.', '.ww.', '.ww.'],
     matchOut: ['....', '.kk.', '.kk.', '.kk.', '.dd.', '.dd.', '.dd.', '.dd.', '.dd.', '.dd.', '.dd.', '.dd.'],
     matchGold: ['.yy.', 'yggy', 'yggy', '.yy.', '.gg.', '.gg.', '.gg.', '.gg.', '.gg.', '.gg.', '.gg.', '.gg.'],

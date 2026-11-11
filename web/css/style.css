@@ -203,10 +203,10 @@ h1, h2, h3 { margin: 0; font-family: var(--px-wide); font-weight: normal; letter
 .card .corner b { font-family: var(--px-wide); font-weight: normal; font-size: 21px; line-height: 1; }
 .card .corner b.two { font-family: var(--px); font-size: 21px; letter-spacing: -1px; }
 .card .corner.br { left: auto; top: auto; right: 9px; bottom: 8px; transform: rotate(180deg); }
-.card .pip { width: 18px; height: 18px; background-size: contain; background-repeat: no-repeat; image-rendering: pixelated; display: block; }
+.card .pip { width: 22px; height: 22px; background-size: contain; background-repeat: no-repeat; image-rendering: pixelated; display: block; }
 .card .center { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; align-items: center; justify-content: center; }
-.card .bigpip { width: 45px; height: 45px; background-size: contain; background-repeat: no-repeat; image-rendering: pixelated; display: block; }
-.card .bigpip.ace { width: 63px; height: 63px; filter: drop-shadow(0 3px 0 rgba(0,0,0,.18)); }
+.card .bigpip { width: 44px; height: 44px; background-size: contain; background-repeat: no-repeat; image-rendering: pixelated; display: block; }
+.card .bigpip.ace { width: 66px; height: 66px; filter: drop-shadow(0 3px 0 rgba(0,0,0,.18)); }
 .card .court { width: 50px; height: 70px; border-radius: 6px; border: 3px solid currentColor; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
   background: repeating-linear-gradient(45deg, rgba(0,0,0,.05) 0 4px, transparent 4px 8px); }
 .card .court b { font-family: var(--px-wide); font-weight: normal; font-size: 26px; line-height: 1; }
@@ -368,6 +368,7 @@ h1, h2, h3 { margin: 0; font-family: var(--px-wide); font-weight: normal; letter
 .menu { justify-content: center; gap: 6px; }
 .menu .logo { width: 480px; image-rendering: pixelated; filter: drop-shadow(0 10px 0 rgba(0,0,0,.45)); animation: logo-float 4s ease-in-out infinite; margin-top: -30px; pointer-events: none; }
 @keyframes logo-float { 0%, 100% { transform: translateY(0) rotate(-1deg); } 50% { transform: translateY(-10px) rotate(1deg); } }
+/* nicht mehr verwendet: */
 .tagline { font-family: var(--px); font-size: 18px; letter-spacing: 3px; color: var(--ivory); text-shadow: 0 3px 0 rgba(0,0,0,.6); margin-top: 2px; }
 .menu-buttons { display: flex; flex-direction: column; align-items: stretch; gap: 14px; width: 320px; margin-top: 22px; z-index: 2; }
 .menu-save { text-align: center; font-family: var(--px); font-size: 12px; letter-spacing: 1px; color: var(--ivory-dim); margin: -6px 0 4px; }
@@ -414,7 +415,11 @@ h1, h2, h3 { margin: 0; font-family: var(--px-wide); font-weight: normal; letter
 .reward-item p { text-align: center; font-size: 13px; line-height: 1.4; color: #e6dabd; min-height: 56px; }
 
 .shop-left { position: absolute; left: 22px; bottom: 16px; width: 300px; height: 520px; }
-.manfred { position: absolute; left: 22px; bottom: 44px; width: 256px; height: 256px; background-size: contain; background-repeat: no-repeat; background-position: center bottom; image-rendering: pixelated; animation: breathe 3.2s ease-in-out infinite; transform-origin: 50% 100%; filter: drop-shadow(0 8px 0 rgba(0,0,0,.35)); }
+.manfred { position: absolute; left: -10px; bottom: 40px; width: 320px; height: 320px; filter: drop-shadow(0 8px 0 rgba(0,0,0,.35)); }
+.manfred .mf-bob { position: absolute; inset: 0; animation: breathe 3.2s ease-in-out infinite; transform-origin: 50% 100%; }
+.manfred .mf-img { position: absolute; inset: 0; background: url('../assets/manfred/manfred.png') 0 0 / 1200% 100% no-repeat; image-rendering: pixelated; transform-origin: 50% 100%; }
+.mf-img.pose { animation: pose-pop .34s cubic-bezier(.3,1.6,.5,1); }
+@keyframes pose-pop { 0% { transform: scale(1.07, .9); } 45% { transform: scale(.96, 1.06) translateY(-7px); } 100% { transform: none; } }
 .shop-sign { position: absolute; left: 20px; right: 20px; bottom: 0; text-align: center; font-family: var(--px-wide); font-size: 17px; color: #2a1202; padding: 9px 4px 6px; border-radius: 10px; background: linear-gradient(180deg, #e2b23c, #b88422); box-shadow: 0 5px 0 #6b4a12; }
 .bubble.shopbubble { left: 30px; top: 96px; max-width: 250px; border-radius: 12px 12px 12px 2px; z-index: 3; }
 .shop-main { position: absolute; left: 340px; right: 22px; top: 100px; display: flex; flex-direction: column; gap: 26px; }
@@ -483,8 +488,6 @@ h1, h2, h3 { margin: 0; font-family: var(--px-wide); font-weight: normal; letter
 .reroll-price .ico.coin { width: 16px; height: 16px; }
 .reroll-price b { font-family: var(--px-wide); font-weight: normal; font-size: 16px; color: var(--ember-hot); }
 
-.manfred.hop { animation: hop .4s cubic-bezier(.3,1.6,.5,1); }
-@keyframes hop { 0% { transform: translateY(0) scale(1); } 35% { transform: translateY(-14px) scale(1.04, .97); } 100% { transform: none; } }
 .shop-next { position: absolute; right: 26px; bottom: 22px; }
 
 .endscreen { justify-content: center; gap: 14px; }
@@ -495,3 +498,26 @@ h1, h2, h3 { margin: 0; font-family: var(--px-wide); font-weight: normal; letter
 .endstat b { font-family: var(--px-wide); font-weight: normal; font-size: 17px; color: var(--ember-hot); }
 .deadmatches { display: flex; gap: 16px; }
 .deadmatches .ico.match { width: 20px; height: 60px; }
+
+/* ---------- Konto und Rechtliches ---------- */
+.account-slot { position: absolute; right: 22px; top: 18px; z-index: 3; }
+.form { display: flex; flex-direction: column; gap: 10px; }
+.field { font-family: var(--text); font-weight: 600; font-size: 16px; color: var(--ink); background: var(--ivory); border: 0; border-radius: 9px; padding: 11px 13px;
+  box-shadow: inset 0 3px 0 rgba(0,0,0,.18), 0 3px 0 rgba(0,0,0,.4); outline: none; user-select: text; -webkit-user-select: text; }
+.field:focus { box-shadow: inset 0 3px 0 rgba(0,0,0,.18), 0 0 0 3px var(--ember); }
+.field::placeholder { color: #8d7f66; }
+.formnote { font-size: 12px; color: var(--ivory-dim); margin-top: -4px; padding-left: 4px; }
+.formerror { min-height: 18px; font-size: 13px; color: #ff9a86; text-align: center; }
+.segmented.center { justify-content: center; }
+.linkbtn { background: none; border: 0; padding: 2px 6px; font-family: var(--text); font-weight: 600; font-size: 12px; color: var(--ivory-dim); opacity: .7; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.linkbtn:hover { opacity: 1; color: var(--ivory); }
+.legalrow { display: flex; justify-content: center; margin-top: -2px; }
+.legalmenu { display: flex; flex-direction: column; gap: 12px; padding: 6px 60px; }
+.modal.legal { width: 720px; }
+.legaltext { overflow-y: auto; max-height: 440px; padding: 4px 14px 4px 4px; font-size: 14px; line-height: 1.5; color: #e6dabd; user-select: text; -webkit-user-select: text; }
+.legaltext h3 { font-size: 14px; color: var(--ember); margin: 14px 0 5px; }
+.legaltext h3:first-child { margin-top: 0; }
+.legaltext p { margin-bottom: 8px; }
+.statsline { display: flex; justify-content: center; gap: 22px; font-size: 14px; color: var(--ivory-dim); }
+.statsline b { font-family: var(--px-wide); font-weight: normal; font-size: 16px; color: var(--ember-hot); margin-left: 4px; }
+.endcta { display: flex; align-items: center; gap: 12px; padding: 8px 10px 8px 16px; border-radius: 12px; background: rgba(0,0,0,.42); font-size: 14px; color: var(--ivory); }

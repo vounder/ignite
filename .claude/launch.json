@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "zuendung-web",
-      "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "8377", "--directory", "web"],
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["server/server.js"],
       "port": 8377
     }
   ]

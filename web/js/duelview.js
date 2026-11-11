@@ -88,7 +88,7 @@
     this.playBtn = h('button', 'btn big ember', 'Ausspielen', { onclick: function () { self.onPlayButton(); } });
     this.multiBtn = h('button', 'btn small switch', 'An', { onclick: function () { self.setMulti(!self.multi); } });
     this.multiRow = h('div', 'multirow', [h('span', 'label', 'Mehrfachwahl'), this.multiBtn]);
-    ZU.tip.bind(this.multiRow, '<b>Flinke Finger</b><p>Bei <b>An</b> wählst du mehrere Karten mit gleichem Wert und legst sie zusammen. Bei <b>Aus</b> wird jede angeklickte Karte sofort gespielt.</p>');
+    ZU.tip.bind(this.multiRow, '<b>Flinke Finger</b><p>Bei <b>An</b> wählst du Karten mit gleichem Wert aus und legst sie zusammen; Karten ohne passenden Partner werden weiter sofort gespielt. Bei <b>Aus</b> wird jede angeklickte Karte sofort gespielt.</p>');
     this.drawBtn = h('button', 'btn big felt', 'Ziehen', { onclick: function () { self.onDrawButton(); } });
     var lives = h('div', 'lives');
     for (var l = 0; l < ZU.MAX_LIVES; l++) lives.appendChild(ZU.iconEl(l < run.s.lives ? 'match' : 'matchOut', 'match'));
@@ -731,9 +731,18 @@
       return;
     }
     if (this.mode !== 'play' || this.pHand.indexOf(sp) < 0) return;
-    if (!this.multi) { this.playNow(sp); return; }
+    // Auch bei eingeschalteter Mehrfachwahl: Karten ohne Partner gleichen Werts gehen sofort raus.
+    if (!this.multi || (!this.selected.length && !this.hasPartner(sp))) { this.playNow(sp); return; }
     this.toggle(sp, 99);
     this.refresh();
+  };
+
+  /* Gibt es eine zweite Handkarte mit gleichem Wert, die sich mit dieser zusammen legen ließe? */
+  DuelView.prototype.hasPartner = function (sp) {
+    if (sp.def.special) return false;
+    return this.pHand.some(function (other) {
+      return other !== sp && !other.def.special && other.def.rank === sp.def.rank;
+    });
   };
 
   /* Ohne Mehrfachwahl: Ein Klick spielt die Karte sofort. */

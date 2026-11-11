@@ -1,0 +1,12 @@
+{
+  "name": "zuendung-server",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Liefert Zündung aus und stellt die Konto-API bereit.",
+  "license": "MIT",
+  "engines": { "node": ">=22.13" },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env server.js",
+    "test": "node test.js"
+  }
+}
