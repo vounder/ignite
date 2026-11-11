@@ -496,7 +496,8 @@
       deco,
       slot,
       h('img', 'logo', null, { src: 'assets/logo.png', alt: 'Zündung', draggable: 'false' }),
-      buttons
+      buttons,
+      h('div', 'menu-version', 'v' + ZU.VERSION)
     ]));
     if (!profile.seenHelp) {
       profile.seenHelp = true;

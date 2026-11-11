@@ -2,6 +2,7 @@
 (function (ZU) {
   'use strict';
 
+  ZU.VERSION = '1.0.0'; // im Hauptmenü unten rechts angezeigt
   ZU.HAND_SIZE = 7;
   ZU.MAX_TRINKETS = 5;
   ZU.MAX_LIVES = 3;
