@@ -41,10 +41,17 @@ erscheint dann nur im Protokoll des Servers.
    (Sitzungs-Cookie mit `Secure`, Versuchsbegrenzung je Besucher).
 4. `server/data/` regelmäßig sichern – dort liegen alle Konten.
 
+## Caching
+
+Adressen mit Build-Kennung (`?v=…`) werden mit `Cache-Control: public,
+max-age=31536000, immutable` ausgeliefert, alles andere mit `no-cache`. Die
+Kennung setzt `python web/tools/stamp_version.py` vor dem Deployment.
+
 ## Was gespeichert wird
 
 Je Konto: Name, E-Mail-Adresse, Passwort als scrypt-Hash, Registrierungszeit und
-die Statistik (Runs, Siege, Bestwert, höchster Akt). Sitzungen und Reset-Links
+die Statistik (Runs, Siege, Bestwert, höchster Akt) sowie der Meta-Fortschritt
+(Asche, Freischaltungen, Upgrades, Einsätze, besiegte Gegner) als JSON. Sitzungen und Reset-Links
 werden nur als Hash abgelegt. Der Server schreibt keine Zugriffsprotokolle.
 
 ## Tests

@@ -108,6 +108,11 @@ function createApp(overrides) {
     );
   `);
 
+  // Spalte für den Meta-Fortschritt nachziehen (Datenbanken aus früheren Versionen)
+  if (!db.prepare('PRAGMA table_info(users)').all().some(column => column.name === 'meta')) {
+    db.exec("ALTER TABLE users ADD COLUMN meta TEXT NOT NULL DEFAULT '{}'");
+  }
+
   const q = {
     userByName: db.prepare('SELECT * FROM users WHERE username_key = ?'),
     userByEmail: db.prepare('SELECT * FROM users WHERE email_key = ?'),
@@ -115,6 +120,7 @@ function createApp(overrides) {
     insertUser: db.prepare('INSERT INTO users (username, username_key, email, email_key, pass, created, runs, wins, best, best_act) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'),
     setStats: db.prepare('UPDATE users SET runs = ?, wins = ?, best = ?, best_act = ? WHERE id = ?'),
     setPass: db.prepare('UPDATE users SET pass = ? WHERE id = ?'),
+    setMeta: db.prepare('UPDATE users SET meta = ? WHERE id = ?'),
     deleteUser: db.prepare('DELETE FROM users WHERE id = ?'),
     insertSession: db.prepare('INSERT INTO sessions (token_hash, user_id, expires) VALUES (?, ?, ?)'),
     session: db.prepare('SELECT * FROM sessions WHERE token_hash = ?'),
@@ -227,9 +233,12 @@ function createApp(overrides) {
   }
 
   function publicUser(user) {
+    let meta = {};
+    try { meta = JSON.parse(user.meta || '{}'); } catch (error) { /* beschädigt: leer ausliefern */ }
     return {
       user: { username: user.username },
-      stats: { runs: user.runs, wins: user.wins, best: user.best, bestAct: user.best_act }
+      stats: { runs: user.runs, wins: user.wins, best: user.best, bestAct: user.best_act },
+      meta
     };
   }
 
@@ -313,6 +322,18 @@ function createApp(overrides) {
       send(res, 200, publicUser(q.userById.get(user.id)));
     },
 
+    /* Speichert den Meta-Fortschritt (Asche, Freischaltungen, Upgrades, Einsätze) als Ganzes. */
+    'POST /api/meta': async (req, res, body) => {
+      const user = currentUser(req);
+      if (!user) return fail(res, 401, 'auth');
+      if (limited('meta:' + user.id, 600, 60 * 60 * 1000)) return fail(res, 429, 'rate');
+      if (!body.meta || typeof body.meta !== 'object' || Array.isArray(body.meta)) return fail(res, 400, 'bad_request');
+      const text = JSON.stringify(body.meta);
+      if (text.length > 6000) return fail(res, 413, 'bad_request');
+      q.setMeta.run(text, user.id);
+      send(res, 200, { ok: true });
+    },
+
     'POST /api/account/delete': async (req, res, body) => {
       const user = currentUser(req);
       if (!user) return fail(res, 401, 'auth');
@@ -361,7 +382,7 @@ function createApp(overrides) {
 
   /* ---------- Statische Dateien ---------- */
   const HIDDEN = /^\/(tools|tests)(\/|$)/;
-  function serveStatic(req, res, pathname) {
+  function serveStatic(req, res, pathname, versioned) {
     let rel;
     try {
       rel = decodeURIComponent(pathname);
@@ -377,7 +398,8 @@ function createApp(overrides) {
       const etag = 'W/"' + stat.size.toString(16) + '-' + Math.floor(stat.mtimeMs).toString(16) + '"';
       const headers = {
         'Content-Type': MIME[path.extname(file).toLowerCase()] || 'application/octet-stream',
-        'Cache-Control': 'no-cache',
+        // Adressen mit ?v=… ändern sich bei jedem Update, dürfen also dauerhaft zwischengespeichert werden.
+        'Cache-Control': versioned ? 'public, max-age=31536000, immutable' : 'no-cache',
         'ETag': etag,
         'Last-Modified': stat.mtime.toUTCString(),
         'Accept-Ranges': 'bytes'
@@ -435,7 +457,7 @@ function createApp(overrides) {
         res.writeHead(405, { Allow: 'GET, HEAD' });
         return res.end();
       }
-      return serveStatic(req, res, url.pathname);
+      return serveStatic(req, res, url.pathname, url.searchParams.has('v'));
     }
     const handler = routes[req.method + ' ' + url.pathname];
     if (!handler) return fail(res, 404, 'not_found');

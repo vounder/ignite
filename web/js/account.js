@@ -38,7 +38,19 @@
     profile.bestAct = data.stats.bestAct;
     ZU.Profile.save(profile);
     if (ZU.game) ZU.game.profile = profile;
+    // Meta-Fortschritt: Hat das Konto schon welchen, gilt er; sonst wandert der lokale Stand hinauf.
+    var remote = ZU.Meta.clean(data.meta);
+    if (ZU.Meta.touched(remote)) ZU.Meta.put(remote, true);
+    else if (ZU.Meta.touched(ZU.Meta.get())) pushMeta(ZU.Meta.get());
     emit();
+  }
+
+  var metaTimer = null;
+  function pushMeta(meta) {
+    clearTimeout(metaTimer);
+    metaTimer = setTimeout(function () {
+      if (A.user) call('POST', 'api/meta', { meta: meta });
+    }, 600);
   }
 
   function emit() {
@@ -126,6 +138,8 @@
       });
     }
   };
+
+  ZU.Meta.onChange = function (meta) { if (A.user) pushMeta(meta); };
 
   ZU.account = A;
 })(window.ZU = window.ZU || {});

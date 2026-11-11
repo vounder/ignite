@@ -29,6 +29,10 @@
         }
       });
       this.go('menu');
+      // Erst die Gegner eines gespeicherten Runs, dann nach und nach alles Übrige.
+      var saved = ZU.Run.load();
+      if (saved) ZU.preloadEnemies(saved.s.encounters.map(function (e) { return e.enemy; }), true);
+      setTimeout(function () { ZU.preloadAll(); }, 1200);
       ZU.account.init().then(function () {
         var token = new URLSearchParams(location.search).get('reset');
         if (token && ZU.account.available) ZU.resetModal(token);
@@ -42,7 +46,14 @@
       ZU.audio.setMusic(s.music);
       document.getElementById('crt').classList.toggle('off', !s.crt);
     },
-    saveProfile: function () { ZU.Profile.save(this.profile); },
+    /* Speichert Einstellungen, ohne zwischenzeitlich geänderte Statistik oder Meta-Fortschritt zu überschreiben. */
+    saveProfile: function () {
+      var fresh = ZU.Profile.load();
+      fresh.settings = this.profile.settings;
+      fresh.seenHelp = this.profile.seenHelp;
+      ZU.Profile.save(fresh);
+      this.profile = fresh;
+    },
     modalOpen: function () { return ZU.modal.isOpen(); },
 
     /* Wechselt den Screen mit kurzer Überblendung. */
@@ -53,6 +64,7 @@
       ZU.tip.hide();
       ZU.modal.closeAll();
       this.screen = name;
+      if (this.run && this.run.s.encounters) ZU.preloadEnemies(this.run.s.encounters.map(function (e) { return e.enemy; }), true);
       root.classList.remove('enter');
       root.innerHTML = '';
       this.profile = ZU.Profile.load();
@@ -76,7 +88,7 @@
 
     startRun: function (starterId) {
       var seed = (Date.now() ^ Math.floor(Math.random() * 0x7fffffff)) >>> 0;
-      this.run = ZU.Run.start(starterId, seed);
+      this.run = ZU.Run.start(starterId, seed, ZU.Meta.runOptions());
       this.run.save();
       var self = this;
       setTimeout(function () { self.go('select'); }, 380);

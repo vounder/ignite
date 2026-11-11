@@ -1,7 +1,7 @@
 """Bereitet die Assets der Browser-Version aus den Godot-Quellen auf.
 
 Aufruf (aus dem Repo-Wurzelverzeichnis):
-    python web/tools/prepare_assets.py [--audio] [--generated <Ordner>] [--sheets <Ordner>] [--manfred <Ordner>]
+    python web/tools/prepare_assets.py [--audio] [--generated <Ordner>] [--sheets <Ordner>] [--manfred <Ordner>] [--optimize] [--icons <Ordner> <Zielordner>]
 
 - Spezialkarten und Logo werden verkleinert nach web/assets kopiert.
   (Der Pixel-Font entsteht separat mit web/tools/make_font.py.)
@@ -11,9 +11,9 @@ Aufruf (aus dem Repo-Wurzelverzeichnis):
   wuetend, geschockt, geschlagen) in deckungsgleiche Sprite-Streifen zerlegt.
 - Mit --manfred <Ordner> werden Manfreds zwei Posen-Sheets (manfred-a.png, manfred-b.png) zu
   einem Streifen aus zwoelf Posen zusammengesetzt.
-- Mit --audio wird die Musik auf 24 kHz Mono reduziert (reines Python, dauert etwas).
+- Mit --audio wird die Musik als MP3 kodiert (braucht das Paket lameenc).
+- Mit --optimize werden alle PNGs unter web/assets auf Farbpalette umgerechnet.
 """
-import array
 import sys
 import wave
 from pathlib import Path
@@ -21,15 +21,37 @@ from pathlib import Path
 from PIL import Image, ImageChops, ImageStat
 
 ROOT = Path(__file__).resolve().parents[2]
+MP3_KBPS = 112
 SRC = ROOT / "godot" / "game" / "Assets"
 DST = ROOT / "web" / "assets"
+
+
+def save_png(im, target):
+    """Speichert als PNG mit Farbpalette. Bei Pixel-Art ist das verlustfrei genug und rund fuenfmal kleiner."""
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if im.mode != "P":
+        im = im.convert("RGBA").quantize(colors=128, method=Image.Quantize.FASTOCTREE, dither=Image.Dither.NONE)
+    im.save(target, optimize=True)
+
+
+def optimize():
+    """Rechnet alle vorhandenen PNGs unter web/assets auf Palette um (mehrfach ausfuehrbar)."""
+    before = after = 0
+    for path in sorted(DST.rglob("*.png")):
+        im = Image.open(path)
+        im.load()
+        before += path.stat().st_size
+        if im.mode != "P":
+            save_png(im, path)
+        after += path.stat().st_size
+    print("  PNG gesamt: %d KB -> %d KB" % (before // 1024, after // 1024))
 
 
 def images():
     (DST / "special").mkdir(parents=True, exist_ok=True)
     for path in sorted((SRC / "Cards" / "Special").glob("*_v2.png")):
         im = Image.open(path).convert("RGBA").resize((128, 128), Image.NEAREST)
-        im.save(DST / "special" / path.name.replace("_v2", ""), optimize=True)
+        save_png(im, DST / "special" / path.name.replace("_v2", ""))
 
     logo = Image.open(SRC / "UI" / "logo.png").convert("RGBA")
     box = logo.getbbox()
@@ -37,7 +59,7 @@ def images():
         logo = logo.crop(box)
     width = 640
     logo = logo.resize((width, round(logo.height * width / logo.width)), Image.BOX)
-    logo.save(DST / "logo.png", optimize=True)
+    save_png(logo, DST / "logo.png")
 
 
 
@@ -63,8 +85,7 @@ def cutout(source, target, size):
     square = square.resize((size, size), Image.BOX)
     alpha = square.getchannel("A").point(lambda value: 255 if value > 120 else 0)
     square.putalpha(alpha)
-    target.parent.mkdir(parents=True, exist_ok=True)
-    square.save(target, optimize=True)
+    save_png(square, target)
 
 
 def generated(folder):
@@ -177,7 +198,7 @@ def manfred(folder, size=256):
     (DST / "manfred").mkdir(parents=True, exist_ok=True)
     for old in (DST / "manfred").glob("manfred_*.png"):
         old.unlink()
-    strip.save(DST / "manfred" / "manfred.png", optimize=True)
+    save_png(strip, DST / "manfred" / "manfred.png")
 
 
 def sheet(source, target, size=192):
@@ -200,8 +221,7 @@ def sheet(source, target, size=192):
         small = frame.resize((size, size), Image.BOX)
         small.putalpha(small.getchannel("A").point(lambda value: 255 if value > 120 else 0))
         strip.paste(small, (index * size, 0))
-    target.parent.mkdir(parents=True, exist_ok=True)
-    strip.save(target, optimize=True)
+    save_png(strip, target)
 
 
 def sheets(folder):
@@ -214,30 +234,35 @@ def sheets(folder):
             print("  sheet", path.stem)
 
 
+def icons(folder, subdir):
+    """Stellt einzelne Greenscreen-Icons frei und legt sie unter web/assets/<subdir> ab (z. B. trinkets, perks)."""
+    for path in sorted(Path(folder).rglob("*.png")):
+        cutout(path, DST / subdir / path.name, 96)
+        print("  icon", subdir, path.stem)
+
+
 def audio():
+    """Wandelt die Musik in MP3 um (braucht das Paket "lameenc": pip install lameenc)."""
+    import lameenc
+
     (DST / "audio").mkdir(parents=True, exist_ok=True)
     for name in ("menu", "game", "shop"):
         with wave.open(str(SRC / "Audio" / f"{name}.wav")) as source:
             channels, rate, width = source.getnchannels(), source.getframerate(), source.getsampwidth()
             if width != 2:
                 raise SystemExit(f"{name}.wav: nur 16 Bit wird unterstuetzt")
-            samples = array.array("h")
-            samples.frombytes(source.readframes(source.getnframes()))
-        step = channels * 2  # zwei Frames zu einem Mono-Sample mitteln
-        total = len(samples) // step
-        out = array.array("h", bytes(total * 2))
-        for index in range(total):
-            base = index * step
-            acc = 0
-            for offset in range(step):
-                acc += samples[base + offset]
-            out[index] = acc // step
-        with wave.open(str(DST / "audio" / f"{name}.wav"), "wb") as target:
-            target.setnchannels(1)
-            target.setsampwidth(2)
-            target.setframerate(rate // 2)
-            target.writeframes(out.tobytes())
-        print("audio", name, total / (rate // 2), "s")
+            pcm = source.readframes(source.getnframes())
+        encoder = lameenc.Encoder()
+        encoder.set_bit_rate(MP3_KBPS)
+        encoder.set_in_sample_rate(rate)
+        encoder.set_channels(channels)
+        encoder.set_quality(2)
+        data = encoder.encode(pcm) + encoder.flush()
+        (DST / "audio" / f"{name}.mp3").write_bytes(bytes(data))
+        old = DST / "audio" / f"{name}.wav"
+        if old.exists():
+            old.unlink()
+        print("  audio", name, len(data) // 1024, "KB")
 
 
 if __name__ == "__main__":
@@ -249,8 +274,13 @@ if __name__ == "__main__":
     if "--manfred" in sys.argv:
         manfred(sys.argv[sys.argv.index("--manfred") + 1])
         print("manfred ok")
+    if "--icons" in sys.argv:
+        position = sys.argv.index("--icons")
+        icons(sys.argv[position + 1], sys.argv[position + 2])
     if "--sheets" in sys.argv:
         sheets(sys.argv[sys.argv.index("--sheets") + 1])
         print("sheets ok")
     if "--audio" in sys.argv:
         audio()
+    if "--optimize" in sys.argv:
+        optimize()

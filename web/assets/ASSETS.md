@@ -11,7 +11,10 @@ Quelle ist jeweils `godot/game/Assets/`; aufbereitet mit
 |---|---|---|
 | `special/*.png` | `Cards/Special/*_v2.png` | auf 128×128 verkleinert |
 | `logo.png` | `UI/logo.png` | zugeschnitten, 640 px breit |
-| `audio/*.wav` | `Audio/*.wav` | 24 kHz, Mono, 16 Bit |
+| `audio/*.mp3` | `Audio/*.wav` | als MP3 kodiert (112 kbit/s, Stereo) |
+
+Alle PNGs sind auf eine Farbpalette umgerechnet (`prepare_assets.py --optimize`);
+bei der Pixel-Art ist das ohne sichtbaren Verlust rund fünfmal kleiner.
 
 ## Neu generiert
 
@@ -82,13 +85,21 @@ Posen in Reihenfolge: Ruhe, Blinzeln, Sprechen, Händereiben, verärgert mit
 verschränkten Armen, überrascht, Hut ziehen, Münze zeigen, brennendes
 Streichholz, Karten auffächern, Seitenblick, Zwinkern mit Daumen hoch.
 
-### Trinket-Icons (`trinkets/`, 18 Stück)
+### Trinket-Icons (`trinkets/`, 35 Stück) und Privilegien (`perks/`, 8 Stück)
 
-Einzelne Objekt-Icons im selben Stil, auf 96×96 verkleinert: Glückschip,
-Aschenbecher, Doppelboden, Zündschnur, Kassenbuch, Messingknöchel, Taschenuhr,
-Gezinkter Würfel, Samthandschuh, Herzblut, Achterbahn, Dauerbrenner, Schwarzes
-Notizbuch, Rauchspiegel, Heißer Draht, Ass im Ärmel, Goldenes Streichholz und
-Flinke Finger (eine behandschuhte Hand, die drei Karten auffächert).
+Einzelne Objekt-Icons im selben Stil, mit `prepare_assets.py --icons` auf 96×96
+freigestellt. Die erste Serie: Glückschip, Aschenbecher, Doppelboden,
+Zündschnur, Kassenbuch, Messingknöchel, Taschenuhr, Gezinkter Würfel,
+Samthandschuh, Herzblut, Achterbahn, Dauerbrenner, Schwarzes Notizbuch,
+Rauchspiegel, Heißer Draht, Ass im Ärmel, Goldenes Streichholz.
+
+Die zweite Serie (ebenfalls 11.11.2026): Siebenschläfer, Stoppuhr, Voodoopuppe,
+Hexenbrett, Kartenhai, Paschkönig, Dietrich, Generalschlüssel, Schwarze Serie,
+Karoschliff, Nachbrenner, Glutofen, Goldzahn, Zinseszins, Kellerschlüssel,
+Kurze Lunte, Falschgeld, Stempelkarte.
+
+Privilegien: Flinke Finger (behandschuhte Hand mit Kartenfächer), Großes Regal,
+Vitrine, Stammplatz, Schleifer, Glockenrecht, Aschekasten, Zündholzbrief.
 
 ## Im Projekt erzeugt
 

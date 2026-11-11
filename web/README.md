@@ -25,25 +25,48 @@ zugehörigen Elemente blenden sich selbst aus.
   gleichen Wert; wer zuerst keine Karten mehr hat, gewinnt. Ein Klick auf eine
   passende Handkarte spielt sie sofort. Die 7 lässt den Gegner 2 Karten ziehen
   und aussetzen.
-- **Mehrfachwahl:** Das Trinket „Flinke Finger“ schaltet das Legen mehrerer
-  Karten mit gleichem Wert frei. Danach lässt sich die Mehrfachwahl rechts am
-  Tisch an- und ausschalten. Der erste Laden eines Runs führt es immer.
-- **Spezialkarten** (elf Stück, von Stillstand bis Zytokinese II) sind Joker
-  mit Effekt.
+- **Ziehen:** Wer nicht legen kann oder will, zieht eine Karte. Passt sie, darf
+  sie sofort gelegt werden; sonst endet der Zug.
+- **Trinkets:** 35 Stück mit Synergie-Familien (Zieh-Druck und Flüche,
+  Aussetzen, Kette und Glut, Mehrfachwahl, Spezialkarten, Kasse). Es gibt keine
+  Obergrenze mehr; dafür kostet jedes weitere Trinket im Laden 3 Mark mehr.
+  Elf Trinkets sind von Anfang an im Spiel, der Rest wird im Hinterzimmer
+  freigeschaltet.
+- **Privilegien:** Upgrades, die den ganzen Run gelten und keinen Trinket-Platz
+  belegen. Manfred bietet je Akt genau eines an; die Neue Auslage ändert daran
+  nichts. In Akt 1 ist es immer „Flinke Finger" – die Mehrfachwahl, mit der man
+  mehrere Karten gleichen Werts in einem Zug legt (Schalter rechts am Tisch).
+- **Spezialkarten** (elf Stück, von Stillstand bis Zytokinese II) haben einen
+  Effekt und eine Bindung: an ein Symbol, an Rot oder Schwarz – oder gar nicht
+  (Joker). Sie passen nur auf ihre Symbole und geben sie danach vor. Früh im
+  Run tauchen fast nur symbolgebundene Karten auf, später farbgebundene, am
+  Ende Joker.
+- **Hausregeln:** Einzelne Tische haben eine Zusatzregel, mit jedem Akt
+  häufiger. Bisher gibt es „Letzter Stapel": Es wird nicht neu gemischt; ist
+  der Stapel leer und muss jemand ziehen, gewinnt, wer weniger Karten hält.
 - **Glut:** Jede gespielte Karte bringt Kartenwert × Kette. Die Kette wächst
   mit jeder Karte und fällt beim Ziehen zurück. Glut zahlt beim Sieg Mark.
 - **Gegner:** 20 Charaktere – neun Tische, fünf Eliten und sechs Bosse (zwei je
-  Akt) – mit eigenen Passiven, Dialogen und animierten Porträts, die auf den
-  Spielverlauf reagieren.
+  Akt). Fast alle haben eine Eigenheit (z. B. „Ass im Ärmel" oder „Schwere
+  Hand"), dazu eigene Dialoge und animierte Porträts, die auf den Spielverlauf
+  reagieren.
 - **Run:** Drei Akte mit je drei Tischen (Gegner, Elite, Boss), dazwischen
-  Manfreds Laden mit Karten, 18 Trinkets, Verbrennen, Streichholz und neuer
-  Auslage. Drei Streichhölzer sind die Leben. Nach dem dritten Boss geht es
+  Manfreds Laden mit einem Regal für normale Karten, einem für (seltene,
+  teure) Spezialkarten, Trinkets, dem Privileg des Akts, Verbrennen,
+  Streichholz und neuer Auslage. Drei Streichhölzer sind die Leben. Nach dem dritten Boss geht es
   optional endlos in der Nachglut weiter.
 - **Deck:** Zu Duellbeginn zieht man 7 Karten aus dem eigenen Deck; der Rest
   wandert in den gemeinsamen Nachziehstapel.
 - **Sperrstunde:** Nach 50 Zügen gewinnt, wer weniger Karten hält.
+- **Meta-Progression:** Jeder Run bringt Asche (1 je Tisch, 2 je Elite, 5 je
+  Boss, 8 für den Sieg). Im Hinterzimmer (Hauptmenü) schaltet man damit
+  Schachteln, Trinkets und Spezialkarten frei und kauft vier kleine Upgrades.
+  Anfangs gibt es eine Schachtel, 11 Trinkets und 6 Spezialkarten. Jeder Sieg
+  auf dem höchsten freien Einsatz schaltet den nächsten von fünf
+  Schwierigkeitsstufen frei; jede bringt 25 % mehr Asche. Die Kartei zeigt
+  alle besiegten Gegner.
 - **Konto (freiwillig):** Anmeldung oben rechts im Hauptmenü. Ein Konto sichert
-  Runs, Siege und Bestwert auf dem Server. Geworben wird dafür nur am Ende
+  Runs, Siege, Bestwert und den Meta-Fortschritt auf dem Server. Geworben wird dafür nur am Ende
   eines Runs.
 
 Tasten: `1`–`9` spielt Handkarten, `Leertaste` zieht, `Enter` legt die Auswahl
@@ -56,6 +79,7 @@ Tasten: `1`–`9` spielt Handkarten, `Leertaste` zieht, `Enter` legt die Auswahl
 | `js/data.js` | Karten, Trinkets, Gegner, Startschachteln (reine Daten) |
 | `js/engine.js` | Duell-Regeln und Gegner-KI; jede Aktion liefert eine Ereignisliste |
 | `js/run.js` | Akte, Auszahlung, Belohnungen, Laden, Speichern |
+| `js/meta.js` | Meta-Progression: Asche, Freischaltungen, Upgrades, Einsätze |
 | `js/duelview.js` | spielt die Ereignisse als Animationen ab, nimmt Eingaben an |
 | `js/cards.js` | Kartenflächen und gefederte Karten-Sprites |
 | `js/fx.js` | Bühne, Partikel, Popups, Bildschirmwackeln, Tooltips |
@@ -63,7 +87,7 @@ Tasten: `1`–`9` spielt Handkarten, `Leertaste` zieht, `Enter` legt die Auswahl
 | `js/audio.js` | synthetische Effekte (WebAudio) und Musik |
 | `js/screens.js`, `js/main.js` | Menü, Tischwahl, Laden, Dialoge, Ablaufsteuerung |
 | `js/account.js` | Anbindung an die Konto-API des Servers |
-| `js/legal.js` | Impressum, Datenschutz, Lizenzen (Betreiberangaben dort eintragen) |
+| `js/legal.js` | Impressum, Datenschutz, Lizenzen samt Betreiberangaben |
 
 Regeln und Darstellung sind getrennt: `engine.js` und `run.js` laufen ohne DOM
 und werden per Simulation getestet.
@@ -71,8 +95,7 @@ und werden per Simulation getestet.
 ## Rechtliches
 
 Impressum, Datenschutz und Lizenzen sind im Spiel unter *Einstellungen →
-Rechtliches* erreichbar. Die Betreiberangaben stehen als Platzhalter in
-`js/legal.js` und müssen vor der Veröffentlichung ausgefüllt werden. Die
+Rechtliches* erreichbar. Die Betreiberangaben stehen in `js/legal.js`. Die
 Datenschutzerklärung beschreibt, was die Software technisch tut, und ist ein
 Entwurf – bitte rechtlich prüfen lassen.
 
@@ -88,6 +111,13 @@ Ausgabe zeigt außerdem die Siegquoten je Gegner als grobe Balance-Übersicht.
 
 Die Tests des Servers laufen mit `node server/test.js`.
 
+```bash
+node web/tests/balance.js 1500
+```
+
+Misst jedes Trinket und Privileg einzeln (Siegquote und Auszahlung mit und ohne)
+sowie einige Synergie-Sets. Danach sind Seltenheit und Preise eingestellt.
+
 ## Assets
 
 Herkunft und Aufbereitung stehen in [`assets/ASSETS.md`](assets/ASSETS.md).
@@ -99,6 +129,24 @@ Die Werkzeuge liegen unter `tools/`:
 - `make_font.py` – erzeugt den Pixel-Font aus Bitmap-Definitionen (braucht
   `fontTools`).
 
-Die Musik liegt als 24-kHz-Mono-WAV vor (zusammen rund 26 MB). Für eine
-Veröffentlichung im Netz lohnt sich die Umwandlung nach OGG oder MP3; in
-`js/audio.js` muss dann nur die Dateiendung angepasst werden.
+- `stamp_version.py` – setzt die Build-Kennung (siehe unten).
+
+Die Musik liegt als MP3 vor (zusammen rund 7,5 MB); zum Kodieren braucht
+`prepare_assets.py --audio` das Python-Paket `lameenc`.
+
+## Ladezeiten und Deployment
+
+- Alle Bilder werden nach dem Start im Hintergrund vorgeladen, die Gegner des
+  laufenden Runs zuerst. Zusammen sind das rund 1,2 MB.
+- Jede Adresse von Skripten, Stylesheet, Bildern und Musik trägt eine
+  Build-Kennung (`?v=…`). Dadurch dürfen Browser und CDN die Dateien lange
+  zwischenspeichern und holen nach einem Update trotzdem sofort die neuen.
+- **Vor jedem Deployment** die Kennung neu setzen:
+
+  ```bash
+  python web/tools/stamp_version.py
+  ```
+
+  Sie ist ein Hash über alle ausgelieferten Dateien und ändert sich nur, wenn
+  sich etwas geändert hat. Die sichtbare Versionsnummer (`ZU.VERSION`) bleibt
+  davon unberührt.
