@@ -497,7 +497,7 @@
 
   ZU.Profile = {
     defaults: function () {
-      return { runs: 0, wins: 0, best: 0, bestAct: 0, seenHelp: false, meta: {}, settings: { music: 0.5, sfx: 0.7, speed: 1, crt: true } };
+      return { runs: 0, wins: 0, best: 0, bestAct: 0, seenHelp: false, meta: {}, settings: { music: 0.5, sfx: 0.7, speed: 1, crt: true, fullscreen: 'ask' } };
     },
     load: function () {
       var base = ZU.Profile.defaults(), store = storage();

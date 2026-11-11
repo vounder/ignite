@@ -30,6 +30,7 @@
       });
       ZU.preload([ZU.asset('title/backroom.png')], true);
       this.go('menu');
+      ZU.app.init(this);
       // Erst die Gegner eines gespeicherten Runs, dann nach und nach alles Übrige.
       var saved = ZU.Run.load();
       if (saved) ZU.preloadEnemies(saved.s.encounters.map(function (e) { return e.enemy; }), true);

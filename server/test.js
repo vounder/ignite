@@ -82,6 +82,16 @@ async function waitFor(check, ms) {
   assert.match(r.data, /<title>Zündung<\/title>/);
   assert.match(r.headers.get('content-security-policy'), /default-src 'self'/);
   assert.strictEqual((await anon('GET', '/js/engine.js')).status, 200);
+  // Als App installierbar: Manifest, Symbole und App-Hülle werden ausgeliefert.
+  r = await anon('GET', '/manifest.webmanifest');
+  assert.strictEqual(r.status, 200);
+  assert.match(r.headers.get('content-type'), /^application\/manifest\+json/);
+  assert.strictEqual(r.data.display, 'fullscreen');
+  for (const icon of r.data.icons) assert.strictEqual((await anon('GET', '/' + icon.src)).status, 200, icon.src);
+  r = await anon('GET', '/sw.js');
+  assert.strictEqual(r.status, 200);
+  assert.match(r.headers.get('content-type'), /^text\/javascript/);
+  assert.strictEqual(r.headers.get('cache-control'), 'no-cache', 'die App-Hülle wird bei jedem Start geprüft');
   assert.strictEqual((await anon('GET', '/tools/prepare_assets.py')).status, 404, 'Werkzeuge sind nicht öffentlich');
   assert.strictEqual((await anon('GET', '/tests/sim.js')).status, 404);
   assert.strictEqual((await anon('GET', '/..%2fserver%2fserver.js')).status, 404, 'kein Ausbruch aus web/');

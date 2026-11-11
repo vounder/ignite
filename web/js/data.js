@@ -5,7 +5,7 @@
   ZU.VERSION = '1.0.0'; // im Hauptmenü unten rechts angezeigt
   /* Build-Kennung: wird an alle Asset-Adressen gehängt, damit Browser und CDN nach einem Update frische
      Dateien holen. Nicht von Hand ändern: web/tools/stamp_version.py setzt den Wert. */
-  ZU.BUILD = 'b1e9415ca2';
+  ZU.BUILD = 'f9a3bc2311';
   ZU.asset = function (path) { return 'assets/' + path + '?v=' + ZU.BUILD; };
 
   ZU.HAND_SIZE = 7;

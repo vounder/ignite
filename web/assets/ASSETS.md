@@ -13,7 +13,11 @@ Quelle ist jeweils `godot/game/Assets/`; aufbereitet mit
 | `logo.png` | `UI/logo.png` | zugeschnitten, 640 px breit |
 | `audio/*.mp3` | `Audio/*.wav` | als MP3 kodiert (112 kbit/s, Stereo) |
 
-Alle PNGs sind auf eine Farbpalette umgerechnet (`prepare_assets.py --optimize`);
+Die App-Symbole unter `icons/` (192 und 512 Pixel, je normal und „maskable“,
+dazu `apple-touch-icon.png`) setzt `web/tools/make_icons.py` aus `logo.png`
+auf einen Nussbaum-Hintergrund.
+
+Alle übrigen PNGs sind auf eine Farbpalette umgerechnet (`prepare_assets.py --optimize`);
 bei der Pixel-Art ist das ohne sichtbaren Verlust rund fünfmal kleiner.
 
 ## Neu generiert

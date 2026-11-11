@@ -91,9 +91,30 @@ Tasten: `1`–`9` spielt Handkarten, `Leertaste` zieht, `Enter` legt die Auswahl
 | `js/screens.js`, `js/main.js` | Menü, Tischwahl, Laden, Dialoge, Ablaufsteuerung |
 | `js/account.js` | Anbindung an die Konto-API des Servers |
 | `js/legal.js` | Impressum, Datenschutz, Lizenzen samt Betreiberangaben |
+| `js/app.js` | Installation als App und Vollbild-Abfrage auf Touch-Geräten |
+| `manifest.webmanifest`, `sw.js` | App-Manifest und App-Hülle (Service Worker, speichert nichts zwischen) |
 
 Regeln und Darstellung sind getrennt: `engine.js` und `run.js` laufen ohne DOM
 und werden per Simulation getestet.
+
+## Als App und im Vollbild
+
+Zündung lässt sich als App installieren (`manifest.webmanifest`): Sie startet
+dann ohne Browserleisten im Vollbild und im Querformat.
+
+- **Handy und Tablet:** Beim Start fragt das Spiel einmal je Besuch, ob es im
+  Vollbild laufen soll, und bietet dabei die Installation als App an („Als App
+  installieren", „Vollbild", „Nicht jetzt", „Nie fragen"). Auf dem iPhone gibt
+  es kein Vollbild im Browser und keine Installation per Knopf; dort erklärt
+  der Hinweis den Weg über „Teilen → Zum Home-Bildschirm".
+- **Einstellungen:** „Vollbild" schaltet um, „Beim Start" legt auf Touch-Geräten
+  fest, ob gefragt wird (Fragen, Immer, Nie), und „Als App" installiert das
+  Spiel, sobald der Browser das anbietet – auch am Rechner.
+- Die App-Hülle `sw.js` speichert nichts zwischen: Jeder Start lädt den
+  aktuellen Stand, ohne Netz erscheint nur ein kurzer Hinweis. Ohne Server
+  (Datei per Doppelklick) gibt es keine Installation.
+
+Die App-Symbole erzeugt `python web/tools/make_icons.py` aus `assets/logo.png`.
 
 ## Rechtliches
 
@@ -136,6 +157,8 @@ Die Werkzeuge liegen unter `tools/`:
   gotisch), die Hoffiguren aus `tools/cardart/` und die Rahmen der
   Spezialkarten je Bindung.
 
+- `make_icons.py` – erzeugt die App-Symbole `assets/icons/` aus dem Logo
+  (braucht Pillow).
 - `stamp_version.py` – setzt die Build-Kennung (siehe unten).
 
 Die Musik liegt als MP3 vor (zusammen rund 7,5 MB); zum Kodieren braucht

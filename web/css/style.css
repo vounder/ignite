@@ -658,3 +658,14 @@ h1, h2, h3 { margin: 0; font-family: var(--px-wide); font-weight: normal; letter
 .service.heal .svc-ico { margin: 0 8px; }
 
 .trinket-shelf .offer-name { white-space: normal; font-size: 11px; line-height: 1.2; min-height: 27px; }
+
+/* ---------- Vollbild- und App-Abfrage (Touch-Geräte): über dem ganzen Fenster, nicht auf der skalierten Bühne ---------- */
+.appask { position: fixed; inset: 0; z-index: 90; display: flex; align-items: center; justify-content: center; background: rgba(8,4,3,.8); animation: fade-in .18s;
+  padding: max(8px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); }
+.appask-card { width: 560px; max-width: 100%; max-height: 100%; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding: 18px 20px 20px; border-radius: 18px; text-align: center;
+  background: linear-gradient(180deg, var(--walnut-2), var(--walnut)); border: 3px solid var(--brass); box-shadow: inset 0 0 0 2px rgba(0,0,0,.5), 0 10px 0 rgba(0,0,0,.5); animation: modal-in .3s cubic-bezier(.3,1.5,.5,1); }
+.appask-card h2 { font-size: 22px; color: var(--ember-hot); text-shadow: 0 3px 0 rgba(0,0,0,.6); }
+.appask-card p { font-size: 15px; line-height: 1.4; color: var(--ivory-dim); }
+.appask-card p.appask-app { color: var(--ivory); }
+.appask-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px 12px; margin-top: 6px; padding-bottom: 8px; }
+.appask-actions .btn { min-height: 44px; }
