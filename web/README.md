@@ -87,7 +87,7 @@ Tasten: `1`–`9` spielt Handkarten, `Leertaste` zieht, `Enter` legt die Auswahl
 | `js/audio.js` | synthetische Effekte (WebAudio) und Musik |
 | `js/screens.js`, `js/main.js` | Menü, Tischwahl, Laden, Dialoge, Ablaufsteuerung |
 | `js/account.js` | Anbindung an die Konto-API des Servers |
-| `js/legal.js` | Impressum, Datenschutz, Lizenzen (Betreiberangaben dort eintragen) |
+| `js/legal.js` | Impressum, Datenschutz, Lizenzen samt Betreiberangaben |
 
 Regeln und Darstellung sind getrennt: `engine.js` und `run.js` laufen ohne DOM
 und werden per Simulation getestet.
@@ -95,8 +95,7 @@ und werden per Simulation getestet.
 ## Rechtliches
 
 Impressum, Datenschutz und Lizenzen sind im Spiel unter *Einstellungen →
-Rechtliches* erreichbar. Die Betreiberangaben stehen als Platzhalter in
-`js/legal.js` und müssen vor der Veröffentlichung ausgefüllt werden. Die
+Rechtliches* erreichbar. Die Betreiberangaben stehen in `js/legal.js`. Die
 Datenschutzerklärung beschreibt, was die Software technisch tut, und ist ein
 Entwurf – bitte rechtlich prüfen lassen.
 

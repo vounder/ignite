@@ -1,19 +1,21 @@
 /* Zündung – Rechtstexte (Impressum, Datenschutz, Lizenzen).
-   WICHTIG: Die Angaben unter OPERATOR müssen vor der Veröffentlichung ausgefüllt werden.
+   Die Betreiberangaben stehen unter OPERATOR und entsprechen dem Impressum von prüfungslerner.de.
    Die Datenschutzerklärung beschreibt, was diese Software technisch tut; sie ist ein Entwurf
    und ersetzt keine rechtliche Prüfung. */
 (function (ZU) {
   'use strict';
 
   var OPERATOR = {
-    name: '[Vor- und Nachname]',
-    street: '[Straße und Hausnummer]',
-    city: '[PLZ und Ort]',
-    email: '[E-Mail-Adresse]'
+    company: 'Jauns Websites',
+    name: 'Finn Jauns',
+    street: 'Kilianistraße 46',
+    city: '12459 Berlin',
+    country: 'Deutschland',
+    email: 'finn@jauns-websites.de'
   };
 
   function address() {
-    return OPERATOR.name + '<br>' + OPERATOR.street + '<br>' + OPERATOR.city;
+    return [OPERATOR.company, OPERATOR.name, OPERATOR.street, OPERATOR.city, OPERATOR.country].join('<br>');
   }
 
   ZU.LEGAL = {
