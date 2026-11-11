@@ -4,7 +4,7 @@
 
   var ctx = null, master = null, noiseBuf = null;
   var sfxVolume = 0.7, musicVolume = 0.5;
-  var tracks = {}, current = null, wanted = null, unlocked = false;
+  var tracks = {}, current = null, wanted = null, unlocked = false, hidden = false;
   var SCALE = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24, 26, 28]; // Pentatonik: jede Kettenstufe klingt höher
 
   function ensure() {
@@ -25,7 +25,7 @@
   }
 
   function tone(freq, dur, type, vol, when, slideTo) {
-    if (!ensure()) return;
+    if (hidden || !ensure()) return; // im Hintergrund nichts ansammeln, das beim Zurückkommen auf einmal losginge
     var t = ctx.currentTime + (when || 0);
     var osc = ctx.createOscillator(), gain = ctx.createGain();
     osc.type = type || 'triangle';
@@ -41,7 +41,7 @@
   }
 
   function noise(dur, freq, q, vol, when, slideTo, type) {
-    if (!ensure()) return;
+    if (hidden || !ensure()) return;
     var t = ctx.currentTime + (when || 0);
     var src = ctx.createBufferSource(), filter = ctx.createBiquadFilter(), gain = ctx.createGain();
     src.buffer = noiseBuf;
@@ -67,7 +67,7 @@
       if (unlocked) return;
       unlocked = true;
       ensure();
-      if (ctx && ctx.state === 'suspended') ctx.resume();
+      if (ctx && ctx.state === 'suspended' && !hidden) ctx.resume();
       if (wanted) A.music(wanted);
     },
     setSfx: function (v) { sfxVolume = v; if (master) master.gain.value = v; },
@@ -138,11 +138,41 @@
         el.volume = 0;
         track = tracks[name] = { el: el, fade: 0, timer: null };
       }
-      var started = track.el.play();
-      if (started && started.catch) started.catch(function () { /* Datei fehlt oder Autoplay gesperrt: stumm weiter */ });
-      fade(track, 1);
+      if (hidden) return; // spielt los, sobald die Seite wieder zu sehen ist
+      start(track);
     }
   };
+
+  function start(track) {
+    var started = track.el.play();
+    if (started && started.catch) started.catch(function () { /* Datei fehlt oder Autoplay gesperrt: stumm weiter */ });
+    fade(track, 1);
+  }
+
+  /* Seite im Hintergrund (anderer Tab, App gewechselt, Bildschirm aus): Musik und Effekte halten an und
+     setzen beim Zurückkommen dort wieder ein. */
+  function setHidden(now) {
+    if (hidden === now) return;
+    hidden = now;
+    if (hidden) {
+      Object.keys(tracks).forEach(function (name) {
+        var track = tracks[name];
+        clearInterval(track.timer);
+        track.el.pause();
+        if (name !== current) { track.fade = 0; track.el.volume = 0; }
+      });
+      if (ctx && ctx.state === 'running') ctx.suspend();
+    } else {
+      if (ctx && unlocked && ctx.state === 'suspended') ctx.resume();
+      if (unlocked && current && tracks[current]) start(tracks[current]);
+    }
+  }
+  if (typeof document !== 'undefined') {
+    hidden = !!document.hidden;
+    document.addEventListener('visibilitychange', function () { setHidden(!!document.hidden); });
+    window.addEventListener('pagehide', function () { setHidden(true); });
+    window.addEventListener('pageshow', function () { setHidden(!!document.hidden); });
+  }
 
   function fade(track, to) {
     clearInterval(track.timer);

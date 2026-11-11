@@ -16,7 +16,12 @@
 
   var VERT = 'attribute vec2 p; void main(){ gl_Position = vec4(p, 0.0, 1.0); }';
   var FRAG = [
+    // Handy-Grafikchips rechnen "mediump" nur mit 16 Bit: Das Rauschen (hash) fiele dort auf 0 und der Rauch bliebe schwarz.
+    '#ifdef GL_FRAGMENT_PRECISION_HIGH',
+    'precision highp float;',
+    '#else',
     'precision mediump float;',
+    '#endif',
     'uniform vec2 uRes; uniform float uTime; uniform float uPix; uniform float uHeat;',
     'uniform vec3 uA; uniform vec3 uB; uniform vec3 uC;',
     'float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }',
@@ -49,7 +54,7 @@
     '}'
   ].join('\n');
 
-  var gl, canvas, uniforms = {}, cur = clone(PALETTES.menu), target = PALETTES.menu, flash = 0;
+  var gl, canvas, uniforms = {}, cur = clone(PALETTES.menu), target = PALETTES.menu, flash = 0, enabled = true, lost = false;
 
   function clone(p) { return { a: p.a.slice(), b: p.b.slice(), c: p.c.slice(), heat: p.heat }; }
 
@@ -70,6 +75,7 @@
   }
 
   function draw(dt, time) {
+    if (!gl || !enabled || lost) return;
     var k = 1 - Math.pow(0.02, dt);
     ['a', 'b', 'c'].forEach(function (key) {
       for (var i = 0; i < 3; i++) cur[key][i] += (target[key][i] - cur[key][i]) * k;
@@ -86,34 +92,54 @@
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   }
 
+  /* Baut Shader und Geometrie auf; läuft beim Start und erneut, wenn der Browser den Grafik-Kontext zurückgibt. */
+  function setup() {
+    var program = gl.createProgram();
+    gl.attachShader(program, compile(gl.VERTEX_SHADER, VERT));
+    gl.attachShader(program, compile(gl.FRAGMENT_SHADER, FRAG));
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
+    gl.useProgram(program);
+    var buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+    var loc = gl.getAttribLocation(program, 'p');
+    gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+    ['uRes', 'uTime', 'uPix', 'uHeat', 'uA', 'uB', 'uC'].forEach(function (name) {
+      uniforms[name] = gl.getUniformLocation(program, name);
+    });
+    resize();
+  }
+
+  function fallback() {
+    gl = null;
+    canvas.classList.add('fallback'); // CSS-Verlauf statt Shader
+  }
+
   ZU.bg = {
     init: function () {
       canvas = document.getElementById('bg');
       try {
         gl = canvas.getContext('webgl', { antialias: false, alpha: false }) || canvas.getContext('experimental-webgl');
         if (!gl) throw new Error('kein WebGL');
-        var program = gl.createProgram();
-        gl.attachShader(program, compile(gl.VERTEX_SHADER, VERT));
-        gl.attachShader(program, compile(gl.FRAGMENT_SHADER, FRAG));
-        gl.linkProgram(program);
-        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
-        gl.useProgram(program);
-        var buffer = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
-        var loc = gl.getAttribLocation(program, 'p');
-        gl.enableVertexAttribArray(loc);
-        gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
-        ['uRes', 'uTime', 'uPix', 'uHeat', 'uA', 'uB', 'uC'].forEach(function (name) {
-          uniforms[name] = gl.getUniformLocation(program, name);
-        });
+        setup();
         window.addEventListener('resize', resize);
-        resize();
+        // Handys nehmen einer Seite im Hintergrund gern den Grafik-Kontext weg; ohne Neuaufbau bliebe das Bild danach schwarz.
+        canvas.addEventListener('webglcontextlost', function (ev) { ev.preventDefault(); lost = true; });
+        canvas.addEventListener('webglcontextrestored', function () {
+          try { setup(); lost = false; } catch (e) { fallback(); }
+        });
         ZU.onFrame(draw);
       } catch (e) {
-        gl = null;
-        canvas.classList.add('fallback'); // CSS-Verlauf statt Shader
+        fallback();
       }
+    },
+    /* Einstellung „Hintergrund": aus = ruhiger Verlauf ohne Shader (schont auch den Akku). */
+    setEnabled: function (on) {
+      enabled = !!on;
+      document.body.classList.toggle('nobg', !enabled);
+      if (enabled) cur = clone(target);
     },
     set: function (name) {
       target = PALETTES[name] || PALETTES.menu;

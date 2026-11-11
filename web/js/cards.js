@@ -161,7 +161,7 @@
       container.appendChild(map[id]);
     });
     trinkets.forEach(function (id) {
-      var el = ZU.trinketEl(id, onTrinket ? function () { return 'Klicken: verkaufen'; } : null);
+      var el = ZU.trinketEl(id, onTrinket ? function () { return (ZU.app && ZU.app.isTouch() ? 'Antippen' : 'Klicken') + ': verkaufen'; } : null);
       if (onTrinket) {
         el.classList.add('clickable');
         el.addEventListener('click', function () { onTrinket(id); });

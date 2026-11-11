@@ -194,13 +194,70 @@
   };
 
   /* ---------- Tooltip ---------- */
-  var tipEl, tipOwner = null;
+  var tipEl, tipOwner = null, lastOwner = null;
+  /* Mit der Maus erscheint der Tooltip beim Überfahren. Mit dem Finger gibt es kein Überfahren:
+     - Antippen zeigt ihn bei allem, was selbst nichts auslöst (Trinkets, Anzeigen, nicht spielbare Karten).
+     - Gedrückt halten zeigt ihn bei allem anderen (Handkarten, Knöpfe, Angebote), ohne es auszulösen.
+     Er bleibt stehen, bis irgendwo wieder getippt wird. */
+  var HOLD_MS = 380, MOVE_PX = 12;
+  var touch = null, swallowClick = false, ready = false;
+  function touchEnd(show) {
+    if (!touch) return;
+    clearTimeout(touch.timer);
+    var t = touch;
+    touch = null;
+    // Ein zweiter Tipp auf dasselbe Element schließt den Tooltip nur.
+    if (show && !t.held && !t.moved && !t.action && !t.wasOpen && document.contains(t.el)) ZU.tip.show(t.el);
+  }
+  function initTouchTips() {
+    if (ready) return;
+    ready = true;
+    // Läuft vor dem Element selbst: Jeder neue Tipp räumt den stehenden Tooltip ab.
+    window.addEventListener('pointerdown', function (ev) {
+      swallowClick = false;
+      if (ev.pointerType !== 'mouse') { touchEnd(false); ZU.tip.hide(); }
+    }, true);
+    window.addEventListener('pointermove', function (ev) {
+      if (!touch || ev.pointerId !== touch.id) return;
+      if (Math.abs(ev.clientX - touch.x) > MOVE_PX || Math.abs(ev.clientY - touch.y) > MOVE_PX) { touch.moved = true; clearTimeout(touch.timer); }
+    }, true);
+    window.addEventListener('pointerup', function (ev) { if (touch && ev.pointerId === touch.id) touchEnd(true); }, true);
+    window.addEventListener('pointercancel', function (ev) { if (touch && ev.pointerId === touch.id) touchEnd(false); }, true);
+    // Nach dem Gedrückthalten folgt beim Loslassen noch ein Klick; der soll nichts mehr auslösen.
+    window.addEventListener('click', function (ev) {
+      if (!swallowClick) return;
+      swallowClick = false;
+      ev.stopPropagation();
+      ev.preventDefault();
+    }, true);
+    // Langes Drücken öffnet auf dem Handy sonst das Kontextmenü (Bild speichern, Text markieren).
+    window.addEventListener('contextmenu', function (ev) {
+      if (ev.pointerType && ev.pointerType !== 'mouse' && !(ev.target.closest && ev.target.closest('input, textarea, a'))) ev.preventDefault();
+    });
+  }
   ZU.tip = {
     bind: function (el, content) {
       el._tip = content;
-      el.addEventListener('pointerenter', function () { ZU.tip.show(el); });
-      el.addEventListener('pointerleave', function () { ZU.tip.hide(el); });
-      el.addEventListener('pointerdown', function () { ZU.tip.hide(el); });
+      initTouchTips();
+      el.addEventListener('pointerenter', function (ev) { if (ev.pointerType === 'mouse') ZU.tip.show(el); });
+      el.addEventListener('pointerleave', function (ev) { if (ev.pointerType === 'mouse') ZU.tip.hide(el); });
+      el.addEventListener('pointerdown', function (ev) {
+        if (ev.pointerType === 'mouse') { ZU.tip.hide(el); return; }
+        if (touch) return; // das innerste Element mit Tooltip gewinnt
+        var wasOpen = lastOwner === el;
+        lastOwner = null;
+        touch = {
+          el: el, id: ev.pointerId, x: ev.clientX, y: ev.clientY, held: false, moved: false, wasOpen: wasOpen,
+          // Löst der Tipp hier etwas aus? Alles Anklickbare trägt den Zeiger-Cursor (auch geerbt, etwa im Knopf).
+          action: getComputedStyle(ev.target).cursor === 'pointer',
+          timer: setTimeout(function () {
+            if (!touch || touch.el !== el || !document.contains(el)) return;
+            touch.held = true;
+            swallowClick = true;
+            ZU.tip.show(el);
+          }, HOLD_MS)
+        };
+      });
     },
     show: function (el) {
       var content = typeof el._tip === 'function' ? el._tip() : el._tip;
@@ -217,7 +274,8 @@
       tipEl.style.top = y + 'px';
     },
     hide: function (el) {
-      if (el && tipOwner !== el) return;
+      if (!tipEl || (el && tipOwner !== el)) return;
+      lastOwner = tipOwner;
       tipOwner = null;
       tipEl.classList.remove('on');
     },

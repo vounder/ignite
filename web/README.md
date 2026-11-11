@@ -116,6 +116,23 @@ dann ohne Browserleisten im Vollbild und im Querformat.
 
 Die App-Symbole erzeugt `python web/tools/make_icons.py` aus `assets/logo.png`.
 
+## Bedienung mit dem Finger
+
+- **Beschreibungen:** Mit der Maus erscheinen sie beim Überfahren. Auf Handy und
+  Tablet zeigt **Antippen** sie bei allem, was selbst nichts auslöst (Trinkets,
+  Anzeigen, nicht spielbare Karten); bei Handkarten, Knöpfen und Angeboten zeigt
+  **Gedrückthalten** sie, ohne etwas auszulösen. Der nächste Tipp schließt sie.
+  Was „etwas auslöst", erkennt `js/fx.js` am Zeiger-Cursor (`cursor: pointer`) –
+  neue anklickbare Elemente brauchen ihn also.
+- **Trinket-Leiste:** Passen die Trinkets nicht mehr in die Kopfleiste, lässt
+  sie sich seitlich schieben (Finger oder Mausrad).
+- **Hochformat:** Der Tisch ist quer angelegt; im Hochformat erscheint darunter
+  der Hinweis, das Handy zu drehen.
+- **Hintergrund:** Der bewegte Rauch (`js/bg.js`) lässt sich in den
+  Einstellungen ausschalten; dann steht ein ruhiger Verlauf.
+- **Musik:** Ist die Seite nicht zu sehen (anderer Tab, App gewechselt,
+  Bildschirm aus), halten Musik und Effekte an und setzen danach wieder ein.
+
 ## Rechtliches
 
 Impressum, Datenschutz und Lizenzen sind im Spiel unter *Einstellungen →
