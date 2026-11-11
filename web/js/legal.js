@@ -37,7 +37,8 @@
         '<p>Die Seite wird über Cloudflare (Cloudflare, Inc.) ausgeliefert. Dabei wird deine IP-Adresse technisch verarbeitet, um die Seite sicher und schnell bereitzustellen (Art. 6 Abs. 1 lit. f DSGVO). ' +
         'Der Spielserver selbst führt keine Zugriffsprotokolle. Zum Schutz vor Missbrauch hält er IP-Adressen höchstens eine Stunde im Arbeitsspeicher.</p>' +
         '<h3>Speicher im Browser</h3>' +
-        '<p>Spielstand, Statistik und Einstellungen liegen im lokalen Speicher deines Browsers und bleiben auf deinem Gerät. Es gibt keine Analyse, kein Tracking und keine Werbung.</p>' +
+        '<p>Spielstand, Statistik und Einstellungen liegen im lokalen Speicher deines Browsers und bleiben auf deinem Gerät. Es gibt keine Analyse, kein Tracking und keine Werbung. ' +
+        'Damit sich das Spiel als App installieren lässt, richtet dein Browser eine App-Hülle (Service Worker) ein; sie speichert keine Inhalte und keine Daten über dich.</p>' +
         '<h3>Konto (freiwillig)</h3>' +
         '<p>Wenn du ein Konto anlegst, speichern wir Name, E-Mail-Adresse, ein nicht umkehrbar verschlüsseltes Passwort, das Registrierungsdatum, deine Spielstatistik (Runs, Siege, Bestwert, höchster Akt) und deinen Spielfortschritt (Asche, Freischaltungen, Upgrades, Einsätze, besiegte Gegner). ' +
         'Das dient der Anmeldung und dem Sichern der Statistik (Art. 6 Abs. 1 lit. b DSGVO). Die E-Mail-Adresse wird ausschließlich zum Zurücksetzen des Passworts verwendet.</p>' +

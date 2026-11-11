@@ -134,7 +134,7 @@
   ZU.helpModal = helpModal;
 
   function settingsModal(game, inRun) {
-    var settings = game.profile.settings, entry;
+    var settings = game.profile.settings, app = ZU.app, entry;
     function slider(label, key, apply) {
       var input = h('input', null, null, { type: 'range', min: '0', max: '100', value: String(Math.round(settings[key] * 100)) });
       input.addEventListener('input', function () {
@@ -169,11 +169,37 @@
       slider('Effekte', 'sfx', function (v) { ZU.audio.setSfx(v); }),
       h('div', 'setrow', [h('span', null, 'Tempo'), speeds]),
       h('div', 'setrow', [h('span', null, 'Röhren-Filter'), crt]),
-      h('div', 'setrow', [h('span', null, 'Vollbild'), btn('Umschalten', 'small', function () {
-        if (document.fullscreenElement) document.exitFullscreen();
-        else if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(function () {});
-      })])
+      app.canFullscreen() ? h('div', 'setrow', [h('span', null, 'Vollbild'), btn('Umschalten', 'small', function () { app.toggleFullscreen(); })]) : null
     ];
+    // Auf Handy und Tablet: ob beim Start nach dem Vollbild gefragt wird (im Browser, nicht in der installierten App).
+    if (app.isTouch() && !app.isInstalled() && (app.canFullscreen() || app.isIOS())) {
+      var modes = app.canFullscreen() ? [['ask', 'Fragen'], ['always', 'Immer'], ['never', 'Nie']] : [['ask', 'An'], ['never', 'Aus']];
+      var starts = h('div', 'segmented');
+      modes.forEach(function (mode) {
+        var b = btn(mode[1], 'small' + (app.startMode(game) === mode[0] ? ' on' : ''), function () {
+          settings.fullscreen = mode[0];
+          game.saveProfile();
+          Array.prototype.forEach.call(starts.children, function (c) { c.classList.remove('on'); });
+          b.classList.add('on');
+        });
+        starts.appendChild(b);
+      });
+      rows.push(h('div', 'setrow', [h('span', null, app.canFullscreen() ? 'Beim Start' : 'App-Hinweis'), starts]));
+    }
+    if (app.canInstall()) {
+      var installRow = h('div', 'setrow', [h('span', null, 'Als App'), btn('Installieren', 'small', function () {
+        app.install().then(function () { installRow.remove(); });
+      })]);
+      rows.push(installRow);
+    } else if (app.isIOS() && !app.isInstalled()) {
+      rows.push(h('div', 'setrow', [h('span', null, 'Als App'), btn('So geht’s', 'small', function () {
+        var hint = ZU.modal.open([
+          h('h2', null, 'Als App spielen'),
+          h('p', 'modal-text', 'Zündung läuft auch als App auf dem Home-Bildschirm, ohne Browserleisten: ' + app.iosHint),
+          h('div', 'btnrow', [btn('Alles klar', 'ember', function () { ZU.modal.close(hint); })])
+        ], { cls: 'small' });
+      })]));
+    }
     var buttons = [btn(inRun ? 'Weiterspielen' : 'Schließen', 'ember', function () { ZU.modal.close(entry); })];
     if (inRun) {
       buttons.unshift(btn('Anleitung', 'felt', function () { helpModal(); }));
