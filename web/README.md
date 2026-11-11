@@ -155,4 +155,7 @@ Die Musik liegt als MP3 vor (zusammen rund 7,5 MB); zum Kodieren braucht
 
   Sie ist ein Hash über alle ausgelieferten Dateien und ändert sich nur, wenn
   sich etwas geändert hat. Die sichtbare Versionsnummer (`ZU.VERSION`) bleibt
-  davon unberührt.
+  davon unberührt. Hat das CDN unter einer Adresse eine Fehlerantwort
+  gespeichert, erzwingt ein Hochzählen von `EPOCH` im Skript neue Adressen.
+  Wichtig: Dateien mit einer neuen Kennung erst abfragen, wenn das Release
+  aktiv ist – sonst speichert das CDN die 404-Antwort.
