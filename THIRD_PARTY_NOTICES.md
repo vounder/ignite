@@ -24,6 +24,19 @@
 - NuGet-Testwerkzeuge (`xunit`, `xunit.runner.visualstudio`,
   `Microsoft.NET.Test.Sdk`) werden nur für Entwicklung und Tests verwendet.
 
+## Browser-Version unter `web/`
+
+- Keine Laufzeit-Abhängigkeiten: reines HTML, CSS und JavaScript.
+- Spezialkarten-Illustrationen, Manfred-Posen, Logo und Musik stammen aus den
+  oben genannten Projekt-Assets und wurden nur verkleinert bzw. heruntergerechnet.
+- Die Gegnerporträts unter `web/assets/enemies/` und die Trinket-Icons unter
+  `web/assets/trinkets/` wurden mit OpenAI Image Generation (über die Codex-CLI)
+  speziell für dieses Projekt erzeugt. Prompts und Nachbearbeitung sind in
+  `web/assets/ASSETS.md` dokumentiert.
+- Der Pixel-Font `web/assets/fonts/zuendung_pixel.ttf` ist eine Eigenentwicklung
+  und wird von `web/tools/make_font.py` erzeugt; `fontTools` (MIT) wird nur als
+  Entwicklungswerkzeug dafür benötigt.
+
 ## Bestehende Java-Assets
 
 - `src/de/drvbund/jauns/assets/kenney_playing-cards-pack/` stammt von Kenney

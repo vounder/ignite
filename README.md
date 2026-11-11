@@ -1,6 +1,9 @@
 # Zündung - Mau-Mau Roguelike Kartenspiel
 
-> **Neubau:** Der spielbare Godot-4.6-.NET-V2-Run liegt unter
+> **Browser-Version:** Der komplette Neubau für den Browser liegt unter
+> [`web/`](web/README.md) – `web/index.html` öffnen und losspielen.
+>
+> **Godot:** Der spielbare Godot-4.6-.NET-V2-Run liegt unter
 > [`godot/`](godot/README.md). Die Java-Version bleibt bis zur funktionalen
 > Parität unverändert als Regel- und Inhaltsreferenz erhalten.
 
