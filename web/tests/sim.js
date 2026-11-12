@@ -2,6 +2,7 @@
    prüft dabei Invarianten (Kartenerhaltung, keine Endlosschleifen, gültige Zustände).
    Aufruf: node web/tests/sim.js [Anzahl Runs] */
 require('../js/data.js');
+require('../js/lore.js');
 require('../js/engine.js');
 require('../js/run.js');
 require('../js/meta.js');
@@ -37,7 +38,7 @@ function playDuel(run, rnd) {
     if (++steps >= 600) {
       console.log('P', duel.hand.player.map(i => duel.cards[i].def).join(' '));
       console.log('O', duel.hand.opp.map(i => duel.cards[i].def).join(' '));
-      console.log('top', duel.cards[duel.top()].def, 'stock', duel.stock.length, 'pile', duel.pile.length, 'status', JSON.stringify(duel.status), 'trinkets', duel.trinkets.join(','), 'noProgress', duel.noProgress, 'active', duel.active);
+      console.log('top', duel.cards[duel.top()].def, 'stock', duel.stocks.player.length + '/' + duel.stocks.opp.length, 'pile', duel.pile.length, 'status', JSON.stringify(duel.status), 'trinkets', duel.trinkets.join(','), 'noProgress', duel.noProgress, 'active', duel.active);
       console.log(trace.slice(-24).join(' | '));
       assert.fail('Duell endet nicht: ' + duel.enemy.id);
     }
@@ -101,14 +102,31 @@ function shop(run, rnd) {
     });
     s.shop.specials.forEach((offer, i) => {
       assert.ok(ZU.CARDS[offer.def].special && offer.bind, 'Spezialkarte ohne Bindung im Laden');
-      if (!offer.sold && s.money >= run.offerPrice('specials', i) && rnd.next() < 0.7) run.buySpecial(i);
+      if (!offer.sold && s.money >= run.offerPrice('specials', i) && rnd.next() < 0.7) {
+        if (run.specialFree()) run.buySpecial(i);
+        else assert.throws(() => run.buySpecial(i), 'volles Deck nimmt keine Spezialkarte mehr');
+      }
     });
     s.shop.cards.forEach((offer, i) => {
       assert.ok(!ZU.CARDS[offer.def].special, 'Spezialkarte im Regal für normale Karten');
       if (!offer.sold && s.money >= run.cardPrice(i) && rnd.next() < 0.08) run.buyCard(i);
     });
     if (s.lives < ZU.MAX_LIVES && !s.shop.healed && s.money >= run.healPrice()) run.heal();
-    if (s.collection.length > 7 && s.money >= run.burnPrice() && rnd.next() < 0.5) {
+    // Esmes Nebenzimmer: Pakete prüfen und gelegentlich kaufen
+    s.shop.esme.packs.forEach((pack, i) => {
+      assert.ok(pack.price >= 2 && pack.items.length === { single: 1, double: 2, bag: 3 }[pack.kind]);
+      pack.items.forEach(item => { assert.ok(ZU.SEALS[item.seal]); if (item.flaw) assert.ok(ZU.FLAWS[item.flaw] && !ZU.SEALS[item.seal].not.includes(item.flaw), 'Makel hebt das Siegel auf'); });
+      if (pack.sold || s.money < pack.price || rnd.next() > 0.5) return;
+      const pool = run.sealable();
+      if (pool.length < pack.items.length) return;
+      const result = run.buyPack(i, pack.kind === 'bag' ? null : pool.slice(0, pack.items.length).map(c => c.id));
+      assert.strictEqual(result.length, pack.items.length);
+      result.forEach(r => { const c = s.collection.find(x => x.id === r.id); assert.ok(!ZU.CARDS[c.def].special && c.seal === r.seal); });
+      assert.throws(() => run.buyPack(i, pool.slice(0, pack.items.length).map(c => c.id)), 'verkauftes Paket');
+    });
+    if (s.shop.esme.packs.length) assert.ok(s.shop.esme.packs.some(p => p.kind !== 'bag' ? p.items.every(x => !x.flaw) || p.sold : false) || s.shop.esme.packs.every(p => p.kind === 'bag' || p.sold), 'ein makelloses Paket liegt aus');
+    if (rnd.next() < 0.15 && s.money >= run.esmeRerollPrice()) run.esmeReroll();
+    if (s.collection.length > 12 && s.money >= run.burnPrice() && rnd.next() < 0.5) {
       const plain = s.collection.filter(c => !ZU.CARDS[c.def].special);
       if (plain.length) run.burn(plain[0].id);
     }
@@ -132,11 +150,17 @@ for (let n = 0; n < RUNS; n++) {
   if (withMeta) {
     const meta = ZU.Meta.defaults();
     meta.maxStake = meta.stake = n % ZU.Meta.STAKES.length;
-    meta.upgrades = { startgeld: n % 4, stammkunde: n % 2, reserve: (n >> 1) % 2 };
+    meta.upgrades = { startgeld: n % 4, stammkunde: n % 2, reserve: (n >> 1) % 2, etui: n % 3, sparbuch: n % 2, schaufenster: (n >> 2) % 2, trinkgeld: n % 3, zuendelei: n % 2, handschlag: (n >> 1) % 2 };
     options = ZU.Meta.runOptions(ZU.Meta.clean(meta));
     assert.deepStrictEqual(options.trinkets, ZU.Meta.BASE.trinket.filter(id => ZU.TRINKETS[id]).sort((a, b) => ZU.TRINKET_IDS.indexOf(a) - ZU.TRINKET_IDS.indexOf(b)));
   }
+  // Jeder fünfte Run ohne Meta trägt eine wechselnde Auswahl der neuen Trinkets, damit alle Haken laufen.
   let run = ZU.Run.start(starter.id, 1000 + n * 7919, options);
+  if (!withMeta && n % 5 === 1) {
+    const extra = new ZU.Rng(n).shuffle(ZU.TRINKET_IDS.slice()).slice(0, 12);
+    extra.forEach(id => { if (!run.s.trinkets.includes(id)) run.s.trinkets.push(id); });
+  }
+  if (!withMeta && n % 7 === 2) run.s.meta = Object.assign({}, run.meta(), { rules: ZU.CASINOS[5].rules.slice(), acts: 4, specialSlots: 4 });
   if (withMeta) {
     assert.strictEqual(run.s.lives, run.maxLives());
     assert.strictEqual(run.s.money, starter.money + options.startgeld);
@@ -144,20 +168,29 @@ for (let n = 0; n < RUNS; n++) {
   const rnd = new ZU.Rng(42 + n);
   assert.ok(run.s.collection.length >= 7);
   let guard = 0;
-  while (run.s.phase !== 'defeat' && run.s.act <= 5) {
+  while (run.s.phase !== 'defeat' && run.s.act <= run.acts() + 2) {
     assert.ok(++guard < 200, 'Run endet nicht');
     assert.strictEqual(run.s.phase, 'select');
     const e = run.encounter();
     const duel = playDuel(run, rnd);
     const result = run.finishDuel(duel);
     note(e.enemy + ' (Akt ' + Math.min(run.s.act, 4) + ')', result.won);
+    assert.ok(run.specialCount() <= Math.max(run.specialSlots(), 2), 'mehr Spezialkarten als Plätze');
     if (!result.won) continue;
     assert.ok(result.total > 0);
     let phase = run.afterPayout();
     if (phase === 'victory') { victories++; phase = run.continueEndless(); }
     if (phase === 'reward') {
       const r = run.s.reward;
-      run.chooseReward(rnd.next() < 0.8 ? rnd.int(r.options.length) : null);
+      const pick = rnd.next() < 0.8 ? rnd.int(r.options.length) : null;
+      if (pick != null && r.type === 'card' && !run.specialFree()) {
+        assert.throws(() => run.chooseReward(pick), 'volles Deck: ohne Tausch keine neue Spezialkarte');
+        const count = run.specialCount();
+        run.chooseReward(pick, run.s.collection.find(c => ZU.CARDS[c.def].special).id);
+        assert.strictEqual(run.specialCount(), count, 'Tausch hält die Zahl der Spezialkarten');
+      } else {
+        run.chooseReward(pick);
+      }
     }
     assert.strictEqual(run.s.phase, 'shop');
     // Speichern/Laden muss den Zustand exakt erhalten
@@ -183,8 +216,23 @@ for (let n = 0; n < RUNS; n++) {
   assert.deepStrictEqual(meta, ZU.Meta.defaults());
   assert.strictEqual(ZU.Meta.isUnlocked(meta, 'starter', 'classic'), true);
   assert.strictEqual(ZU.Meta.isUnlocked(meta, 'starter', 'igniter'), false);
+  // Verborgenes lässt sich nicht kaufen; erst die Tat am Tisch bringt es ins Hinterzimmer.
+  assert.strictEqual(ZU.Meta.isFound(meta, 'starter', 'igniter'), false);
+  assert.strictEqual(ZU.Meta.unlock('starter', 'igniter').error, 'hidden');
+  assert.strictEqual(ZU.Meta.hint(meta, 'starter', 'igniter'), 'Spiele 10 Siebenen.');
+  assert.strictEqual(ZU.Meta.hint(meta, 'trinket', 'master-key'), null, 'manche Stücke haben keinen Hinweis');
+  assert.strictEqual(ZU.Meta.hint(meta, 'trinket', 'furnace'), null, 'manche Hinweise kommen erst nach einem Casino');
+  ZU.Meta.note({ sevens: 6, chain: 4 });
+  ZU.Meta.note({ sevens: 4, chain: 3 });
+  assert.strictEqual(ZU.Meta.feat(ZU.Meta.get(), 'sevens'), 10, 'Summen-Zählwerk addiert');
+  assert.strictEqual(ZU.Meta.feat(ZU.Meta.get(), 'chain'), 4, 'Bestwert-Zählwerk hält das Maximum');
+  assert.strictEqual(ZU.Meta.isFound(ZU.Meta.get(), 'starter', 'igniter'), true);
+  assert.deepStrictEqual(ZU.Meta.openOffers(ZU.Meta.get()), ['starter:igniter']);
   assert.strictEqual(ZU.Meta.unlock('starter', 'igniter').error, 'poor');
+  assert.strictEqual(ZU.Meta.upgrade('reserve').error, 'hidden');
   const run = ZU.Run.start('classic', 77, ZU.Meta.runOptions());
+  assert.strictEqual(run.specialSlots(), ZU.SPECIAL_SLOTS);
+  assert.strictEqual(run.acts(), 3);
   run.s.ash = 20;
   assert.strictEqual(ZU.Meta.award(run), 20);
   assert.strictEqual(ZU.Meta.award(run), 0, 'Asche wird nur einmal ausgezahlt');
@@ -198,16 +246,150 @@ for (let n = 0; n < RUNS; n++) {
   meta = ZU.Meta.get();
   assert.strictEqual(meta.ash, 26 - 8 - 6 - 10);
   assert.strictEqual(ZU.Meta.runOptions().startgeld, 4);
-  assert.strictEqual(ZU.Meta.setStake(3), 0, 'gesperrte Einsätze lassen sich nicht wählen');
+  assert.strictEqual(ZU.Meta.setStake(3), 0, 'verschlossene Casinos lassen sich nicht wählen');
   assert.strictEqual(ZU.Meta.noteVictory(run), 1);
   assert.strictEqual(ZU.Meta.setStake(1), 1);
   const staked = ZU.Run.start('classic', 78, ZU.Meta.runOptions());
   staked.s.ash = 8;
-  assert.strictEqual(ZU.Meta.ashFor(staked), 10, 'Einsatz 1 bringt 25 % mehr Asche');
-  assert.deepStrictEqual(ZU.Meta.clean({ ash: -5, stake: 9, maxStake: 99, unlocked: { 'trinket:gibtsnicht': true, 'special:tausch': true }, upgrades: { startgeld: 99, quatsch: 3 } }),
-    Object.assign(ZU.Meta.defaults(), { stake: 5, maxStake: 5, unlocked: { 'special:tausch': true }, upgrades: { startgeld: 3 } }));
+  assert.strictEqual(ZU.Meta.ashFor(staked), 12, 'das zweite Casino bringt 50 % mehr Asche');
+  assert.strictEqual(staked.acts(), 4);
+  assert.deepStrictEqual(staked.houseRules(), ZU.CASINOS[1].rules);
+  assert.strictEqual(ZU.Meta.hint(ZU.Meta.get(), 'trinket', 'furnace'), 'Sammle 1.500 Glut in einem Duell.', 'nach dem ersten Casino steht der Hinweis da');
+  assert.deepStrictEqual(ZU.Meta.clean({ ash: -5, stake: 9, maxStake: 99, unlocked: { 'trinket:gibtsnicht': true, 'special:tausch': true }, upgrades: { startgeld: 99, quatsch: 3 }, feats: { chain: 7, quatsch: 2 } }),
+    Object.assign(ZU.Meta.defaults(), { stake: 7, maxStake: 7, unlocked: { 'special:tausch': true }, upgrades: { startgeld: 3 }, feats: { chain: 7 } }));
+
+  // Asche fließt sofort nach jedem Sieg; die Nachglut bringt keine mehr.
+  ZU.Profile._memory = null;
+  let live = ZU.Run.start('classic', 4242, ZU.Meta.runOptions()), paid = 0, safety = 0;
+  const rnd2 = new ZU.Rng(5);
+  while (live.s.phase !== 'defeat' && !live.s.endless && ++safety < 80) {
+    const before = ZU.Meta.get().ash, kind = live.encounter().kind, last = live.s.act === live.acts() && kind === 'boss';
+    const result = live.finishDuel(Object.assign(playDuel(live, rnd2), { winner: 'player' }));
+    assert.strictEqual(result.ash, ZU.Meta.ASH[kind] + (last ? ZU.Meta.ASH.victory : 0), 'Asche direkt nach dem Sieg');
+    assert.strictEqual(ZU.Meta.get().ash, before + result.ash);
+    paid += result.ash;
+    let phase = live.afterPayout();
+    if (phase === 'victory') { assert.strictEqual(ZU.Meta.get().maxStake, 1, 'das nächste Casino ist offen'); phase = live.continueEndless(); }
+    if (phase === 'reward') live.chooseReward(null);
+    live.leaveShop();
+  }
+  assert.strictEqual(live.s.endless, true);
+  assert.strictEqual(paid, 3 * 8 + 8);
+  const after = ZU.Meta.get().ash;
+  const extra = live.finishDuel(Object.assign(playDuel(live, rnd2), { winner: 'player' }));
+  assert.strictEqual(extra.ash, 0, 'Nachglut: keine Asche mehr');
+  assert.strictEqual(ZU.Meta.get().ash, after);
+  assert.strictEqual(ZU.Meta.feat(ZU.Meta.get(), 'casino'), 1);
   ZU.Profile._memory = null;
 }
+
+// Startdeck: 16 normale Karten plus die Spezialkarten der Schachtel; jede Seite zieht vom eigenen Stapel.
+ZU.STARTERS.forEach(starter => {
+  const run = ZU.Run.start(starter.id, 900, ZU.Meta.runOptions(ZU.Meta.defaults()));
+  const specials = run.s.collection.filter(c => ZU.CARDS[c.def].special);
+  assert.strictEqual(run.s.collection.length - specials.length, ZU.DECK_SIZE, starter.id + ': 16 normale Karten');
+  assert.strictEqual(specials.length, starter.special ? 1 : starter.cards.filter(d => ZU.CARDS[d].special).length, starter.id + ': Spezialkarten');
+  const duel = run.newDuel();
+  duel.start();
+  const own = new Set(run.s.collection.map(c => c.id));
+  assert.strictEqual(duel.hand.player.length + duel.stocks.player.length, run.s.collection.length, 'das ganze Deck liegt auf Hand und eigenem Stapel');
+  assert.ok(duel.hand.player.concat(duel.stocks.player).every(id => own.has(id)), 'der Spieler hält nur eigene Karten');
+  assert.ok(duel.hand.opp.concat(duel.stocks.opp).every(id => !own.has(id)), 'der Gegner hat sein eigenes Blatt');
+});
+
+// Der Laden übernimmt Erweiterungen und Rabatte sofort.
+{
+  const run = ZU.Run.start('classic', 4711);
+  run._openShop();
+  run.s.money = 500;
+  const trinkets = run.s.shop.trinkets.length;
+  run.s.perkOffer = { id: 'showcase', price: 1, sold: false, act: run.s.act };
+  run.buyPerk();
+  assert.strictEqual(run.s.shop.trinkets.length, trinkets + 1, 'Vitrine füllt den neuen Platz gleich');
+  const specials = run.s.shop.specials.length;
+  run.s.perkOffer = { id: 'shelf', price: 1, sold: false, act: run.s.act };
+  run.buyPerk();
+  assert.strictEqual(run.s.shop.specials.length, specials + 1, 'Großes Regal legt gleich eine Karte aus');
+  const before = run.cardPrice(0);
+  run._gainTrinket('false-bottom');
+  assert.strictEqual(run.cardPrice(0), Math.max(1, before - 2), 'Doppelboden gilt schon in diesem Laden');
+  const price = run.trinketPrice(0);
+  run._gainTrinket('loyalty');
+  assert.strictEqual(run.trinketPrice(0), Math.max(1, price + ZU.TRINKET_SURCHARGE - 4), 'Stempelkarte gilt sofort');
+}
+
+// Upgrade „Flinke Finger": für 20 Asche beginnt jeder Run mit dem Privileg.
+{
+  const meta = ZU.Meta.defaults();
+  assert.deepStrictEqual(ZU.Meta.UPGRADES.flinkefinger.costs, [20]);
+  assert.strictEqual(ZU.Meta.isFound(meta, 'upgrade', 'flinkefinger'), true, 'von Anfang an zu kaufen');
+  meta.upgrades.flinkefinger = 1;
+  const run = ZU.Run.start('classic', 12, ZU.Meta.runOptions(ZU.Meta.clean(meta)));
+  assert.ok(run.has('nimble-fingers'));
+  run._openShop();
+  assert.notStrictEqual(run.s.perkOffer.id, 'nimble-fingers', 'das Privileg wird nicht noch einmal angeboten');
+  assert.strictEqual(ZU.Run.start('igniter', 12, ZU.Meta.runOptions(ZU.Meta.clean(meta))).s.perks.filter(id => id === 'nimble-fingers').length, 1);
+}
+
+// Akten: jede Figur hat genau drei Einträge, und die Schwellen steigen.
+Object.keys(ZU.ENEMIES).forEach(id => {
+  assert.ok(Array.isArray(ZU.LORE[id]) && ZU.LORE[id].length === 3 && ZU.LORE[id].every(text => typeof text === 'string' && text.length > 60), 'Akte fehlt oder ist zu kurz: ' + id);
+});
+assert.deepStrictEqual(Object.keys(ZU.LORE).sort(), Object.keys(ZU.ENEMIES).sort(), 'Akte ohne Figur');
+Object.values(ZU.LORE_STEPS).forEach(steps => assert.ok(steps.length === 3 && steps[0] === 1 && steps[0] < steps[1] && steps[1] < steps[2]));
+
+// Veredelungen wirken im Duell: Glutsiegel verdoppelt, Makel „Matt" zieht 4 ab, Anker liegt auf der Starthand.
+{
+  const run = ZU.Run.start('classic', 2024);
+  const plain = run.sealable();
+  plain[0].seal = 'glut'; plain[1].seal = 'anker'; plain[2].seal = 'zuend'; plain[2].flaw = 'matt'; plain[3].flaw = 'spaet'; plain[3].seal = 'gold';
+  for (let i = 0; i < 20; i++) {
+    const duel = run.newDuel();
+    duel.start();
+    assert.ok(duel.hand.player.includes(plain[1].id), 'Anker auf der Starthand');
+    assert.ok(!duel.hand.player.includes(plain[3].id), 'Nachzügler nicht auf der Starthand');
+  }
+  const duel = run.newDuel();
+  duel.start();
+  const before = duel.glut, chain = duel.chain, base = ZU.CARDS[plain[0].def].base;
+  duel.pile.push(duel._register(plain[0].def, 'house', false)); // passender Stapel
+  if (!duel.hand.player.includes(plain[0].id)) { duel.stocks.player.splice(duel.stocks.player.indexOf(plain[0].id), 1); duel.hand.player.push(plain[0].id); }
+  duel.phase = 'action'; duel.active = 'player'; duel.pending = null;
+  duel.play('player', [plain[0].id]);
+  assert.strictEqual(duel.glut - before, base * chain * 2, 'Glutsiegel verdoppelt');
+  // Esme: früh viele Makel, spät wenige
+  const early = ZU.Run.start('classic', 1); const late = ZU.Run.start('classic', 1); late.s.act = late.acts();
+  assert.ok(early.flawChance() > 0.6 && late.flawChance() < 0.3);
+}
+
+// Acht Casinos; alte Stände (sechs Häuser) wandern an den neuen Platz ihres Hauses.
+assert.strictEqual(ZU.CASINOS.length, 8);
+assert.deepStrictEqual(ZU.CASINOS.map(c => c.id), ['hahn', 'rialto', 'laterne', 'fortuna', 'block9', 'imperial', 'monopol', 'inferno']);
+assert.strictEqual(ZU.Meta.clean({ stake: 2, maxStake: 3 }).stake, 3, 'Dampfer Fortuna bleibt gewählt');
+assert.strictEqual(ZU.Meta.clean({ stake: 2, maxStake: 3 }).maxStake, 5, 'Grandhotel Imperial bleibt das höchste offene Haus');
+assert.strictEqual(ZU.Meta.clean({ stake: 2, maxStake: 3, cv: ZU.CASINO_VERSION }).maxStake, 3, 'neue Stände bleiben unverändert');
+for (let i = 1; i < ZU.CASINOS.length; i++) assert.ok(ZU.CASINOS[i].ash > ZU.CASINOS[i - 1].ash && ZU.CASINOS[i].acts >= ZU.CASINOS[i - 1].acts, 'Häuser werden härter und lohnender');
+
+// Die 7 lässt nur noch 1 Karte ziehen und niemanden aussetzen.
+assert.deepStrictEqual(ZU.CARDS['hearts-7'].effects, [{ type: 'draw', amount: 1, reflectable: true }]);
+
+// Jedes Casino nach dem ersten setzt seine eigenen Figuren: Tisch in Akt 1, Elite in Akt 2, Boss im letzten Akt.
+ZU.CASINOS.forEach((casino, index) => {
+  if (!index) { assert.strictEqual(casino.foes, undefined); return; }
+  ['battle', 'elite', 'boss'].forEach(kind => assert.strictEqual(ZU.ENEMIES[casino.foes[kind]].kind, kind));
+  const meta = ZU.Meta.defaults();
+  meta.maxStake = meta.stake = index;
+  const run = ZU.Run.start('classic', 31 + index, ZU.Meta.runOptions(ZU.Meta.clean(meta)));
+  assert.strictEqual(run.s.encounters[0].enemy, casino.foes.battle);
+  for (let act = 2; act <= casino.acts; act++) {
+    run.s.act = act;
+    run._encounters();
+    if (act === 2) assert.strictEqual(run.s.encounters[1].enemy, casino.foes.elite);
+    assert.strictEqual(run.s.encounters[2].enemy === casino.foes.boss, act === casino.acts, 'der Boss des Hauses wartet im letzten Akt');
+    run.s.encounters.forEach(e => assert.ok(!ZU.ENEMIES[e.enemy].casino || ZU.ENEMIES[e.enemy].casino === casino.id, 'fremde Hausfigur: ' + e.enemy));
+  }
+});
+assert.ok(ZU.BATTLE_POOL.concat(ZU.ELITE_POOL).every(id => !ZU.ENEMIES[id].casino));
 
 // Determinismus: gleicher Seed, gleiche Entscheidungen => gleicher Verlauf
 function fingerprint(seed) {

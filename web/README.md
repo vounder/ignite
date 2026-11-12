@@ -23,20 +23,22 @@ zugehörigen Elemente blenden sich selbst aus.
 
 - **Duell:** Mau-Mau gegen den Dealer. Gelegt wird auf gleiche Farbe oder
   gleichen Wert; wer zuerst keine Karten mehr hat, gewinnt. Ein Klick auf eine
-  passende Handkarte spielt sie sofort. Die 7 lässt den Gegner 2 Karten ziehen
-  und aussetzen.
+  passende Handkarte spielt sie sofort. Die 7 lässt den Gegner 1 Karte ziehen.
 - **Ziehen:** Wer nicht legen kann oder will, zieht eine Karte. Passt sie, darf
   sie sofort gelegt werden; sonst endet der Zug.
-- **Trinkets:** 35 Stück mit Synergie-Familien (Zieh-Druck und Flüche,
-  Aussetzen, Kette und Glut, Mehrfachwahl, Spezialkarten, Kasse). Es gibt keine
-  Obergrenze mehr; dafür kostet jedes weitere Trinket im Laden 3 Mark mehr.
-  Elf Trinkets sind von Anfang an im Spiel, der Rest wird im Hinterzimmer
-  freigeschaltet.
+- **Trinkets:** 83 Stück mit Synergie-Familien (Zieh-Druck und Flüche,
+  Aussetzen, Kette und Glut, Mehrfachwahl, Spezialkarten, Kasse, Schutz). Es
+  gibt keine Obergrenze; dafür kostet jedes weitere Trinket im Laden 3 Mark
+  mehr. Elf Trinkets sind von Anfang an im Spiel, der Rest wird im Hinterzimmer
+  entdeckt und gekauft.
 - **Privilegien:** Upgrades, die den ganzen Run gelten und keinen Trinket-Platz
   belegen. Manfred bietet je Akt genau eines an; die Neue Auslage ändert daran
   nichts. In Akt 1 ist es immer „Flinke Finger" – die Mehrfachwahl, mit der man
   mehrere Karten gleichen Werts in einem Zug legt (Schalter rechts am Tisch).
-- **Spezialkarten** (elf Stück, von Stillstand bis Zytokinese II) haben einen
+- **Spezialkarten** (22 Stück, von Stillstand bis Inferno) sind begrenzt: Ein
+  Deck fasst drei, das Upgrade „Kartenetui“ und das gleichnamige Trinket
+  erweitern das. Ist das Deck voll, ersetzt eine Boss-Karte eine alte, und der
+  Laden verkauft keine weitere. Sie haben einen
   Effekt und eine Bindung: an ein Symbol, an Rot oder Schwarz – oder gar nicht
   (Joker). Sie passen nur auf ihre Symbole und geben sie danach vor. Früh im
   Run tauchen fast nur symbolgebundene Karten auf, später farbgebundene, am
@@ -48,25 +50,66 @@ zugehörigen Elemente blenden sich selbst aus.
   der Stapel leer und muss jemand ziehen, gewinnt, wer weniger Karten hält.
 - **Glut:** Jede gespielte Karte bringt Kartenwert × Kette. Die Kette wächst
   mit jeder Karte und fällt beim Ziehen zurück. Glut zahlt beim Sieg Mark.
-- **Gegner:** 20 Charaktere – neun Tische, fünf Eliten und sechs Bosse (zwei je
-  Akt). Fast alle haben eine Eigenheit (z. B. „Ass im Ärmel" oder „Schwere
-  Hand"), dazu eigene Dialoge und animierte Porträts, die auf den Spielverlauf
-  reagieren.
-- **Run:** Drei Akte mit je drei Tischen (Gegner, Elite, Boss), dazwischen
+- **Gegner:** 46 Charaktere. 25 sitzen in jedem Haus – zwölf Tische, sieben
+  Eliten und sechs Bosse, vom Croupier bis zum Stadtrat und zum Pokerprofi.
+  Dazu bringt jedes Casino nach dem ersten drei eigene mit: einen Tisch
+  (eröffnet das Haus), eine Elite (zweiter Akt) und seinen Boss (letzter Akt).
+  Fast alle haben eine Eigenheit, dazu eigene Dialoge, eine Akte und animierte
+  Porträts, die auf den Spielverlauf reagieren.
+- **Casinos:** Acht Häuser, der Reihe nach zu öffnen (ein Sieg im bisher
+  schwersten öffnet das nächste): Zum Goldenen Hahn (3 Akte), Tanzpalast Rialto
+  (4), Rote Laterne (4), Dampfer Fortuna (4), Block 9 (5), Grandhotel Imperial
+  (5), Spielbank Monopol (5), Das Inferno (6). Das Milieu ist bewusst zeitlos:
+  Gangster der Dreißiger sitzen neben Rap-Crew und Streamer. Jedes Haus hat
+  eine feste Hausordnung, eine eigene Farbwelt, ein Bild und einen Asche-Faktor
+  von ×1 bis ×5 (`ZU.CASINOS` und `ZU.RULES` in `js/data.js`). Wird die Liste
+  umsortiert, rechnen `ZU.CASINO_VERSION` und `ZU.CASINO_REMAP` gespeicherte
+  Stände um.
+- **Run:** Je Akt drei Tische (Gegner, Elite, Boss), dazwischen
   Manfreds Laden mit einem Regal für normale Karten, einem für (seltene,
   teure) Spezialkarten, Trinkets, dem Privileg des Akts, Verbrennen,
-  Streichholz und neuer Auslage. Drei Streichhölzer sind die Leben. Nach dem dritten Boss geht es
-  optional endlos in der Nachglut weiter.
-- **Deck:** Zu Duellbeginn zieht man 7 Karten aus dem eigenen Deck; der Rest
-  wandert in den gemeinsamen Nachziehstapel.
+  Streichholz und neuer Auslage. Drei Streichhölzer sind die Leben. Nach dem
+  letzten Boss des Casinos geht es optional endlos in der Nachglut weiter –
+  dort gibt es keine Asche mehr.
+- **Deck:** Ein Run beginnt mit 16 zufälligen normalen Karten und den
+  Spezialkarten der Schachtel (bei „Klassisch“ und „Zündler“ eine zufällige
+  gewöhnliche). Zu Duellbeginn wird das Deck gemischt: 7 Karten kommen auf die
+  Hand, der Rest ist der eigene Nachziehstapel. Der Gegner spielt mit einem
+  eigenen Blatt (24 Karten des Hauses plus seine Spezialkarten) und zieht nur
+  von seinem Stapel. Ist ein Stapel leer, werden nur die eigenen abgelegten
+  Karten neu gemischt.
+- **Casino-Wahl:** Vor jedem Run wählt man das Haus. Alle sechs sind von Anfang
+  an zu sehen, betreten lässt sich nur, was der Reihe nach geöffnet wurde.
+- **Freigeschaltet:** Das Hauptmenü zeigt in einem Fenster, was seit dem
+  letzten Mal im Hinterzimmer aufgetaucht ist oder sich geöffnet hat; Einträge
+  lassen sich einzeln („Gesehen“) oder zusammen („Alle gesehen“) abhaken.
+- **Veredeln:** Im Nebenzimmer von Manfreds Laden sitzt die Wahrsagerin Esme.
+  Sie verkauft Pakete mit **Siegeln** für normale Karten (Glutsiegel, Zündkopf,
+  Goldrand, Widerhaken, Anker, Bumerang, Irrlicht): Einzelsiegel und Doppelpack
+  für Karten deiner Wahl, die Wundertüte für drei zufällige. Eine Karte trägt
+  höchstens ein Siegel; ein neues ersetzt das alte. Günstige Pakete tragen oft
+  einen kleinen **Makel** – früh im Casino häufig, gegen Ende selten. Der Preis
+  folgt dem Wert der Siegel (`ZU.SEALS`, `ZU.FLAWS`, `ZU.SEAL_PRICE` in
+  `js/data.js`); mindestens ein Paket ist makellos, und wer sich nichts leisten
+  kann, bekommt einmal gratis neu ausgelegt. Siegel werden wie alles andere im
+  Hinterzimmer entdeckt und gekauft; drei sind von Anfang an dabei.
+- **Laden:** Gekaufte Erweiterungen und Rabatte gelten sofort – die Vitrine
+  füllt ihren dritten Platz, das Große Regal legt eine Karte aus, der
+  Doppelboden zieht schon beim nächsten Kauf.
 - **Sperrstunde:** Nach 50 Zügen gewinnt, wer weniger Karten hält.
-- **Meta-Progression:** Jeder Run bringt Asche (1 je Tisch, 2 je Elite, 5 je
-  Boss, 8 für den Sieg). Im Hinterzimmer (Hauptmenü) schaltet man damit
-  Schachteln, Trinkets und Spezialkarten frei und kauft vier kleine Upgrades.
-  Anfangs gibt es eine Schachtel, 11 Trinkets und 6 Spezialkarten. Jeder Sieg
-  auf dem höchsten freien Einsatz schaltet den nächsten von fünf
-  Schwierigkeitsstufen frei; jede bringt 25 % mehr Asche. Die Kartei zeigt
-  alle besiegten Gegner.
+- **Meta-Progression:** Asche gibt es sofort nach jedem Sieg (1 je Tisch, 2 je
+  Elite, 5 je Boss, 8 für das ausgeräumte Casino, mal Asche-Faktor). Im
+  Hinterzimmer (Hauptmenü) kauft man damit Schachteln, Trinkets, Spezialkarten
+  und dreizehn Upgrades (darunter „Flinke Finger“ für 20 Asche: jeder Run beginnt mit dem Privileg). Anfangs gibt es eine Schachtel, 11 Trinkets und 6
+  Spezialkarten. Alles Weitere ist zunächst **verborgen** („?????“) und taucht
+  erst auf, wenn eine Bedingung am Tisch erfüllt ist – etwa „Spiele 10
+  Siebenen“ oder „Schlage Madame Rauch“. Manche Stücke zeigen diesen Hinweis
+  sofort, manche erst nach einer bestimmten Zahl ausgeräumter Casinos, manche
+  nie; dem Spieler wird das nicht verraten. Bedingungen, Hinweise und Zählwerke
+  stehen in `js/meta.js` (`REQ`, `FEATS`). Die Kartei zeigt alle besiegten
+  Gegner. Ein Klick öffnet ihre **Akte**: drei Einträge je Figur, die sich mit
+  der Zahl der Siege über sie öffnen (Tische 1/3/6, Elite 1/3/5, Bosse 1/2/4).
+  Die Geschichten greifen ineinander.
 - **Konto (freiwillig):** Anmeldung oben rechts im Hauptmenü. Ein Konto sichert
   Runs, Siege, Bestwert und den Meta-Fortschritt auf dem Server. Geworben wird dafür nur am Ende
   eines Runs.
@@ -79,6 +122,7 @@ Tasten: `1`–`9` spielt Handkarten, `Leertaste` zieht, `Enter` legt die Auswahl
 | Datei | Inhalt |
 |---|---|
 | `js/data.js` | Karten, Trinkets, Gegner, Startschachteln (reine Daten) |
+| `js/lore.js` | Akten: drei Texte je Figur, in der Kartei nach Zahl der Siege zu lesen |
 | `js/engine.js` | Duell-Regeln und Gegner-KI; jede Aktion liefert eine Ereignisliste |
 | `js/run.js` | Akte, Auszahlung, Belohnungen, Laden, Speichern |
 | `js/meta.js` | Meta-Progression: Asche, Freischaltungen, Upgrades, Einsätze |
@@ -91,6 +135,7 @@ Tasten: `1`–`9` spielt Handkarten, `Leertaste` zieht, `Enter` legt die Auswahl
 | `js/screens.js`, `js/main.js` | Menü, Tischwahl, Laden, Dialoge, Ablaufsteuerung |
 | `js/account.js` | Anbindung an die Konto-API des Servers |
 | `js/legal.js` | Impressum, Datenschutz, Lizenzen samt Betreiberangaben |
+| `js/boot.js` | Studio-Vorspann, Ladebildschirm und Übergangsschleier |
 | `js/app.js` | Installation als App und Vollbild-Abfrage auf Touch-Geräten |
 | `manifest.webmanifest`, `sw.js` | App-Manifest und App-Hülle (Service Worker, speichert nichts zwischen) |
 
@@ -208,6 +253,18 @@ Braucht Node, Playwright (mit Chromium) und ffmpeg. Danach
 `stamp_version.py` ausführen.
 
 ## Ladezeiten und Deployment
+
+- **Vorspann:** Beim ersten Aufruf je Besuch läuft „Vounder Studios“ (`js/boot.js`,
+  rund drei Sekunden, per Tipp überspringbar). In dieser Zeit lädt alles, was
+  der Titel zeigt. Reicht das nicht, folgt ein Ladebalken.
+- **Gestaffeltes Laden:** Danach holt das Spiel im Hintergrund alle übrigen
+  Bilder, vier zugleich. Jeder Bildschirm nennt in `game.needs()` die Bilder,
+  ohne die er halb leer wäre (Gegner des Akts, eigene Trinkets und
+  Spezialkarten, Laden, Esme). Fehlt beim Wechsel noch etwas, legt sich ein
+  Schleier darüber; nach 0,45 Sekunden wird daraus der Ladebildschirm mit
+  Balken. Nach 12 Sekunden geht es in jedem Fall weiter.
+- **Übergang:** Der Start eines Runs zeigt den Schleier immer kurz – das wirkt
+  als Übergang und verschafft langsamen Geräten Zeit.
 
 - Alle Bilder werden nach dem Start im Hintergrund vorgeladen, die Gegner des
   laufenden Runs zuerst. Zusammen sind das rund 1,2 MB.

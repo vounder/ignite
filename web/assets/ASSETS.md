@@ -25,13 +25,23 @@ Alle Bilder wurden am 11.11.2026 mit der Bildgenerierung von OpenAI über die
 Codex-CLI speziell für Zündung erzeugt, jeweils auf Chroma-Grün, und mit
 `web/tools/prepare_assets.py` freigestellt und verkleinert.
 
-### Gegner (`enemies/`, 20 Sprite-Streifen)
+### Gegner (`enemies/`, 46 Sprite-Streifen)
 
 Jeder Gegner entstand als Ausdrucks-Sheet mit 3×2 Feldern (neutral, Blinzeln,
 hämisch, wütend, geschockt, geschlagen). `prepare_assets.py --sheets` erkennt
 das Raster, legt die sechs Bilder deckungsgleich übereinander und speichert sie
 als Streifen von 6 × 192 Pixeln. Für die acht Figuren der ersten Fassung diente
 deren bisheriges Einzelporträt als Vorlage.
+
+Die 15 Hausfiguren der Casinos (12.11.2026: Mimi, Kapellmeister Bela, Der Impresario, Matrose Hein, Zahlmeister
+Pfennig, Kapitänin Fortuna, Page Anton, Concierge Laurent, Baronin von Hohenstein, Croupier Klara, Tresorwächter
+Brock, Direktor Monopol, Heizer Ruß, Die Sirene, Der Fürst) entstanden einzeln mit demselben Prompt; als Stilvorlage
+diente ein fertiger Streifen (`boss-consigliere.png` bzw. `boss-dolores.png`).
+
+Dritte Serie (12.11.2026, elf Figuren): Gigi, Olga und Samt-Eddie (Rote Laterne), Lil Zünd, Milan und Papa Platin
+(Block 9) sowie Stadtrat Kröger, Lucky Luis, Dr. Amsel, Kessler und Texas-Theo für alle Häuser; dazu die Hausbilder
+`casinos/laterne.png` und `casinos/block9.png` und die Kulisse `manfred/shop.png` für Manfreds Laden. Skripte und
+Prompts: `/data/ignite/art/wave3/` und `/data/ignite/art/manfred-shop/`.
 
 Gemeinsamer Prompt:
 
@@ -88,7 +98,7 @@ Posen in Reihenfolge: Ruhe, Blinzeln, Sprechen, Händereiben, verärgert mit
 verschränkten Armen, überrascht, Hut ziehen, Münze zeigen, brennendes
 Streichholz, Karten auffächern, Seitenblick, Zwinkern mit Daumen hoch.
 
-### Trinket-Icons (`trinkets/`, 35 Stück) und Privilegien (`perks/`, 8 Stück)
+### Trinket-Icons (`trinkets/`, 83 Stück) und Privilegien (`perks/`, 8 Stück)
 
 Einzelne Objekt-Icons im selben Stil, mit `prepare_assets.py --icons` auf 96×96
 freigestellt. Die erste Serie: Glückschip, Aschenbecher, Doppelboden,
@@ -101,10 +111,44 @@ Hexenbrett, Kartenhai, Paschkönig, Dietrich, Generalschlüssel, Schwarze Serie,
 Karoschliff, Nachbrenner, Glutofen, Goldzahn, Zinseszins, Kellerschlüssel,
 Kurze Lunte, Falschgeld, Stempelkarte.
 
+Esme (`esme/esme.png`, sechs Bilder zu 384 Pixel: ruhig, Blinzeln, gierig, genervt, überrascht, verträumt) und die
+Siegel (`seals/`, sieben Siegel und der Makel, 64×64) entstanden am 12.11.2026 auf dieselbe Weise; Skripte und
+Prompts liegen unter `/data/ignite/art/esme/`. `upgrades/tarot.png` ist das Irrlicht-Siegel, vergrößert.
+
+Upgrades (`upgrades/`, 13 Stück, 12.11.2026): je ein Symbol für die dauerhaften Upgrades im Hinterzimmer,
+erzeugt wie die Trinkets (Bögen auf Chroma-Grün, Skripte unter `/data/ignite/art/upgrades/`).
+
 Privilegien: Flinke Finger (behandschuhte Hand mit Kartenfächer), Großes Regal,
 Vitrine, Stammplatz, Schleifer, Glockenrecht, Aschekasten, Zündholzbrief.
 
-### Kulisse des Titelbildschirms (`title/backroom.png`)
+Die zweite große Serie (12.11.2026): 48 weitere Trinket-Icons und 11 Bilder für
+neue Spezialkarten (`special/`, 128×128). Erzeugt als Bögen auf Chroma-Grün
+(3×3 Objekte je Bogen für Trinkets, 2×2 für Spezialkarten; Referenz
+`trinkets/pocket-watch.png` bzw. `special/fluch.png`), in einzelne Objekte
+zerlegt und mit `cutout()` aus `prepare_assets.py` freigestellt. Prompt eines
+Bogens: „A square sprite sheet of game item icons: a strict grid of 3 columns x
+3 rows = 9 equal cells on one flat pure chroma-key green (#00FF00) background.
+Each cell holds ONE separate chunky object, centred in its cell, all at the
+same scale, with a wide empty green gap between neighbours …“, gefolgt von den
+neun Motiven und derselben Stilzeile wie oben.
+
+### Kulisse des Titelbildschirms (`title/`, seit 12.11.2026 in Ebenen)
+
+Die Kulisse besteht aus `room.png` (Raum ohne Menschen, 1280×720), `table.png`
+(nur der Tisch im Vordergrund, darüber durchsichtig) und sechs Figuren
+`cast-<id>.png` – den Herren und Damen der sechs Casinos (Hausherr, Impresario,
+Kapitänin Fortuna, Baronin von Hohenstein, Direktor Monopol, Der Fürst). Jede
+Figur ist ein Streifen aus drei Bildern zu 440×480 (ruhig, Blinzeln, Grinsen);
+Bild 2 und 3 sind Bild 1 mit ausgetauschtem Gesicht, damit nichts springt.
+Erzeugt mit der Codex CLI auf Chroma-Grün (Vorlage: das jeweilige Porträt aus
+`enemies/`), freigestellt und zusammengesetzt mit den Skripten unter
+`/data/ignite/art/title/work/`. `js/screens.js` (`titleScene`) legt die Ebenen
+übereinander und lässt die Figuren atmen, blinzeln und grinsen.
+
+Die Bilder der Häuser für die Casino-Wahl liegen unter `casinos/<id>.png`
+(480×270, ebenfalls 12.11.2026, Vorlage war die alte Titelkulisse).
+
+### Frühere Kulisse des Titelbildschirms (`title/backroom.png`, entfernt)
 
 Ein Bild im Format 16:9, mit der Codex CLI am 11.11.2026 generiert (Referenz:
 vier vorhandene Gegnerporträts): das verrauchte Hinterzimmer vom eigenen Platz

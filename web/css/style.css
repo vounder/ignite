@@ -31,10 +31,10 @@ p { margin: 0; }
 h1, h2, h3 { margin: 0; font-family: var(--px-wide); font-weight: normal; letter-spacing: 1px; }
 
 #bg { position: fixed; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; }
-#bg.fallback { background: radial-gradient(ellipse at 50% 80%, #6b2414, #1c0f0b 70%); }
+#bg.fallback { background: radial-gradient(ellipse at 50% 80%, var(--bg-mid, #6b2414), var(--bg-dark, #1c0f0b) 70%); }
 /* Einstellung „Hintergrund: Aus“: ruhiger Verlauf statt des bewegten Rauchs. */
 body.nobg #bg { display: none; }
-body.nobg { background: radial-gradient(ellipse at 50% 85%, #34170f, #0b0706 75%); }
+body.nobg { background: radial-gradient(ellipse at 50% 85%, var(--bg-mid, #34170f), var(--bg-dark, #0b0706) 75%); }
 #viewport { position: fixed; inset: 0; overflow: hidden; }
 #stage { position: absolute; left: 50%; top: 50%; width: 1280px; height: 720px; transform-origin: 50% 50%; }
 #screen, #overlay, #pops { position: absolute; inset: 0; }
@@ -327,7 +327,7 @@ body.nobg { background: radial-gradient(ellipse at 50% 85%, #34170f, #0b0706 75%
 .modal-text { text-align: center; color: var(--ivory-dim); line-height: 1.45; }
 .pickrow { display: flex; gap: 18px; justify-content: center; padding: 8px 0; }
 .pickitem { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 96px; text-align: center; font-size: 12px; }
-.deckgrid { display: flex; flex-wrap: wrap; gap: 14px 12px; justify-content: center; padding: 12px 6px 16px; overflow-y: auto; max-height: 420px; }
+.deckgrid { display: flex; flex-wrap: wrap; gap: 14px 12px; justify-content: center; padding: 12px 6px 16px; }
 .help { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 34px; font-size: 14px; line-height: 1.45; color: #e6dabd; }
 .help h3 { font-size: 15px; color: var(--ember); margin: 4px 0 6px; }
 .help p { margin-bottom: 8px; }
@@ -378,10 +378,21 @@ body.nobg { background: radial-gradient(ellipse at 50% 85%, #34170f, #0b0706 75%
 /* ---------- Titelbildschirm ---------- */
 .menu.title { --mx: 0; --my: 0; justify-content: flex-start; overflow: hidden; }
 /* Kulisse: läuft an den Rändern in den Rauch des Hintergrunds aus */
-.title-art { position: absolute; inset: -10px -16px; background-size: cover; background-position: center; image-rendering: pixelated; pointer-events: none;
+.title-art { position: absolute; inset: 0; pointer-events: none;
   -webkit-mask-image: radial-gradient(ellipse 66% 78% at 50% 50%, #000 62%, transparent 100%), linear-gradient(to bottom, transparent 0, #000 10%, #000 90%, transparent 100%); -webkit-mask-composite: source-in;
   mask-image: radial-gradient(ellipse 66% 78% at 50% 50%, #000 62%, transparent 100%), linear-gradient(to bottom, transparent 0, #000 10%, #000 90%, transparent 100%); mask-composite: intersect;
-  transform: translate(calc(var(--mx) * -9px), calc(var(--my) * -6px)); transition: transform .3s ease-out, filter 1.1s ease-out; }
+  transition: filter 1.1s ease-out; }
+/* Ebenen der Kulisse: Je näher, desto stärker verschieben sie sich gegen die Maus. */
+.ts-layer { position: absolute; inset: -10px -22px; background-size: cover; background-position: center; transition: transform .3s ease-out; }
+.ts-room { transform: translate(calc(var(--mx) * -6px), calc(var(--my) * -4px)); }
+.ts-cast { inset: 0; transform: translate(calc(var(--mx) * -12px), calc(var(--my) * -7px)); }
+.ts-table { transform: translate(calc(var(--mx) * -20px), calc(var(--my) * -10px)); }
+.ts-fig { position: absolute; }
+.ts-fig.flip { transform: scaleX(-1); }
+.ts-breath { position: absolute; inset: 0; transform-origin: 50% 100%; animation: ts-breath 4.6s ease-in-out infinite; animation-delay: var(--d); }
+.ts-img { position: absolute; inset: 0; background-size: 300% 100%; background-position: 0 0; background-repeat: no-repeat; }
+@keyframes ts-breath { 0%, 100% { transform: scaleY(1) translateY(0); } 50% { transform: scaleY(1.012) translateY(-1px); } }
+@media (prefers-reduced-motion: reduce) { .ts-breath { animation: none; } }
 .title.intro .title-art { filter: brightness(.22) saturate(.5); }
 /* Dunkel hinter dem Schriftzug: Das Feuer ist die Lichtquelle, nicht die Lampe */
 .title-shade { position: absolute; inset: 0; pointer-events: none;
@@ -695,3 +706,239 @@ body.nobg { background: radial-gradient(ellipse at 50% 85%, #34170f, #0b0706 75%
   #rotate i { width: 34px; height: 56px; border: 3px solid var(--brass); border-radius: 7px; box-shadow: inset 0 -7px 0 -3px var(--brass); animation: rotate-hint 2.6s ease-in-out infinite; }
 }
 @keyframes rotate-hint { 0%, 25% { transform: rotate(0); } 55%, 85% { transform: rotate(-90deg); } 100% { transform: rotate(0); } }
+
+/* ---------- Casinos, verborgene Stücke im Hinterzimmer, Asche ---------- */
+.casinochips { display: flex; gap: 8px; justify-content: center; align-items: center; margin-top: 6px; }
+.rulechip.house { background: #8f2419; color: #ffe1d6; cursor: default; }
+.stake-rules { min-width: 120px; display: flex; justify-content: center; }
+.stakerow .stake-mid { width: 520px; }
+.br-rules { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+.br-tile { position: relative; }
+.br-tile.hidden { border-color: #33271d; background: linear-gradient(180deg, #1d1410, #130c09); }
+.br-tile.hidden > .trinket, .br-tile.hidden > .br-box { filter: brightness(0) opacity(.5); border-color: #33271d; box-shadow: none; }
+.br-tile.hidden .tk-img { filter: brightness(0); }
+.br-tile.hidden > .cardstatic { filter: grayscale(1) brightness(.45); }
+.br-tile.hidden .br-name { color: #7d6f5c; letter-spacing: 2px; }
+.br-hint { font-size: 10.5px; line-height: 1.25; text-align: center; color: #9a8b74; min-height: 26px; display: flex; align-items: center; overflow-wrap: anywhere; }
+.br-row.hidden { filter: none; border-color: #33271d; background: linear-gradient(180deg, #1d1410, #130c09); }
+.br-row.hidden .br-rowname { color: #7d6f5c; letter-spacing: 2px; }
+.br-row.hidden p { color: #9a8b74; }
+.br-tile.fresh, .br-row.fresh { border-color: var(--ember); box-shadow: 0 0 14px rgba(255,140,40,.35), 0 4px 0 rgba(0,0,0,.4); }
+.newtag { position: absolute; right: -6px; top: -8px; z-index: 2; font-style: normal; font-family: var(--px); font-size: 11px; letter-spacing: 1px; padding: 3px 7px 2px; border-radius: 6px; background: var(--ember); color: #2a1202; transform: rotate(7deg); box-shadow: 0 2px 0 rgba(0,0,0,.45); }
+.newtag.inline { position: static; display: inline-block; margin-left: 10px; transform: none; vertical-align: 2px; }
+.newdot { position: absolute; right: -8px; top: -8px; min-width: 22px; height: 22px; padding: 4px 5px 0; border-radius: 11px; font-style: normal; font-family: var(--px); font-size: 12px; line-height: 14px; text-align: center; background: var(--ember); color: #2a1202; text-shadow: none; box-shadow: 0 2px 0 rgba(0,0,0,.5); }
+.payash { display: flex; align-items: center; justify-content: center; gap: 7px; font-family: var(--px); font-size: 14px; letter-spacing: 1px; color: var(--ivory-dim); }
+.payash b { font-family: var(--px-wide); font-weight: normal; font-size: 17px; color: var(--ivory); }
+.payash .ashico { width: 20px; height: 20px; }
+.paynote { text-align: center; font-size: 12px; color: var(--ivory-dim); }
+.endnote { font-size: 12.5px; color: var(--ivory-dim); opacity: .85; margin-top: -4px; }
+.offer-full { font-family: var(--px); font-size: 11px; letter-spacing: 1px; color: #ffd0c4; margin: -4px 0 -6px; }
+
+/* Nachziehstapel des Gegners: kleiner, kühler getönt, nicht anklickbar */
+.stockpile.opp { transform: scale(.74); transform-origin: 50% 50%; filter: hue-rotate(150deg) saturate(.8); z-index: 190; }
+.stockpile.opp .stocknum { bottom: -34px; font-size: 19px; filter: hue-rotate(-150deg); }
+
+/* ---------- Casino-Wahl: Karussell mit drei Häusern je Seite ---------- */
+.casinos h1 { margin-top: 26px; }
+.casino-stage { display: flex; align-items: center; gap: 12px; margin-top: 14px; }
+.casino-track { width: 1104px; display: flex; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior: contain; padding: 14px 0 16px; }
+.casino-track::-webkit-scrollbar { display: none; }
+.casino-page { flex: none; width: 1104px; display: flex; justify-content: center; gap: 18px; scroll-snap-align: start; }
+.casino-card { position: relative; flex: none; width: 352px; display: flex; flex-direction: column; align-items: center; gap: 7px; padding: 10px 12px 14px; border-radius: 14px; text-align: center;
+  background: linear-gradient(180deg, var(--walnut-2), var(--walnut)); border: 3px solid var(--brass-dark); box-shadow: inset 0 0 0 2px rgba(0,0,0,.45), 0 6px 0 rgba(0,0,0,.45); }
+.casino-card.last { border-color: var(--ember); box-shadow: 0 0 22px rgba(255,140,40,.35), 0 6px 0 rgba(0,0,0,.45); }
+.casino-card.locked { border-color: #3d2f22; background: linear-gradient(180deg, #241812, #170f0b); }
+.casino-card.locked .casino-name { color: #9a8b74; }
+.casino-card.locked p, .casino-card.locked .casino-facts { opacity: .6; }
+.casino-pic { position: relative; width: 100%; height: 182px; border-radius: 9px; background-color: #120b08; background-size: cover; background-position: center; image-rendering: pixelated;
+  box-shadow: inset 0 0 0 2px rgba(0,0,0,.6), inset 0 0 0 4px var(--brass-dark), inset 0 -40px 40px -20px rgba(0,0,0,.55); }
+.casino-card.locked .casino-pic { filter: grayscale(.85) brightness(.5); }
+.casino-lock { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+.casino-lock .lockico { width: 46px; height: 46px; filter: drop-shadow(0 3px 0 rgba(0,0,0,.6)); }
+.casino-no { position: absolute; left: 10px; top: 8px; min-width: 34px; padding: 4px 8px 2px; border-radius: 7px; font-family: var(--px-wide); font-size: 17px; color: #2a1a0a; background: #e2b23c; box-shadow: 0 3px 0 rgba(0,0,0,.5); }
+.casino-name { font-family: var(--px-wide); font-size: 20px; letter-spacing: 1px; color: var(--ember-hot); text-shadow: 0 3px 0 rgba(0,0,0,.6); margin-top: 4px; }
+.casino-sub { font-size: 13px; color: var(--ivory-dim); min-height: 34px; }
+.casino-facts { display: flex; flex-wrap: wrap; gap: 6px 8px; justify-content: center; align-items: center; }
+.casino-facts > span { font-family: var(--px); font-size: 12px; letter-spacing: 1px; padding: 4px 9px 3px; border-radius: 6px; background: rgba(0,0,0,.4); color: var(--ivory); }
+.casino-boss { font-size: 12.5px; color: var(--ivory-dim); min-height: 18px; }
+.casino-card .locked-note { height: 42px; font-size: 12px; }
+.casino-card > .btn { margin-top: 2px; }
+.btn.casino-prev, .btn.casino-next { width: 48px; height: 64px; font-size: 26px; flex: none; }
+.casino-dots { display: flex; gap: 10px; margin-top: 2px; }
+.casino-dot { width: 16px; height: 16px; padding: 0; border-radius: 50%; border: 2px solid var(--brass); background: rgba(0,0,0,.45); cursor: pointer; }
+.casino-dot.on { background: var(--ember); border-color: var(--ember-hot); }
+.starter .stakerow .stake-mid { width: auto; min-width: 420px; }
+.box-plain.small { font-size: 13px; }
+
+/* ---------- Fenster „Freigeschaltet" ---------- */
+.modal.unlocked { width: 700px; }
+.un-list { display: flex; flex-direction: column; gap: 8px; max-height: 420px; overflow-y: auto; padding: 4px 6px 4px 2px; }
+.un-row { display: flex; align-items: center; gap: 14px; padding: 9px 12px; border-radius: 12px; background: rgba(0,0,0,.32); border: 2px solid rgba(199,154,63,.35); }
+.un-visual { width: 60px; height: 60px; flex: none; display: flex; align-items: center; justify-content: center; }
+.un-visual .trinket { animation: none; }
+.un-visual .br-box { width: 44px; height: 44px; border-radius: 8px; border: 3px solid rgba(255,255,255,.35); }
+.un-badge { width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: var(--px-wide); font-size: 20px; color: #2a1a0a; background: radial-gradient(circle at 35% 30%, #fff1b8, #e2b23c 70%); box-shadow: 0 3px 0 #6b4a12; }
+.un-main { flex: 1; text-align: left; }
+.un-name { font-family: var(--px); font-size: 16px; letter-spacing: 1px; color: var(--ember-hot); }
+.un-kind { margin-left: 10px; font-size: 11px; color: var(--ivory-dim); letter-spacing: 1px; }
+.un-main p { font-size: 12.5px; line-height: 1.35; color: #e6dabd; }
+.un-main p.un-where { color: var(--ivory-dim); font-size: 11.5px; }
+.casino-facts { flex-wrap: nowrap; gap: 5px; }
+.casino-facts > span { font-size: 11px; padding: 4px 7px 3px; white-space: nowrap; }
+.casino-card { min-height: 420px; }
+.casino-card > .btn, .casino-card .locked-note { margin-top: auto; }
+
+/* ---------- Kartenvergleich bei Sperrstunde: Zähler über beiden Händen ---------- */
+.handcount { position: absolute; z-index: 400; min-width: 74px; margin-left: -37px; padding: 8px 12px 5px; border-radius: 14px; text-align: center; font-family: var(--px-wide); font-size: 40px; line-height: 1; color: var(--ivory);
+  background: rgba(10,6,4,.88); border: 3px solid var(--brass); box-shadow: 0 5px 0 rgba(0,0,0,.5); transition: background .2s, border-color .2s, color .2s; pointer-events: none; }
+.handcount.win { background: #1f6349; border-color: #8fe0a0; color: #eafff2; }
+.handcount.lose { background: #8f2419; border-color: #ffb09e; color: #ffe1d6; }
+.spr.counted .card { box-shadow: 0 0 0 4px var(--ember-hot), 0 0 16px 4px rgba(255,190,80,.7); }
+.spr.counted { filter: brightness(1.15); }
+/* Jedes Casino trägt seine Farbe: als Schimmer am Kartenfuß der Auswahl */
+.casino-card.open { background: linear-gradient(180deg, var(--walnut-2) 0, var(--walnut) 62%, color-mix(in srgb, var(--tint, #2b1a12) 55%, var(--walnut)) 100%); }
+
+/* ---------- Kartei: Akten der Figuren ---------- */
+.br-tile.file.known { cursor: pointer; transition: transform .1s; }
+@media (hover: hover) { .br-tile.file.known:hover { transform: translateY(-3px); border-color: var(--ember); } }
+.br-lore { font-family: var(--px); font-size: 10px; letter-spacing: 1px; color: #2a1a0a; background: #e2b23c; border-radius: 5px; padding: 2px 7px 1px; }
+.modal.dossier { width: 900px; }
+.lore-head { display: flex; gap: 20px; align-items: center; }
+.lore-head .portrait { flex: none; }
+.lore-who { text-align: left; }
+.modal .lore-who h2 { text-align: left; font-size: 28px; }
+.lore-role { font-family: var(--px); font-size: 13px; letter-spacing: 1px; color: var(--ivory-dim); margin-top: 3px; }
+.lore-passive { font-size: 13.5px; color: #e6dabd; margin-top: 8px; max-width: 560px; }
+.lore-count { display: inline-block; margin-top: 8px; font-family: var(--px); font-size: 12px; letter-spacing: 1px; padding: 3px 9px 2px; border-radius: 6px; background: rgba(0,0,0,.4); color: var(--good); }
+.lore-pages { display: flex; flex-direction: column; gap: 8px; }
+.lore-page { position: relative; display: flex; gap: 14px; align-items: flex-start; padding: 11px 14px 11px 12px; border-radius: 10px; background: linear-gradient(180deg, #f3e9d2, #e2d2aa); color: #2a1a0a; box-shadow: 0 3px 0 rgba(0,0,0,.45); }
+.lore-page p { flex: 1; font-size: 14px; line-height: 1.45; font-weight: 600; text-align: left; }
+.lore-no { flex: none; width: 34px; font-family: var(--px-wide); font-size: 17px; color: #8a3508; text-align: center; padding-top: 1px; }
+.lore-page.locked { background: linear-gradient(180deg, #2a1d15, #1c120c); color: #7d6f5c; box-shadow: none; border: 2px dashed #4a3a2a; }
+.lore-page.locked p { letter-spacing: 3px; font-family: var(--px); }
+.lore-page.locked .lore-no { color: #7d6f5c; }
+.lore-need { flex: none; font-family: var(--px); font-size: 11px; letter-spacing: 1px; color: #9a8b74; align-self: center; }
+
+/* Symbole der Upgrades im Hinterzimmer */
+.trinket.upgrade { animation: none; border-color: #c79a3f; background: radial-gradient(circle at 35% 30%, #4a3220, #1b110c 78%); }
+.br-row .trinket.upgrade { width: 58px; height: 58px; }
+.br-row.hidden .trinket.upgrade { border-color: #33271d; box-shadow: none; background: #130c09; }
+.br-row.hidden .trinket.upgrade .tk-img { filter: brightness(0) opacity(.5); }
+
+/* ---------- Rollleisten im Stil des Hauses: schmal, Messing auf dunklem Holz ---------- */
+#stage * { scrollbar-width: thin; scrollbar-color: var(--brass-dark) rgba(0,0,0,.35); }
+#stage ::-webkit-scrollbar { width: 12px; height: 12px; }
+#stage ::-webkit-scrollbar-track { background: rgba(0,0,0,.35); border-radius: 6px; box-shadow: inset 0 0 0 2px rgba(0,0,0,.4); }
+#stage ::-webkit-scrollbar-thumb { border-radius: 6px; border: 2px solid #1b110c; background: linear-gradient(90deg, #8a6524, #c79a3f 50%, #8a6524); }
+#stage ::-webkit-scrollbar-thumb:hover { background: linear-gradient(90deg, #a8782a, #ffd75e 50%, #a8782a); }
+#stage ::-webkit-scrollbar-corner { background: transparent; }
+.br-content { padding-right: 14px; }
+/* Oben und unten läuft der Inhalt des Hinterzimmers weich aus, statt hart abgeschnitten zu werden. */
+.br-content { -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14px, #000 calc(100% - 22px), transparent 100%); mask-image: linear-gradient(to bottom, transparent 0, #000 14px, #000 calc(100% - 22px), transparent 100%); }
+#stage .hud .trinkets, #stage .casino-track { scrollbar-width: none; }
+
+/* ---------- Veredelte Karten: Siegel unten links, Makel daneben ---------- */
+.card-seal { position: absolute; left: 3px; bottom: 3px; width: 30px; height: 30px; background-size: contain; background-repeat: no-repeat; image-rendering: pixelated; filter: drop-shadow(0 2px 0 rgba(0,0,0,.55)); z-index: 2; }
+.card-flaw { position: absolute; left: 31px; bottom: 4px; width: 18px; height: 18px; background-size: contain; background-repeat: no-repeat; image-rendering: pixelated; z-index: 2; }
+.card.sealed { box-shadow: inset 0 0 0 2px rgba(255,215,94,.55); }
+.cardstatic.picked .card.front { box-shadow: inset 0 0 0 4px #b78cff, inset 0 0 0 6px var(--ember-hot); }
+.cardstatic.picked { transform: translateY(-6px); }
+.trinket.seal { animation: none; border-radius: 50%; border-color: #b78cff; background: radial-gradient(circle at 35% 30%, #3a2a55, #150e1f 78%); cursor: help; }
+.trinket.seal .tk-img { inset: 5px; }
+.br-tile.hidden > .trinket.seal { filter: brightness(0) opacity(.5); }
+
+/* ---------- Esmes Nebenzimmer ---------- */
+.esme-door { position: absolute; left: 30px; top: 98px; z-index: 4; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 9px 16px 7px; border: 3px solid #b78cff; border-radius: 12px 12px 4px 4px; cursor: pointer;
+  background: linear-gradient(180deg, #4a2f6e, #2a1a40); color: #f3e9d2; font-family: var(--px); font-size: 15px; letter-spacing: 1px; box-shadow: 0 5px 0 #150e1f, 0 0 16px rgba(183,140,255,.35); }
+.esme-door small { font-family: var(--text); font-size: 11px; font-weight: 700; letter-spacing: 0; color: #d9c8ff; }
+@media (hover: hover) { .esme-door:hover { filter: brightness(1.15); transform: translateY(-1px); } }
+.shop .shopbubble { top: 150px; }
+.esme-fig { position: absolute; left: -24px; bottom: 34px; width: 350px; height: 350px; filter: drop-shadow(0 8px 0 rgba(0,0,0,.35)); }
+.esme-bob { position: absolute; inset: 0; animation: breathe 3.6s ease-in-out infinite; transform-origin: 50% 100%; }
+.esme-img { position: absolute; inset: 0; background-size: 600% 100%; background-position: 0 0; background-repeat: no-repeat; }
+.shop.esme .shopbubble { top: 96px; }
+.shop-sign.esme-sign { background: linear-gradient(180deg, #c9a8ff, #8a5fd0); color: #1c1030; }
+.esme-main { position: absolute; left: 340px; right: 26px; top: 96px; bottom: 96px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.esme-title { font-family: var(--px-wide); font-size: 26px; letter-spacing: 1px; color: #e9d8ff; text-shadow: 0 3px 0 rgba(0,0,0,.6); }
+.esme-sub { font-size: 13.5px; color: var(--ivory-dim); }
+.esme-packs { display: flex; gap: 14px; justify-content: center; align-items: stretch; margin-top: 6px; }
+.esme-pack { width: 276px; min-height: 330px; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 12px 12px 14px; border-radius: 14px; border: 3px solid #7d5fb5; background: linear-gradient(180deg, #2c1f44, #1a1228);
+  box-shadow: inset 0 0 0 2px rgba(0,0,0,.45), 0 6px 0 rgba(0,0,0,.45); animation: dropin .4s cubic-bezier(.3,1.5,.5,1) backwards; }
+.esme-packs.four .esme-pack { width: 222px; }
+.esme-pack.k-bag { border-color: #e2b23c; background: linear-gradient(180deg, #3d2c14, #20160a); }
+.esme-pack.sold { justify-content: center; opacity: .6; }
+.esme-kind { font-family: var(--px-wide); font-size: 18px; letter-spacing: 1px; color: var(--ember-hot); }
+.esme-kindtext { font-size: 12px; color: var(--ivory-dim); text-align: center; min-height: 30px; }
+.esme-items { display: flex; flex-direction: column; gap: 7px; width: 100%; flex: 1; }
+.esme-item { display: flex; gap: 9px; align-items: center; padding: 6px 8px; border-radius: 9px; background: rgba(0,0,0,.32); }
+.esme-item .trinket.seal { width: 44px; height: 44px; flex: none; }
+.esme-itemmain { text-align: left; }
+.esme-seal { font-family: var(--px); font-size: 13px; letter-spacing: .5px; color: #e9d8ff; }
+.esme-itemmain p { font-size: 11.5px; line-height: 1.3; color: #e6dabd; }
+.esme-itemmain p.esme-flaw { color: #ff9c8a; }
+.esme-itemmain p.esme-clean { color: var(--good); }
+.esme-mix { margin-top: 6px; }
+.esme-mix .btn { gap: 8px; }
+.esme-mix .ico.coin { width: 18px; height: 18px; }
+.esme-result { display: flex; gap: 26px; justify-content: center; padding: 10px 0 4px; }
+.esme-got { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.esme-gotname { font-family: var(--px); font-size: 13px; letter-spacing: .5px; color: #e9d8ff; }
+.shop-facebox { width: 76px; height: 76px; border-radius: 10px; overflow: hidden; border: 3px solid var(--brass-dark); background: #1b110c; }
+.shop-facebox.big { width: 150px; height: 150px; flex: none; }
+.shop-face { display: block; width: 100%; height: 100%; background-repeat: no-repeat; background-position: 0 0; image-rendering: pixelated; }
+.shop-face.f-manfred { background-size: 1200% 100%; }
+.shop-face.f-esme { background-size: 600% 100%; }
+.br-tile.closed .shop-face { filter: brightness(0) opacity(.5); }
+
+/* Esmes Zimmer: gemalte Kulisse, flackerndes Kerzenlicht, Pakete wie auf Samt gelegt */
+.esme-room { position: absolute; inset: 0; background-size: cover; background-position: center; pointer-events: none; border-radius: 0;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 88%, transparent 100%); mask-image: linear-gradient(to bottom, #000 0, #000 88%, transparent 100%); }
+.esme-glow { position: absolute; width: 360px; height: 360px; border-radius: 50%; background: radial-gradient(circle, rgba(255,190,110,.26), rgba(255,150,70,.08) 45%, transparent 70%); mix-blend-mode: screen; animation: esme-flicker 3.1s ease-in-out infinite; }
+.esme-glow.g1 { left: -60px; top: 330px; }
+.esme-glow.g2 { left: 300px; top: -120px; animation-duration: 4.3s; animation-delay: -1.2s; }
+.esme-glow.g3 { right: -90px; top: -60px; width: 420px; height: 420px; background: radial-gradient(circle, rgba(190,150,255,.2), rgba(150,110,255,.06) 45%, transparent 70%); animation-duration: 5.2s; animation-delay: -2.4s; }
+@keyframes esme-flicker { 0%, 100% { opacity: .75; transform: scale(1); } 22% { opacity: 1; transform: scale(1.04); } 41% { opacity: .62; } 63% { opacity: .95; transform: scale(1.02); } 80% { opacity: .7; } }
+@media (prefers-reduced-motion: reduce) { .esme-glow { animation: none; } }
+.shop.esme .hud, .shop.esme .shop-left, .shop.esme .esme-main, .shop.esme .shop-next { z-index: 2; }
+.esme-pack { background: linear-gradient(180deg, rgba(44,31,68,.93), rgba(22,15,36,.95)); backdrop-filter: blur(1px); }
+.esme-pack.k-bag { background: linear-gradient(180deg, rgba(61,44,20,.93), rgba(30,21,10,.95)); }
+.esme-packpic { display: block; width: 128px; height: 96px; margin-top: -4px; background-size: contain; background-repeat: no-repeat; background-position: center; image-rendering: pixelated; filter: drop-shadow(0 4px 0 rgba(0,0,0,.45)); animation: bob 3.8s ease-in-out infinite; }
+.esme-pack:nth-child(2) .esme-packpic { animation-delay: -1.3s; }
+.esme-pack:nth-child(3) .esme-packpic { animation-delay: -2.4s; }
+.esme-pack { min-height: 400px; }
+.esme-main { top: 88px; bottom: 84px; }
+.esme-title { text-shadow: 0 3px 0 rgba(0,0,0,.7), 0 0 18px rgba(183,140,255,.5); }
+
+/* Manfreds Laden: gemalte Kulisse mit warmem Lampenlicht, wie Esmes Zimmer */
+.shop-room { position: absolute; inset: 0; background-size: cover; background-position: center; pointer-events: none;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 88%, transparent 100%); mask-image: linear-gradient(to bottom, #000 0, #000 88%, transparent 100%); }
+.esme-glow.g4 { right: -60px; top: 380px; animation-duration: 3.7s; animation-delay: -0.8s; }
+.shop.manfreds .hud, .shop.manfreds .shop-left, .shop.manfreds .shop-main, .shop.manfreds .shop-next, .shop.manfreds .esme-door { z-index: 2; }
+.shop.manfreds .shelf { backdrop-filter: blur(1px); }
+
+/* ---------- Ladebildschirm und Übergangsschleier ---------- */
+.loadveil { position: absolute; inset: -40px; z-index: 300; display: flex; align-items: center; justify-content: center; background: #0b0706; opacity: 0; pointer-events: auto; transition: opacity .2s ease-out; }
+.loadveil.on { opacity: 1; }
+.loadveil.out { opacity: 0; pointer-events: none; transition: opacity .25s ease-in; }
+.load-box { display: flex; flex-direction: column; align-items: center; gap: 14px; opacity: 0; transition: opacity .25s; }
+.loadveil.slow .load-box { opacity: 1; }
+.load-match { position: relative; width: 10px; height: 64px; border-radius: 3px; background: linear-gradient(180deg, #7c1f1c 0, #7c1f1c 16px, #e6d3a3 16px); box-shadow: 0 3px 0 rgba(0,0,0,.5); }
+.load-flame { position: absolute; left: -9px; top: -26px; width: 28px; height: 34px; border-radius: 50% 50% 46% 46%; background: radial-gradient(circle at 50% 70%, #fff3c4 0, #ffd75e 28%, #f08a24 58%, rgba(210,69,47,0) 74%); animation: load-flicker .5s steps(3) infinite; image-rendering: pixelated; }
+@keyframes load-flicker { 0% { transform: scale(1) translateY(0); } 33% { transform: scale(1.1, .92) translateY(1px); } 66% { transform: scale(.92, 1.12) translateY(-2px); } 100% { transform: scale(1); } }
+.load-line { font-family: var(--px); font-size: 18px; letter-spacing: 1px; color: var(--ivory); }
+.load-bar { width: 360px; height: 16px; border-radius: 8px; background: #1b110c; border: 3px solid var(--brass-dark); overflow: hidden; }
+.load-fill { display: block; width: 0; height: 100%; background: repeating-linear-gradient(90deg, #f08a24 0 10px, #ffd75e 10px 12px); transition: width .2s ease-out; }
+.load-pct { font-family: var(--px); font-size: 13px; letter-spacing: 1px; color: var(--ivory-dim); }
+
+/* ---------- Vorspann: Vounder Studios ---------- */
+.vsplash { position: absolute; inset: -40px; z-index: 320; display: flex; flex-direction: column; align-items: center; justify-content: center; background: radial-gradient(ellipse at 50% 45%, #1c1230, #100b1b 62%, #07050c 100%); transition: opacity .35s ease-in; }
+.vsplash.out { opacity: 0; pointer-events: none; }
+.vs-box { display: flex; flex-direction: column; align-items: center; gap: 18px; }
+.vs-logo { width: 234px; height: 234px; image-rendering: pixelated; filter: drop-shadow(0 0 22px rgba(255,128,220,.35)); }
+.vs-word { min-height: 40px; font-family: var(--px-wide); font-size: 38px; letter-spacing: 6px; color: #ffd9f4; text-shadow: 0 4px 0 #5a1f4a, 0 0 18px rgba(255,128,220,.5); }
+.vs-word::after { content: ''; display: inline-block; width: 16px; height: 30px; margin-left: 6px; background: #ff80dc; vertical-align: -4px; animation: vs-caret .5s steps(2) infinite; }
+.vsplash.named .vs-word::after { display: none; }
+@keyframes vs-caret { 50% { opacity: 0; } }
+.vs-sub { font-family: var(--px); font-size: 15px; letter-spacing: 4px; color: #b79ad0; opacity: 0; transform: translateY(6px); transition: opacity .4s, transform .4s; }
+.vsplash.named .vs-sub { opacity: 1; transform: none; }
+.vs-skip { position: absolute; bottom: 70px; font-family: var(--px); font-size: 12px; letter-spacing: 2px; color: #6f5c86; }

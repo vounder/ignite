@@ -22,7 +22,7 @@
     '#else',
     'precision mediump float;',
     '#endif',
-    'uniform vec2 uRes; uniform float uTime; uniform float uPix; uniform float uHeat;',
+    'uniform vec2 uRes; uniform float uTime; uniform float uPix; uniform float uHeat; uniform float uEmber;',
     'uniform vec3 uA; uniform vec3 uB; uniform vec3 uC;',
     'float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }',
     'float noise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f*f*(3.0-2.0*f);',
@@ -46,8 +46,9 @@
     '  vec2 id = floor(ep / cell);',
     '  float h = hash(id);',
     '  float tw = 0.5 + 0.5*sin(uTime*(1.5 + h*5.0) + h*40.0);',
-    '  float ember = step(1.0 - 0.006*(0.4 + uHeat), h) * tw;',
-    '  col += mix(uC, vec3(1.0, 0.92, 0.6), 0.5) * ember * 0.85;',
+    // Glutfunken: Zahl und Helligkeit hängen an uEmber (früh im Casino wenige und matte, im letzten Akt volle Glut)
+    '  float ember = step(1.0 - 0.006*(0.4 + uHeat)*uEmber, h) * tw;',
+    '  col += mix(uC, vec3(1.0, 0.92, 0.6), 0.5) * ember * (0.4 + 0.45*uEmber);',
     '  float vig = smoothstep(1.25, 0.35, length(uv*vec2(0.82, 1.0)));',
     '  col *= 0.42 + 0.58*vig;',
     '  gl_FragColor = vec4(col, 1.0);',
@@ -55,6 +56,23 @@
   ].join('\n');
 
   var gl, canvas, uniforms = {}, cur = clone(PALETTES.menu), target = PALETTES.menu, flash = 0, enabled = true, lost = false;
+  var ember = 0.4, emberTo = 0.4; // Stärke der Glutfunken, 0 bis 1
+  var scene = 'menu', theme = null; // theme: Farbwelt des Casinos, in dem gerade gespielt wird
+  var THEME_WEIGHT = 0.68;
+
+  /* Farben einer Szene, eingefärbt in die Farbwelt des Casinos. Die Szene bestimmt weiter Helligkeit und Hitze
+     (ein Boss glüht stärker als der Laden), das Casino den Farbton. */
+  function tinted(name) {
+    var base = PALETTES[name] || PALETTES.menu;
+    if (!theme || name === 'menu' || name === 'lose') return base;
+    function mix(key) {
+      var lift = (base[key][0] + base[key][1] + base[key][2]) / Math.max(0.001, theme[key][0] + theme[key][1] + theme[key][2]);
+      lift = Math.max(0.6, Math.min(1.5, lift)); // Helligkeit der Szene halten
+      return [0, 1, 2].map(function (i) { return Math.min(1, base[key][i] * (1 - THEME_WEIGHT) + theme[key][i] * lift * THEME_WEIGHT); });
+    }
+    return { a: mix('a'), b: mix('b'), c: mix('c'), heat: base.heat };
+  }
+  function css(color) { return 'rgb(' + color.map(function (v) { return Math.round(v * 255); }).join(',') + ')'; }
 
   function clone(p) { return { a: p.a.slice(), b: p.b.slice(), c: p.c.slice(), heat: p.heat }; }
 
@@ -81,11 +99,13 @@
       for (var i = 0; i < 3; i++) cur[key][i] += (target[key][i] - cur[key][i]) * k;
     });
     cur.heat += (target.heat - cur.heat) * k;
+    ember += (emberTo - ember) * k;
     flash *= Math.pow(0.02, dt);
     gl.uniform2f(uniforms.uRes, canvas.width, canvas.height);
     gl.uniform1f(uniforms.uTime, time);
     gl.uniform1f(uniforms.uPix, 1.0);
     gl.uniform1f(uniforms.uHeat, cur.heat + flash);
+    gl.uniform1f(uniforms.uEmber, Math.min(1, ember + flash * 0.5));
     gl.uniform3fv(uniforms.uA, cur.a);
     gl.uniform3fv(uniforms.uB, cur.b);
     gl.uniform3fv(uniforms.uC, cur.c);
@@ -106,7 +126,7 @@
     var loc = gl.getAttribLocation(program, 'p');
     gl.enableVertexAttribArray(loc);
     gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
-    ['uRes', 'uTime', 'uPix', 'uHeat', 'uA', 'uB', 'uC'].forEach(function (name) {
+    ['uRes', 'uTime', 'uPix', 'uHeat', 'uEmber', 'uA', 'uB', 'uC'].forEach(function (name) {
       uniforms[name] = gl.getUniformLocation(program, name);
     });
     resize();
@@ -142,8 +162,19 @@
       if (enabled) cur = clone(target);
     },
     set: function (name) {
-      target = PALETTES[name] || PALETTES.menu;
+      scene = name;
+      target = tinted(name);
       if (!gl && canvas) canvas.setAttribute('data-scene', name);
+      // Auch der ruhige Verlauf (Hintergrund aus oder kein WebGL) trägt die Farbe des Hauses.
+      document.body.style.setProperty('--bg-mid', css(target.b));
+      document.body.style.setProperty('--bg-dark', css(target.a));
+    },
+    /* Wie viele Glutfunken aufsteigen: 0 = kaum welche, 1 = volle Glut. */
+    setEmber: function (level) { emberTo = Math.max(0, Math.min(1, level)); },
+    /* Farbwelt eines Casinos (ZU.CASINOS[i].tint) oder null für die neutrale. */
+    setTheme: function (tint) {
+      theme = tint || null;
+      target = tinted(scene);
     },
     /* Kurzes Aufglühen, z. B. bei hohen Ketten. */
     flash: function (amount) { flash = Math.min(1.2, flash + amount); }

@@ -15,7 +15,10 @@
   }
 
   /* Ohne Meta-Angaben (Tests, alte Spielstände) ist alles frei und nichts erschwert. */
-  var NO_META = { stake: 0, startgeld: 0, freeReroll: false, shopBonus: 0, maxLives: ZU.MAX_LIVES, trinkets: null, specials: null };
+  var NO_META = {
+    stake: 0, cv: ZU.CASINO_VERSION, acts: 3, rules: [], ashMult: 1, startgeld: 0, freeReroll: false, shopBonus: 0, maxLives: ZU.MAX_LIVES, trinkets: null, specials: null,
+    seals: null, esmePacks: 3, specialSlots: 99, interest: 0, trinketOffers: 0, perkDiscount: 0, bossTip: 0, burnDiscount: 0, luckyTrinket: false, nimble: false
+  };
 
   /* meta: Ergebnis von ZU.Meta.runOptions() – Einsatz, Upgrades und freigeschaltete Inhalte. */
   Run.start = function (starterId, seed, meta) {
@@ -30,11 +33,23 @@
       stats: { duels: 0, wins: 0, losses: 0, bestChain: 1, bestGlut: 0, played: 0, earned: 0 }
     };
     var run = new Run(state);
-    var size = starter.size || ZU.HAND_SIZE;
-    // Start-Spezialkarten sind an ein zufälliges Symbol gebunden.
-    starter.cards.forEach(function (def) { run._add(def, run.rng.pick(ZU.SUIT_ORDER)); });
-    var pool = run.rng.shuffle(ZU.STANDARD_IDS.filter(function (id) { return starter.cards.indexOf(id) < 0; }));
-    while (state.collection.length < size) run._add(pool.pop());
+    // Startdeck: 16 normale Karten (feste der Schachtel, der Rest zufällig) plus Spezialkarten.
+    // Die sind an ein zufälliges Symbol gebunden; "special" heißt: eine zufällige gewöhnliche aus dem freien Bestand.
+    var fixed = starter.cards.filter(function (def) { return !ZU.CARDS[def].special; });
+    var pool = run.rng.shuffle(ZU.STANDARD_IDS.filter(function (id) { return fixed.indexOf(id) < 0; }));
+    fixed.forEach(function (def) { run._add(def); });
+    while (state.collection.length < ZU.DECK_SIZE) run._add(pool.pop());
+    starter.cards.filter(function (def) { return ZU.CARDS[def].special; }).forEach(function (def) { run._add(def, run.rng.pick(ZU.SUIT_ORDER)); });
+    if (starter.special) {
+      var commons = run._specialPool().filter(function (id) { return ZU.CARDS[id].rarity === 0; });
+      run._add(run.rng.pick(commons.length ? commons : ['stillstand']), run.rng.pick(ZU.SUIT_ORDER));
+    }
+    if (meta.nimble && state.perks.indexOf('nimble-fingers') < 0) state.perks.push('nimble-fingers'); // Upgrade „Flinke Finger"
+    if (meta.luckyTrinket) {
+      // Upgrade „Glücksbringer": ein zufälliges gewöhnliches Trinket zum Start
+      var commons = run._trinketPool().filter(function (id) { return ZU.TRINKETS[id].rarity === 0; });
+      if (commons.length) state.trinkets.push(run.rng.pick(commons));
+    }
     run._encounters();
     run._sync();
     return run;
@@ -58,11 +73,26 @@
   Run.prototype._specialPool = function () {
     return (this.meta().specials || ZU.SPECIAL_IDS).filter(function (id) { return ZU.CARDS[id] && ZU.CARDS[id].special; });
   };
-  /* Einsatz „Teures Pflaster": 20 % Aufschlag im Laden. */
-  Run.prototype._price = function (price) { return this.meta().stake >= 3 ? Math.ceil(price * 1.2) : price; };
+  /* Casino dieses Runs: Zahl der Akte, Hausordnung (gilt an jedem Tisch) und Räume. */
+  Run.prototype.casino = function () { return ZU.CASINOS[this.meta().stake || 0] || ZU.CASINOS[0]; };
+  Run.prototype.acts = function () { return this.meta().acts || 3; };
+  Run.prototype.houseRules = function () { return this.meta().rules || []; };
+  Run.prototype.rule = function (id) { return this.houseRules().indexOf(id) >= 0; };
+  /* Spezialkarten sind begrenzt: so viele fasst das Deck, so viele liegen drin. */
+  Run.prototype.specialSlots = function () {
+    return (this.meta().specialSlots || 99) + (this.has('kartenetui') ? 1 : 0);
+  };
+  Run.prototype.specialCount = function () {
+    return this.s.collection.filter(function (c) { return ZU.CARDS[c.def].special; }).length;
+  };
+  Run.prototype.specialFree = function () { return this.specialCount() < this.specialSlots(); };
+  /* Hausregel „Teures Pflaster": 20 % Aufschlag im Laden. */
+  Run.prototype._price = function (price) { return this.rule('markup') ? Math.ceil(price * 1.2) : price; };
   Run.prototype.encounter = function () { return this.s.encounters[this.s.table]; };
   Run.prototype.actName = function () {
-    return this.s.act <= 3 ? ZU.ACT_NAMES[this.s.act - 1] : 'Nachglut ' + ZU.roman(this.s.act - 3);
+    var acts = this.acts();
+    if (this.s.act > acts) return 'Nachglut ' + ZU.roman(this.s.act - acts);
+    return (this.meta().legacy ? ZU.ACT_NAMES : this.casino().rooms)[this.s.act - 1] || 'Akt ' + ZU.roman(this.s.act);
   };
 
   /* Zieht je Akt einen Tisch, eine Elite und einen Boss – möglichst ohne Wiederholungen im Run. */
@@ -79,11 +109,22 @@
       s.seen.push(pick);
       return pick;
     }
-    var bosses = s.act <= ZU.BOSS_ACTS.length ? ZU.BOSS_ACTS[s.act - 1] : [].concat.apply([], ZU.BOSS_ACTS);
+    // Bosse: zum Einstieg die kleinen, im letzten Akt die Herren des Hauses, dazwischen alles darunter; in der Nachglut alle.
+    var acts = this.acts(), bosses;
+    if (s.act > acts) bosses = [].concat.apply([], ZU.BOSS_ACTS);
+    else if (s.act === acts) bosses = ZU.BOSS_ACTS[2];
+    else if (s.act === 1) bosses = ZU.BOSS_ACTS[0];
+    else if (s.act === 2) bosses = ZU.BOSS_ACTS[1];
+    else bosses = ZU.BOSS_ACTS[0].concat(ZU.BOSS_ACTS[1]);
+    var lastCall = this.rule('last-call');
+    // Eigene Figuren des Casinos: Ihr Tisch eröffnet das Haus, ihre Elite wartet im zweiten Akt, ihr Boss im letzten.
+    var foes = (!this.meta().legacy && this.casino().foes) || null, inside = s.act <= acts;
+    var battles = ZU.BATTLE_POOL.concat(foes ? [foes.battle] : []), elites = ZU.ELITE_POOL.concat(foes ? [foes.elite] : []);
+    function own(id) { if (s.seen.indexOf(id) < 0) s.seen.push(id); return id; }
     s.encounters = [
-      { enemy: fresh(ZU.BATTLE_POOL), kind: 'battle' },
-      { enemy: fresh(ZU.ELITE_POOL), kind: 'elite' },
-      { enemy: fresh(bosses), kind: 'boss' }
+      { enemy: foes && inside && s.act === 1 ? own(foes.battle) : fresh(battles), kind: 'battle' },
+      { enemy: foes && inside && s.act === 2 ? own(foes.elite) : fresh(elites), kind: 'elite' },
+      { enemy: foes && s.act === acts ? own(foes.boss) : fresh(bosses), kind: 'boss' }
     ];
     // Hausregeln: am allerersten Tisch nie, danach mit jedem Akt häufiger.
     s.encounters.forEach(function (encounter, index) {
@@ -91,7 +132,7 @@
       if (s.act === 1 && index === 0) return;
       Object.keys(ZU.RULE_CHANCE).forEach(function (rule) {
         var chances = ZU.RULE_CHANCE[rule];
-        var bonus = (s.meta && s.meta.stake >= 1) ? 0.2 : 0; // Einsatz „Erhöhter Einsatz"
+        var bonus = lastCall ? 0.2 : 0; // Hausregel „Knapper Stapel"
         if (rng.next() < chances[Math.min(chances.length, s.act) - 1] + bonus) encounter.rules.push(rule);
       });
     });
@@ -100,7 +141,7 @@
   Run.prototype.baseReward = function (kind) {
     var act = this.s.act;
     var base = (kind === 'battle' ? 4 + act : kind === 'elite' ? 6 + act : 8 + 2 * act) + (this.has('regular') ? 2 : 0);
-    return this.meta().stake >= 4 ? Math.max(2, base - 2) : base; // Einsatz „Knappe Kasse"
+    return this.rule('cover') ? Math.max(2, base - 2) : base; // Hausregel „Gedeck"
   };
 
   /* ---------- Duell ---------- */
@@ -110,10 +151,10 @@
     return new ZU.Duel({
       rng: this.rng, enemyId: e.enemy, kind: e.kind, act: this.s.act,
       rules: e.rules || [],
+      house: this.houseRules(),
       perks: this.s.perks || [],
-      mods: { hesitation: this.meta().stake >= 2 ? 0.5 : 1, oppHand: this.meta().stake >= 5 ? -1 : 0 },
       specialPool: this.meta().specials,
-      trinkets: this.s.trinkets, collection: this.s.collection.map(function (c) { return { id: c.id, def: c.def, bind: c.bind }; }),
+      trinkets: this.s.trinkets, collection: this.s.collection.map(function (c) { return { id: c.id, def: c.def, bind: c.bind, seal: c.seal, flaw: c.flaw }; }),
       nextId: this.s.nextId
     });
   };
@@ -129,17 +170,25 @@
 
     if (duel.winner !== 'player') {
       s.stats.losses++;
-      var saved = false;
-      if (s.lives === 1 && this.has('golden-match')) {
+      var saved = false, spared = false, comfort = 0;
+      if (this.has('phoenixfeder') && s.phoenix !== s.act) {
+        s.phoenix = s.act; // Phönixfeder: die erste Niederlage je Akt kostet nichts
+        spared = true;
+      } else if (s.lives === 1 && this.has('golden-match')) {
         s.trinkets.splice(s.trinkets.indexOf('golden-match'), 1);
         saved = true;
       } else {
         s.lives--;
+        s.hurt = true;
       }
+      if (this.has('dicke-brieftasche')) comfort += duel.bank;
+      if (this.has('police')) comfort += 6;
+      s.money += comfort;
+      ZU.Meta.noteDuel(this, duel, false);
       s.phase = s.lives <= 0 ? 'defeat' : 'select';
       this._sync();
       if (s.phase === 'defeat') this._closeRun(false); else this.save();
-      return { won: false, saved: saved, lives: s.lives };
+      return { won: false, saved: saved, spared: spared, comfort: comfort, lives: s.lives };
     }
 
     s.stats.wins++;
@@ -148,33 +197,59 @@
         if (s.collection[i].id === id) { s.collection.splice(i, 1); break; }
       }
     });
-    duel.created.forEach(function (card) { self._add(card.def, card.bind); });
+    // Im Duell erzeugte Karten: Spezialkarten nur, solange das Deck noch Platz für sie hat.
+    var lostCards = 0;
+    duel.created.forEach(function (card) {
+      if (ZU.CARDS[card.def].special && !self.specialFree()) lostCards++;
+      else self._add(card.def, card.bind);
+    });
 
     var lines = [], base = this.baseReward(e.kind);
     lines.push({ label: ZU.KIND_LABEL[e.kind] + 'prämie', amount: base });
-    if (duel.bank > 0) lines.push({ label: 'Bank', amount: duel.bank });
-    if (duel.bonusMult > 1) lines.push({ label: 'Bonusgeld ×' + duel.bonusMult, amount: (base + duel.bank) * (duel.bonusMult - 1) });
+    var bank = duel.enemy.passive === 'purser' || duel.enemy.passive === 'house-cut' ? Math.floor(duel.bank / 2) : duel.bank; // Zahlmeister Pfennig behält die Hälfte ein
+    if (bank > 0) lines.push({ label: bank < duel.bank ? 'Bank (halbiert)' : 'Bank', amount: bank });
+    if (duel.bonusMult > 1) lines.push({ label: 'Bonusgeld ×' + duel.bonusMult, amount: (base + bank) * (duel.bonusMult - 1) });
     var left = Math.min(this.has('gold-tooth') ? 10 : 5, duel.hand.opp.length);
     if (left > 0) lines.push({ label: 'Restkarten des Gegners (' + duel.hand.opp.length + ')', amount: left });
     var heat = this.has('furnace') ? Math.min(20, Math.floor(duel.glut / 150)) : Math.min(8, Math.floor(duel.glut / 250));
     if (heat > 0) lines.push({ label: 'Glut-Bonus (' + duel.glut + ')', amount: heat });
     if (duel.enemy.passive === 'odds') lines.push({ label: 'Wettschein', amount: 3 });
     if (this.has('lucky-chip')) lines.push({ label: 'Glückschip', amount: 2, trinket: 'lucky-chip' });
-    var cap = this.has('ledger') ? 6 : 3;
+    if (e.kind !== 'battle' && this.has('kopfgeld')) lines.push({ label: 'Kopfgeld', amount: 4, trinket: 'kopfgeld' });
+    if (duel.maxChain >= 8 && this.has('zylinder')) lines.push({ label: 'Zylinder (Kette ×' + duel.maxChain + ')', amount: 4, trinket: 'zylinder' });
+    if (duel.turns <= 16 && this.has('sturmfeuerzeug')) lines.push({ label: 'Sturmfeuerzeug (' + duel.turns + ' Züge)', amount: 4, trinket: 'sturmfeuerzeug' });
+    if (this.has('sammleralbum') && s.trinkets.length >= 3) lines.push({ label: 'Sammleralbum', amount: Math.floor(s.trinkets.length / 3), trinket: 'sammleralbum' });
+    if (e.kind === 'boss' && this.meta().bossTip) lines.push({ label: 'Trinkgeld', amount: this.meta().bossTip });
+    var cap = (this.has('ledger') ? 6 : 3) + (this.meta().interest || 0);
     var step = this.has('compound') ? 4 : 5;
-    var interest = Math.min(cap, Math.floor(s.money / step));
+    var interest = this.rule('no-credit') ? 0 : Math.min(cap, Math.floor(s.money / step));
     if (interest > 0) lines.push({ label: 'Zinsen (1 je ' + step + ' Mark, max. ' + cap + ')', amount: interest });
 
     var total = 0;
     lines.forEach(function (line) { total += line.amount; });
+    if (duel.toll > 0) {
+      var toll = Math.min(duel.toll, Math.max(0, total - 1)); // Makel „Zoll": nie mehr, als die Auszahlung hergibt
+      if (toll > 0) { lines.push({ label: 'Zoll (' + duel.toll + ' Karten)', amount: -toll }); total -= toll; }
+    }
     s.money += total;
     s.stats.earned += total;
     s.score += duel.glut + 100 * s.act;
 
     var healed = false;
     if (e.kind === 'boss' && s.lives < this.maxLives()) { s.lives++; healed = true; }
-    s.ash = (s.ash || 0) + ZU.Meta.ASH[e.kind];
+    if (duel.lifeGain && s.lives < this.maxLives()) { s.lives++; healed = true; } // Reservefunke
+    // Asche gibt es sofort – aber nur bis das Casino ausgeräumt ist; die Nachglut bringt keine mehr.
+    var ash = 0;
+    if (!s.endless) {
+      s.ash = (s.ash || 0) + ZU.Meta.ASH[e.kind] + (e.kind === 'boss' && this.has('urne') ? 2 : 0);
+      if (e.kind === 'boss' && s.act === this.acts()) {
+        s.ash += ZU.Meta.ASH.victory;
+        s.cleared = true;
+      }
+    }
     ZU.Meta.noteDefeat(e.enemy);
+    ZU.Meta.noteDuel(this, duel, true);
+    if (!s.endless) ash = ZU.Meta.award(this);
     s.reward = null;
     if (e.kind === 'elite') {
       var owned = s.trinkets;
@@ -190,7 +265,7 @@
     }
     s.phase = 'payout';
     this._sync();
-    return { won: true, lines: lines, total: total, healed: healed, glut: duel.glut, maxChain: duel.maxChain };
+    return { won: true, lines: lines, total: total, healed: healed, glut: duel.glut, maxChain: duel.maxChain, ash: ash, lostCards: lostCards };
   };
 
   Run.prototype._weighted = function (ids, weight, count) {
@@ -212,9 +287,8 @@
   /* Nach der Auszahlung: Sieg über den dritten Boss, Belohnung oder Laden. */
   Run.prototype.afterPayout = function () {
     var s = this.s, e = this.encounter();
-    if (e.kind === 'boss' && s.act === 3 && !s.endless) {
+    if (e.kind === 'boss' && s.act === this.acts() && !s.endless) {
       s.phase = 'victory';
-      s.ash = (s.ash || 0) + ZU.Meta.ASH.victory;
       s.newStake = ZU.Meta.noteVictory(this);
       this._closeRun(true, true);
     } else if (s.reward) {
@@ -236,14 +310,21 @@
     return s.phase;
   };
 
-  Run.prototype.chooseReward = function (index, replaceTrinket) {
+  /* replaceId: Ist das Deck voll, weicht diese Spezialkarte der neuen. */
+  Run.prototype.chooseReward = function (index, replaceId) {
     var s = this.s, r = s.reward;
     if (!r) throw new Error('Keine Belohnung offen.');
     if (index == null) {
       s.money += r.skip;
     } else if (r.type === 'trinket') {
-      this._gainTrinket(r.options[index], replaceTrinket);
+      this._gainTrinket(r.options[index]);
     } else {
+      if (!this.specialFree()) {
+        var at = -1;
+        s.collection.forEach(function (c, i) { if (c.id === replaceId && ZU.CARDS[c.def].special) at = i; });
+        if (at < 0) throw new Error('Kein Platz für eine weitere Spezialkarte.');
+        s.collection.splice(at, 1);
+      }
       this._add(r.options[index], r.binds ? r.binds[index] : 'wild');
     }
     s.reward = null;
@@ -258,11 +339,49 @@
     if (!ZU.TRINKETS[id]) throw new Error('Unbekanntes Trinket.');
     if (s.trinkets.indexOf(id) >= 0) throw new Error('Trinket bereits vorhanden.');
     s.trinkets.push(id);
+    this._shopGain(id);
+  };
+
+  /* Im Laden gekauft: Erweiterungen und Rabatte gelten sofort, nicht erst beim nächsten Besuch. */
+  Run.prototype._shopGain = function (id) {
+    var s = this.s, shop = s.shop, self = this;
+    if (!shop || s.phase !== 'shop') return;
+    if (id === 'false-bottom' && !shop.bought) shop.discount = true;
+    if (id === 'showcase') {
+      // Vitrine: Der dritte Platz füllt sich gleich.
+      var shown = shop.trinkets.map(function (offer) { return offer.id; });
+      var extra = this._weighted(this._trinketPool().filter(function (t) { return shown.indexOf(t) < 0; }),
+        function (t) { return [50, 30, 15, 5][ZU.TRINKETS[t].rarity]; }, 1)[0];
+      if (extra) shop.trinkets.push({ id: extra, price: this._price(ZU.TRINKETS[extra].price), sold: false });
+    }
+    if (id === 'shelf') {
+      // Großes Regal: Auf dem dritten Platz liegt sofort eine Spezialkarte.
+      var used = shop.specials.map(function (offer) { return offer.def; });
+      var def = this._weighted(this._specialPool().filter(function (c) { return used.indexOf(c) < 0; }),
+        function (c) { return [50, 30, 14 + 3 * Math.min(s.act, 4), 2 + Math.min(s.act, 4)][ZU.CARDS[c].rarity]; }, 1)[0];
+      if (def) {
+        var bind = ZU.rollBind(this.rng, s.act);
+        if (ZU.SUITS[bind] && this.has('grinder')) bind = ZU.SUITS[bind].red ? 'red' : 'black';
+        shop.specials.push({ def: def, bind: bind, price: this._price(ZU.cardPrice(def, bind)), sold: false });
+      }
+    }
+    if (id === 'grinder') {
+      // Schleifer: Was schon im Regal liegt, wird mindestens farbgebunden.
+      shop.specials.forEach(function (offer) {
+        if (offer.sold || !ZU.SUITS[offer.bind]) return;
+        offer.bind = ZU.SUITS[offer.bind].red ? 'red' : 'black';
+        offer.price = self._price(ZU.cardPrice(offer.def, offer.bind));
+      });
+    }
+    this._sync();
   };
 
   /* ---------- Laden ---------- */
   Run.prototype._openShop = function () {
-    this.s.shop = { cards: [], specials: [], trinkets: [], rerolls: 0, discount: this.has('false-bottom'), healed: false };
+    this.s.shop = { cards: [], specials: [], trinkets: [], rerolls: 0, discount: this.has('false-bottom'), healed: false, burned: false, esme: { packs: [], rerolls: 0, pity: false } };
+    this._stockEsme();
+    if (this.has('mitgift')) this.s.money += 3;
+    if (this.rule('cover-charge')) this.s.money = Math.max(0, this.s.money - 2); // Hausregel „Eintritt"
     if (!this.s.perkOffer || this.s.perkOffer.act !== this.s.act) this._rollPerk();
     this._stockShop();
     this.s.phase = 'shop';
@@ -275,7 +394,7 @@
     var open = ZU.PERK_IDS.filter(function (id) { return s.perks.indexOf(id) < 0; });
     if (!open.length) { s.perkOffer = { id: null, price: 0, sold: true, act: s.act }; return; }
     var id = s.act === 1 && open.indexOf('nimble-fingers') >= 0 ? 'nimble-fingers' : this.rng.pick(open);
-    s.perkOffer = { id: id, price: this._price(ZU.PERKS[id].price), sold: false, act: s.act };
+    s.perkOffer = { id: id, price: Math.max(1, this._price(ZU.PERKS[id].price) - (this.meta().perkDiscount || 0)), sold: false, act: s.act };
   };
 
   Run.prototype.buyPerk = function () {
@@ -288,6 +407,8 @@
       s.bonusLives = (s.bonusLives || 0) + 1;
       s.lives++;
     }
+    this._shopGain(offer.id);
+    ZU.Meta.note({ perks: s.perks.length });
     this.save();
     return offer.id;
   };
@@ -318,8 +439,99 @@
       shop.specials.push({ def: def, bind: bind, price: this._price(ZU.cardPrice(def, bind)), sold: false });
     }
     var picks = this._weighted(this._trinketPool(),
-      function (id) { return [50, 30, 15, 5][ZU.TRINKETS[id].rarity]; }, this.has('showcase') ? 3 : 2);
+      function (id) { return [50, 30, 15, 5][ZU.TRINKETS[id].rarity]; }, (this.has('showcase') ? 3 : 2) + (this.meta().trinketOffers || 0));
     shop.trinkets = picks.map(function (id) { return { id: id, price: self._price(ZU.TRINKETS[id].price), sold: false }; });
+  };
+
+  /* ---------- Esmes Nebenzimmer: Karten veredeln ---------- */
+  Run.prototype._sealPool = function () {
+    return (this.meta().seals || ZU.SEAL_IDS).filter(function (id) { return ZU.SEALS[id]; });
+  };
+  /* Wie oft ein Paket einen Makel trägt: früh im Casino oft (und billig), gegen Ende selten. */
+  Run.prototype.flawChance = function () {
+    var acts = this.acts(), t = acts > 1 ? Math.min(1, (this.s.act - 1) / (acts - 1)) : 1;
+    return 0.67 - 0.42 * t;
+  };
+  Run.prototype._rollSeal = function (flawed) {
+    var pool = this._sealPool(), rng = this.rng;
+    var seal = this._weighted(pool, function (id) { return ZU.SEALS[id].weight; }, 1)[0] || 'glut';
+    var item = { seal: seal };
+    if (flawed) {
+      var flaws = ZU.FLAW_IDS.filter(function (id) { return ZU.SEALS[seal].not.indexOf(id) < 0; });
+      item.flaw = rng.pick(flaws);
+    }
+    return item;
+  };
+  Run.prototype._packPrice = function (kind, items) {
+    var rule = ZU.SEAL_PRICE, sum = 0;
+    items.forEach(function (item) { sum += ZU.SEALS[item.seal].value * rule.point * (item.flaw ? rule.flaw : 1); });
+    if (kind === 'double') sum *= rule.double;
+    if (kind === 'bag') sum *= rule.bag;
+    return Math.max(2, this._price(Math.round(sum)));
+  };
+  /* Legt Esmes Pakete aus: Einzelsiegel, Doppelpack oder Wundertüte. Mindestens ein Paket ist makellos. */
+  Run.prototype._stockEsme = function () {
+    var esme = this.s.shop.esme, rng = this.rng, self = this, chance = this.flawChance(), bag = false;
+    esme.packs = [];
+    for (var i = 0; i < (this.meta().esmePacks || 3); i++) {
+      var roll = rng.next(), kind = roll < 0.6 ? 'single' : roll < 0.85 || bag ? 'double' : 'bag';
+      if (kind === 'bag') bag = true;
+      var items = [];
+      for (var n = 0; n < (kind === 'single' ? 1 : kind === 'double' ? 2 : 3); n++) items.push(this._rollSeal(rng.next() < chance));
+      esme.packs.push({ kind: kind, items: items, price: 0, sold: false });
+    }
+    var clean = esme.packs.filter(function (pack) { return pack.kind !== 'bag' && pack.items.every(function (item) { return !item.flaw; }); });
+    if (!clean.length) {
+      var open = esme.packs.filter(function (pack) { return pack.kind !== 'bag'; });
+      (open.length ? rng.pick(open) : esme.packs[0]).items.forEach(function (item) { delete item.flaw; });
+    }
+    esme.packs.forEach(function (pack) { pack.price = self._packPrice(pack.kind, pack.items); });
+  };
+  /* Normale Karten, die sich veredeln lassen. */
+  Run.prototype.sealable = function () {
+    return this.s.collection.filter(function (c) { return !ZU.CARDS[c.def].special; });
+  };
+  /* Neu auslegen kostet – außer du könntest dir sonst gar nichts leisten: Dann mischt Esme einmal gratis. */
+  Run.prototype.esmeRerollPrice = function () {
+    var esme = this.s.shop.esme, money = this.s.money;
+    var affordable = esme.packs.some(function (pack) { return !pack.sold && pack.price <= money; });
+    if (!affordable && !esme.pity && esme.packs.some(function (pack) { return !pack.sold; })) return 0;
+    return 3 + 2 * esme.rerolls;
+  };
+  Run.prototype.esmeReroll = function () {
+    var esme = this.s.shop.esme, price = this.esmeRerollPrice();
+    this._pay(price);
+    if (price === 0) esme.pity = true; else esme.rerolls++;
+    this._stockEsme();
+    this._sync();
+    this.save();
+  };
+  /* Kauft ein Paket. cardIds: die gewählten Karten (Einzelsiegel 1, Doppelpack 2); die Wundertüte wählt selbst.
+     Liefert, welche Karte welches Siegel bekommen hat. Ein neues Siegel ersetzt ein altes samt Makel. */
+  Run.prototype.buyPack = function (index, cardIds) {
+    var s = this.s, pack = s.shop.esme.packs[index], self = this;
+    if (!pack || pack.sold) throw new Error('Nicht verfügbar.');
+    var pool = this.sealable(), targets;
+    if (pack.kind === 'bag') {
+      targets = this.rng.shuffle(pool.slice()).slice(0, pack.items.length);
+    } else {
+      targets = (cardIds || []).map(function (id) { return pool.filter(function (c) { return c.id === id; })[0]; });
+      if (targets.length !== pack.items.length || targets.some(function (c) { return !c; }) ||
+        targets.some(function (c, i) { return targets.indexOf(c) !== i; })) throw new Error('Wähle ' + pack.items.length + ' verschiedene normale Karten.');
+    }
+    if (!targets.length) throw new Error('Keine Karte zum Veredeln.');
+    this._pay(pack.price);
+    pack.sold = true;
+    var result = targets.map(function (card, i) {
+      var item = pack.items[i];
+      card.seal = item.seal;
+      if (item.flaw) card.flaw = item.flaw; else delete card.flaw;
+      return { id: card.id, def: card.def, seal: item.seal, flaw: item.flaw || null };
+    });
+    ZU.Meta.note({ sealed: result.length });
+    this._sync();
+    this.save();
+    return result;
   };
 
   /* shelf: 'cards' oder 'specials'. Der Doppelboden-Rabatt gilt für den ersten Kartenkauf, egal aus welchem Regal. */
@@ -334,9 +546,12 @@
     if (this.has('bell')) return 2;
     return 3 + this.s.shop.rerolls - (this.meta().freeReroll ? 1 : 0);
   };
-  Run.prototype.burnPrice = function () { return this.has('ashbin') ? 2 : 3 + this.s.burnCount; };
-  Run.prototype.healPrice = function () { return 6 + 2 * Math.min(this.s.act - 1, 3); };
-  Run.prototype.sellValue = function (id) { return Math.floor(ZU.TRINKETS[id].price / 2); };
+  Run.prototype.burnPrice = function () {
+    if (this.has('gratisfeuer') && this.s.shop && !this.s.shop.burned) return 0;
+    return Math.max(1, (this.has('ashbin') ? 2 : 3 + this.s.burnCount) - (this.meta().burnDiscount || 0));
+  };
+  Run.prototype.healPrice = function () { return Math.max(1, 6 + 2 * Math.min(this.s.act - 1, 3) - (this.has('feuerversicherung') ? 3 : 0)); };
+  Run.prototype.sellValue = function (id) { return this.has('pfandschein') ? ZU.TRINKETS[id].price : Math.floor(ZU.TRINKETS[id].price / 2); };
 
   Run.prototype._pay = function (amount) {
     if (this.s.money < amount) throw new Error('Nicht genug Mark.');
@@ -346,8 +561,11 @@
   Run.prototype.buyOffer = function (shelf, index) {
     var offer = (this.s.shop[shelf] || [])[index];
     if (!offer || offer.sold) throw new Error('Nicht verfügbar.');
+    if (shelf === 'specials' && !this.specialFree()) throw new Error('Kein Platz für eine weitere Spezialkarte.');
     this._pay(this.offerPrice(shelf, index));
     this.s.shop.discount = false;
+    this.s.shop.bought = true;
+    ZU.Meta.note({ bought: 1 });
     offer.sold = true;
     var card = this._add(offer.def, offer.bind);
     this.save();
@@ -370,20 +588,24 @@
     this._gainTrinket(offer.id);
     this._pay(price);
     offer.sold = true;
+    ZU.Meta.note({ trinkets: this.s.trinkets.length, bought: 1 });
     this.save();
   };
 
   Run.prototype.sellTrinket = function (id) {
     var index = this.s.trinkets.indexOf(id);
     if (index < 0) throw new Error('Trinket nicht vorhanden.');
+    var value = this.sellValue(id); // vor dem Entfernen: der Pfandschein zählt auch für sich selbst
     this.s.trinkets.splice(index, 1);
-    this.s.money += this.sellValue(id);
+    this.s.money += value;
+    ZU.Meta.note({ sold: 1 });
     this.save();
   };
 
   Run.prototype.reroll = function () {
     this._pay(this.rerollPrice());
     this.s.shop.rerolls++;
+    ZU.Meta.note({ rerolls: 1 });
     this._stockShop();
     this._sync();
     this.save();
@@ -396,6 +618,8 @@
       if (s.collection[i].id === cardId) {
         this._pay(this.burnPrice());
         s.burnCount++;
+        s.shop.burned = true;
+        ZU.Meta.note({ burned: 1 });
         var gone = s.collection.splice(i, 1)[0];
         this.save();
         return gone;
@@ -411,6 +635,7 @@
     this._pay(this.healPrice());
     s.lives++;
     s.shop.healed = true;
+    ZU.Meta.note({ healed: 1 });
     this.save();
   };
 
@@ -446,7 +671,22 @@
       if (!state || state.v !== 1 || !Array.isArray(state.collection) || !state.encounters) return null;
       if (state.phase === 'duel' || state.phase === 'payout') state.phase = 'select';
       if (state.phase === 'defeat') return null;
+      // Runs aus der Zeit mit sechs Casinos: Der Index des Hauses wandert an seinen neuen Platz.
+      if (state.meta && state.meta.cv !== ZU.CASINO_VERSION) {
+        if (ZU.CASINO_REMAP[state.meta.stake] != null) state.meta.stake = ZU.CASINO_REMAP[state.meta.stake];
+        state.meta.cv = ZU.CASINO_VERSION;
+      }
       if (state.shop && !state.shop.specials) state.shop.specials = []; // Spielstände vor dem geteilten Laden
+      // Spielstände vor den Casinos: Der Einsatz wird zur passenden Hausordnung, alles andere bleibt, wie der Run begonnen hat.
+      if (state.meta && !state.meta.rules) {
+        state.meta.rules = ['last-call', 'sober', 'markup', 'cover', 'house-edge'].slice(0, state.meta.stake || 0);
+        state.meta.acts = 3;
+        state.meta.ashMult = 1 + 0.25 * (state.meta.stake || 0);
+        state.meta.specialSlots = 99;
+        state.meta.legacy = true;
+      }
+      if (state.meta && state.meta.specials) state.meta.specials = state.meta.specials.filter(function (id) { return ZU.CARDS[id]; });
+      if (state.shop && !state.shop.esme) state.shop.esme = { packs: [], rerolls: 0, pity: true }; // Spielstände vor Esme: ihr Zimmer bleibt in diesem Laden leer
       // Spielstände vor den Privilegien: „Flinke Finger" war ein Trinket.
       state.perks = state.perks || [];
       var legacy = state.trinkets.indexOf('nimble-fingers');
@@ -497,7 +737,7 @@
 
   ZU.Profile = {
     defaults: function () {
-      return { runs: 0, wins: 0, best: 0, bestAct: 0, seenHelp: false, meta: {}, settings: { music: 0.5, sfx: 0.7, speed: 1, crt: true, bg: true, fullscreen: 'ask' } };
+      return { runs: 0, wins: 0, best: 0, bestAct: 0, seenHelp: false, meta: {}, brSeen: [], popSeen: [], popInit: false, settings: { music: 0.5, sfx: 0.7, speed: 1, crt: true, bg: true, fullscreen: 'ask' } };
     },
     load: function () {
       var base = ZU.Profile.defaults(), store = storage();

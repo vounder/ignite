@@ -3,7 +3,9 @@
   'use strict';
   var h = ZU.h, wait = ZU.wait, fx = ZU.fx;
 
-  var STOCK = { x: 468, y: 322 }, PILE = { x: 648, y: 322 };
+  // Jede Seite hat ihren Nachziehstapel: der eigene groß neben dem Ablagestapel, der des Gegners kleiner darüber.
+  var STOCK = { x: 468, y: 338 }, OSTOCK = { x: 372, y: 236 }, PILE = { x: 648, y: 322 };
+  var STOCKS = { player: STOCK, opp: OSTOCK };
   var HAND_Y = 600, OPP_Y = 74, CENTER = 640;
   var ANCHOR = { player: { x: CENTER, y: 492 }, opp: { x: CENTER, y: 168 } };
 
@@ -27,8 +29,8 @@
     this.busy = true;
     this.mode = 'wait';
     this.sortMode = game.sortMode || 'rank';
-    this.status = { skip: { player: 0, opp: 0 }, curse: { player: 0, opp: 0 }, spy: 0, hodl: [], bank: 0, bonusMult: 1 };
-    this.stockCount = 0;
+    this.status = { skip: { player: 0, opp: 0 }, curse: { player: 0, opp: 0 }, spy: 0, blaze: 0, hodl: [], bank: 0, bonusMult: 1 };
+    this.stockCount = { player: 0, opp: 0 };
     this.pileZ = 300;
     this.chain = duel.chain;
     this.destroyed = false;
@@ -53,11 +55,12 @@
     var sortSuit = h('button', 'btn small', 'Farbe', { onclick: function () { self.setSort('suit'); } });
     this.sortButtons = { rank: sortRank, suit: sortSuit };
     var rulesEl = h('div', 'rulerow');
-    this.duel.rules.forEach(function (rule) {
+    this.duel.tableRules.forEach(function (rule) {
       var chip = h('div', 'rulechip', ZU.RULES[rule].name);
       ZU.tip.bind(chip, '<b>Hausregel: ' + ZU.RULES[rule].name + '</b><p>' + ZU.RULES[rule].text + '</p>');
       rulesEl.appendChild(chip);
     });
+    if (this.duel.houseRules.length) rulesEl.appendChild(ZU.houseChip(this.duel.houseRules));
     var left = h('div', 'panel p-left', [
       h('div', 'kindtag k-' + e.kind, ZU.KIND_LABEL[e.kind]),
       this.portrait,
@@ -115,9 +118,16 @@
     this.stockEl.addEventListener('click', function () { if (self.mode === 'play' && !self.duel.afterDraw) self.onDrawButton(); });
     var onePass = this.duel.rules.indexOf('one-pass') >= 0;
     this.stockEl.classList.toggle('onepass', onePass);
-    ZU.tip.bind(this.stockEl, 'Nachziehstapel. Klicken oder Leertaste: eine Karte ziehen. Passt sie, darfst du sie sofort legen – sonst endet der Zug.' +
+    ZU.tip.bind(this.stockEl, 'Dein Nachziehstapel: der Rest deines Decks. Klicken oder Leertaste: eine Karte ziehen. Passt sie, darfst du sie sofort legen – sonst endet der Zug.' +
       (onePass ? '<p><b>Letzter Stapel:</b> Es wird nicht neu gemischt. Ist er leer und muss jemand ziehen, gewinnt, wer weniger Karten hält.</p>' : ''));
     this.layer.appendChild(this.stockEl);
+    this.ostockEl = h('div', 'stockpile opp', [ZU.cardBack(), ZU.cardBack(), ZU.cardBack()]);
+    this.ostockNum = h('div', 'stocknum', '0');
+    this.ostockEl.appendChild(this.ostockNum);
+    this.ostockEl.style.left = (OSTOCK.x - ZU.CARD_W / 2) + 'px';
+    this.ostockEl.style.top = (OSTOCK.y - ZU.CARD_H / 2) + 'px';
+    ZU.tip.bind(this.ostockEl, 'Nachziehstapel des Gegners. Er zieht nur von hier, du nur von deinem eigenen Deck.');
+    this.layer.appendChild(this.ostockEl);
 
     this.chainEl = h('div', 'chain', [ZU.iconEl('flame', 'flame'), h('b', null, '×' + this.chain)]);
     this.glutEl = h('b', 'glutnum', '0');
@@ -173,7 +183,7 @@
     sp.el.addEventListener('pointerleave', function () { self.onHover(sp, false); });
     sp.el.addEventListener('pointermove', function (ev) { if (sp.hover) sp.pointer(ev); });
     sp.el.addEventListener('click', function () { self.onCardClick(sp); });
-    ZU.tip.bind(sp.el, function () { return sp.tflip === 0 ? ZU.tip.card(sp.def, sp.bind) : null; });
+    ZU.tip.bind(sp.el, function () { return sp.tflip === 0 ? ZU.tip.card(sp.def, sp.bind, sp) : null; });
     return sp;
   };
 
@@ -251,11 +261,14 @@
     this.stageDim.classList.toggle('on', n > 0);
   };
 
-  DuelView.prototype.setStock = function (n) {
-    this.stockCount = Math.max(0, n);
-    this.stockNum.textContent = this.stockCount;
-    this.stockEl.classList.toggle('empty', this.stockCount === 0);
-    this.stockEl.classList.toggle('low', this.stockCount > 0 && this.stockCount <= 3);
+  /* who: 'player' (eigener Stapel) oder 'opp'. */
+  DuelView.prototype.setStock = function (n, who) {
+    who = who || 'player';
+    var el = who === 'opp' ? this.ostockEl : this.stockEl, num = who === 'opp' ? this.ostockNum : this.stockNum;
+    this.stockCount[who] = Math.max(0, n);
+    num.textContent = this.stockCount[who];
+    el.classList.toggle('empty', this.stockCount[who] === 0);
+    el.classList.toggle('low', this.stockCount[who] > 0 && this.stockCount[who] <= 3);
   };
 
   DuelView.prototype.removeFromLists = function (sp) {
@@ -303,11 +316,12 @@
       });
     }
     sync(this.pHand, d.hand.player, STOCK.x, STOCK.y);
-    sync(this.oHand, d.hand.opp, STOCK.x, STOCK.y);
+    sync(this.oHand, d.hand.opp, OSTOCK.x, OSTOCK.y);
     this.sortHand();
     this.layoutHand();
     this.layoutOpp();
-    this.setStock(d.stock.length);
+    this.setStock(d.stocks.player.length, 'player');
+    this.setStock(d.stocks.opp.length, 'opp');
     this.status = d._statusEvent().status;
     this.renderStatus();
     this.updateBaseMood();
@@ -321,13 +335,15 @@
     this.portrait.classList.remove('thinking');
     this.refresh();
     // Stapelgröße vor dieser Ereignisfolge zurückrechnen
-    var count = this.duel.stock.length;
+    var count = { player: this.duel.stocks.player.length, opp: this.duel.stocks.opp.length };
     for (var i = events.length - 1; i >= 0; i--) {
       var e = events[i];
-      if (e.t === 'reshuffle') count = 0;
-      else if (e.t === 'table' || (e.t === 'move' && e.from === 'stock')) count++;
+      if (e.t === 'reshuffle') count[e.actor] = 0;
+      else if (e.t === 'table') count.opp++;
+      else if (e.t === 'move' && e.from === 'stock') count[e.pile]++;
     }
-    this.setStock(count);
+    this.setStock(count.player, 'player');
+    this.setStock(count.opp, 'opp');
     var chainPromise = Promise.resolve();
     events.forEach(function (ev) {
       chainPromise = chainPromise.then(function () {
@@ -363,8 +379,8 @@
   };
 
   DuelView.prototype.on_table = function (ev) {
-    var sp = this.spawn(ev.id, STOCK.x, STOCK.y);
-    this.setStock(this.stockCount - 1);
+    var sp = this.spawn(ev.id, OSTOCK.x, OSTOCK.y);
+    this.setStock(this.stockCount.opp - 1, 'opp');
     this.toPile(sp);
     ZU.audio.flip();
     return wait(260);
@@ -373,8 +389,9 @@
   DuelView.prototype.on_move = function (ev) {
     var sp = this.sprites[ev.id], deal = ev.cause === 'deal';
     if (ev.from === 'stock') {
-      if (!sp) sp = this.spawn(ev.id, STOCK.x, STOCK.y);
-      this.setStock(this.stockCount - 1);
+      var from = STOCKS[ev.pile] || STOCK;
+      if (!sp) sp = this.spawn(ev.id, from.x, from.y);
+      this.setStock(this.stockCount[ev.pile] - 1, ev.pile);
       sp.kick(0, -260, ZU.rand(-200, 200));
       if (ev.to === 'player') {
         this.pHand.push(sp);
@@ -505,6 +522,36 @@
         if (ev.amount) this.popBank('+' + ev.amount + ' Bank');
         ZU.audio.burn();
         return wait(420);
+      case 'redeal':
+        fx.pop(a.x, a.y, 'Neu geben: ' + ev.amount + ' Karten', bad ? 'bad' : 'good');
+        ZU.audio.shuffle();
+        this.react(bad ? 'smug' : 'shocked');
+        return wait(450);
+      case 'again':
+        fx.pop(PILE.x, PILE.y - 100, ev.src === 'player' ? 'Noch einmal!' : 'Er ist noch einmal dran!', ev.src === 'player' ? 'good' : 'bad');
+        ZU.audio.chip();
+        return wait(380);
+      case 'stoke':
+        fx.pop(PILE.x, PILE.y - 100, 'Kette ×' + ev.amount, 'gold');
+        ZU.audio.ignite();
+        ZU.bg.flash(0.4);
+        return wait(420);
+      case 'blaze':
+        fx.pop(ANCHOR.player.x, ANCHOR.player.y, 'Stichflamme: ' + ev.amount + ' Karten doppelt', 'gold');
+        ZU.audio.ignite();
+        return wait(420);
+      case 'bank':
+        this.popBank('+' + ev.amount + ' Bank');
+        ZU.audio.coin(3);
+        return wait(400);
+      case 'cleanse':
+        fx.pop(a.x, a.y, 'Bann gebrochen!', ev.src === 'player' ? 'good' : 'bad');
+        ZU.audio.reflect();
+        return wait(420);
+      case 'life':
+        fx.pop(ANCHOR.player.x, ANCHOR.player.y, '+1 Streichholz beim Sieg', 'gold');
+        ZU.audio.match();
+        return wait(450);
       case 'swap-fizzle':
         fx.pop(PILE.x, PILE.y - 100, 'Tausch verpufft', 'small');
         return wait(350);
@@ -573,6 +620,23 @@
     return wait(330);
   };
 
+  /* Siegel „Bumerang": Eine Zwillingskarte kehrt vom Ablagestapel auf die Hand zurück. */
+  DuelView.prototype.on_boomerang = function (ev) {
+    var sp = this.spawn(ev.id, PILE.x, PILE.y);
+    sp.face(true);
+    this.pHand.push(sp);
+    this.sortHand();
+    this.layoutHand();
+    fx.pop(PILE.x, PILE.y - 100, 'Bumerang!', 'gold small');
+    ZU.audio.whoosh();
+    return wait(320);
+  };
+  /* Eine Hausregel greift sichtbar ein (etwa „Böses Omen" zu Beginn). */
+  DuelView.prototype.on_rule = function (ev) {
+    fx.pop(PILE.x, PILE.y - 110, ZU.RULES[ev.id].name + '!', 'bad small');
+    ZU.audio.curse();
+    return wait(380);
+  };
   DuelView.prototype.on_passive = function () {
     var text = this.duel.enemy.passiveText, colon = text.indexOf(':');
     this.react('smug');
@@ -609,17 +673,19 @@
 
   DuelView.prototype.on_reshuffle = function (ev) {
     var self = this;
-    var top = this.pile[this.pile.length - 1];
-    this.pile.slice(0, -1).forEach(function (sp) {
+    // Nur die abgelegten Karten dieser Seite wandern zurück auf ihren Stapel.
+    var to = STOCKS[ev.actor] || STOCK;
+    this.pile = this.pile.filter(function (sp) {
+      if (ev.ids.indexOf(sp.id) < 0) return true;
       sp.face(false);
-      sp.moveTo(STOCK.x, STOCK.y, 0, 1);
+      sp.moveTo(to.x, to.y, 0, 1);
       sp.setZ(250);
       setTimeout(function () { if (self.sprites[sp.id] === sp) self.kill(sp); }, 380 / ZU.speed);
+      return false;
     });
-    this.pile = top ? [top] : [];
     ZU.audio.shuffle();
-    fx.pop(STOCK.x, STOCK.y - 100, 'Neu gemischt', 'small');
-    return wait(430).then(function () { self.setStock(ev.count); });
+    fx.pop(to.x, to.y - 100, 'Neu gemischt', 'small');
+    return wait(430).then(function () { self.setStock(ev.count, ev.actor); });
   };
 
   DuelView.prototype.on_created = function (ev) {
@@ -649,8 +715,57 @@
   };
 
   DuelView.prototype.on_curfew = function () {
+    var self = this;
     ZU.audio.boss();
-    return fx.banner('Sperrstunde!', 'swap', 1200);
+    return fx.banner('Sperrstunde!', 'swap', 1200).then(function () { return self.countHands(); });
+  };
+
+  /* Kartenvergleich am Ende (Sperrstunde, leerer Stapel, Patt): Beide Hände werden gleichzeitig durchgezählt.
+     Erst zügig, die letzte gemeinsame Karte langsamer, dann eine kurze Pause – und danach nur noch die
+     überzähligen Karten dessen, der mehr hält. Wer weniger hat, gewinnt. */
+  DuelView.prototype.countHands = function () {
+    var self = this, mine = this.pHand.slice(), theirs = this.oHand.slice();
+    var common = Math.min(mine.length, theirs.length), most = Math.max(mine.length, theirs.length);
+    var me = h('div', 'handcount me', '0'), opp = h('div', 'handcount opp', '0');
+    // rechts neben den Händen, damit weder Ablagestapel noch Karten verdeckt werden
+    me.style.left = opp.style.left = (CENTER + 330) + 'px';
+    me.style.top = (HAND_Y - 40) + 'px';
+    opp.style.top = (OPP_Y - 22) + 'px';
+    this.layer.appendChild(me);
+    this.layer.appendChild(opp);
+    function tick(list, el, n) {
+      if (n > list.length) return;
+      list[n - 1].el.classList.add('counted');
+      el.textContent = n;
+      fx.punch(el);
+    }
+    var chain = wait(250);
+    for (var n = 1; n <= most; n++) {
+      (function (n) {
+        chain = chain.then(function () {
+          if (self.destroyed) return null;
+          tick(mine, me, n);
+          tick(theirs, opp, n);
+          if (n < common) { ZU.audio.tick(); return wait(120); }
+          if (n === common) { ZU.audio.select(true); return wait(420).then(function () { return wait(300); }); } // die knappe Stelle, dann Luft holen
+          ZU.audio.select(false);
+          return wait(300);
+        });
+      })(n);
+    }
+    return chain.then(function () {
+      if (self.destroyed) return null;
+      var winner = self.duel.winner;
+      me.classList.add(winner === 'player' ? 'win' : 'lose');
+      opp.classList.add(winner === 'player' ? 'lose' : 'win');
+      if (mine.length === theirs.length) fx.pop(PILE.x, PILE.y - 110, winner === 'player' ? 'Gleichstand – Kellerschlüssel!' : 'Gleichstand: Das Haus gewinnt', winner === 'player' ? 'good' : 'bad');
+      if (winner === 'player') ZU.audio.chip(); else ZU.audio.error();
+      return wait(900);
+    }).then(function () {
+      me.remove();
+      opp.remove();
+      mine.concat(theirs).forEach(function (sp) { sp.el.classList.remove('counted'); });
+    });
   };
   DuelView.prototype.on_stalemate = DuelView.prototype.on_curfew;
 
@@ -658,7 +773,8 @@
     ZU.audio.boss();
     fx.shake(8);
     fx.smoke(STOCK.x, STOCK.y, 22);
-    return fx.banner('Stapel leer!', 'swap', 1300);
+    var self = this;
+    return fx.banner('Stapel leer!', 'swap', 1300).then(function () { return self.countHands(); });
   };
 
   /* ---------- Status-Anzeige ---------- */
@@ -676,6 +792,7 @@
     if (st.spy) this.oppStatus.appendChild(chip('Durchschaut ' + st.spy, 'good', 'Du siehst die Gegnerhand noch ' + st.spy + ' Züge.'));
     if (st.skip.player) this.meStatus.appendChild(chip('Aussetzen', 'bad', 'Du überspringst deinen nächsten Zug.'));
     if (st.curse.player) this.meStatus.appendChild(chip('Fluch ×' + st.curse.player, 'bad', 'Die nächsten ' + st.curse.player + ' Male, die du ziehst, ziehst du 1 Karte mehr.'));
+    if (st.blaze) this.meStatus.appendChild(chip('Stichflamme ' + st.blaze, 'gold', 'Deine nächsten ' + st.blaze + ' Karten bringen doppelte Glut.'));
     st.hodl.forEach(function (hodl) {
       this.meStatus.appendChild(chip('HODL ' + hodl.turns, 'gold', '+' + hodl.amount + ' Mark in die Bank in ' + hodl.turns + ' Zügen.'));
     }, this);

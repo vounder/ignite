@@ -118,7 +118,7 @@ async function waitFor(check, ms) {
   assert.strictEqual((await a('POST', '/api/register', { username: 'Zuendler', password: 'langgenug1', email: 'keine-mail' })).data.error, 'bad_email');
   assert.strictEqual((await a('POST', '/api/register', 'kein json')).status, 400);
   assert.strictEqual((await a('POST', '/api/register', '[1,2]')).status, 400);
-  assert.strictEqual((await a('POST', '/api/register', { username: 'x'.repeat(20000) })).status, 413);
+  assert.strictEqual((await a('POST', '/api/register', { username: 'x'.repeat(30000) })).status, 413);
   r = await fetch(base + '/api/register', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: '{}' });
   assert.strictEqual(r.status, 415, 'nur JSON');
   r = await fetch(base + '/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'https://boese.example' }, body: '{}' });
@@ -156,7 +156,7 @@ async function waitFor(check, ms) {
   // --- Meta-Fortschritt ---
   assert.strictEqual((await anon('POST', '/api/meta', { meta: { ash: 5 } })).status, 401);
   assert.strictEqual((await a('POST', '/api/meta', { meta: 'nein' })).status, 400);
-  assert.strictEqual((await a('POST', '/api/meta', { meta: { blob: 'x'.repeat(7000) } })).status, 413);
+  assert.strictEqual((await a('POST', '/api/meta', { meta: { blob: 'x'.repeat(17000) } })).status, 413);
   assert.strictEqual((await a('POST', '/api/meta', { meta: { ash: 12, earned: 30, unlocked: { 'trinket:heartblood': true }, upgrades: { startgeld: 2 }, maxStake: 1 } })).status, 200);
   assert.deepStrictEqual((await a('GET', '/api/me')).data.meta, { ash: 12, earned: 30, unlocked: { 'trinket:heartblood': true }, upgrades: { startgeld: 2 }, maxStake: 1 });
 

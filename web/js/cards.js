@@ -87,7 +87,8 @@
   /* bind: Bindung einer Spezialkarte ('hearts', 'red', 'wild' …). Der Rahmen zeigt sie:
      ein Symbol = dessen Stilwelt, eine Farbe = zwei Welten schräg geteilt, frei = schwarzer Lack mit Gold.
      'none' zeigt den neutralen Hausrahmen ohne Wimpel. */
-  ZU.cardFace = function (def, bind) {
+  /* mark: { seal, flaw } einer veredelten normalen Karte – erscheint als Siegel unten links, der Makel daneben. */
+  ZU.cardFace = function (def, bind, mark) {
     var el;
     if (def.special) {
       bind = bind || 'wild';
@@ -107,7 +108,18 @@
     }
     el = h('div', 'card front std s-' + def.suit + ' rank-' + def.rank);
     atlasCell(el, FACE_RANKS.indexOf(def.rank), FACE_SUITS.indexOf(def.suit));
-    if (def.rank === '7') el.appendChild(h('div', 'fxmark', '+2'));
+    if (def.rank === '7') el.appendChild(h('div', 'fxmark', '+1'));
+    if (mark && mark.seal && ZU.SEALS[mark.seal]) {
+      var seal = h('i', 'card-seal');
+      seal.style.backgroundImage = 'url(' + ZU.asset('seals/' + mark.seal + '.png') + ')';
+      el.appendChild(seal);
+      el.classList.add('sealed');
+    }
+    if (mark && mark.flaw && ZU.FLAWS[mark.flaw]) {
+      var flaw = h('i', 'card-flaw');
+      flaw.style.backgroundImage = 'url(' + ZU.asset('seals/flaw.png') + ')';
+      el.appendChild(flaw);
+    }
     el.appendChild(h('div', 'shine'));
     return el;
   };
@@ -119,10 +131,10 @@
   /* Statische Karte für Laden, Deck und Belohnungen (kippt zur Maus). */
   ZU.cardStatic = function (def, opts) {
     opts = opts || {};
-    var inner = h('div', 'cs-inner', [ZU.cardFace(def, opts.bind)]);
+    var inner = h('div', 'cs-inner', [ZU.cardFace(def, opts.bind, opts)]);
     var box = h('div', 'cardstatic' + (opts.cls ? ' ' + opts.cls : ''), [h('div', 'cs-shadow'), inner]);
     ZU.tilt(box, inner);
-    if (!opts.noTip) ZU.tip.bind(box, function () { return ZU.tip.card(def, opts.bind); });
+    if (!opts.noTip) ZU.tip.bind(box, function () { return ZU.tip.card(def, opts.bind, opts); });
     return box;
   };
 
@@ -151,6 +163,31 @@
 
   /* Füllt eine Leiste mit allem, was der Spieler trägt: erst Privilegien, dann Trinkets.
      Je mehr es sind, desto kleiner werden die Symbole. Liefert die Elemente nach Kennung. */
+  /* Siegel als Symbol (Hinterzimmer, Esmes Pakete). */
+  ZU.sealEl = function (id) {
+    var img = h('i', 'tk-img');
+    img.style.backgroundImage = 'url(' + ZU.asset('seals/' + id + '.png') + ')';
+    var el = h('div', 'trinket seal', [img]);
+    ZU.tip.bind(el, '<b>' + ZU.SEALS[id].name + '</b><i class="rar uncommon">Veredelung für normale Karten</i><p>' + ZU.SEALS[id].text + '</p>');
+    return el;
+  };
+
+  /* Symbol eines dauerhaften Upgrades (assets/upgrades/<id>.png), im Rahmen der Privilegien. */
+  ZU.upgradeEl = function (id) {
+    var img = h('i', 'tk-img');
+    img.style.backgroundImage = 'url(' + ZU.asset('upgrades/' + id + '.png') + ')';
+    return h('div', 'trinket upgrade', [img]);
+  };
+
+  /* Schild „Hausordnung": fasst die festen Regeln eines Casinos zusammen; Antippen oder Überfahren zeigt sie alle. */
+  ZU.houseChip = function (rules) {
+    var chip = h('div', 'rulechip house', 'Hausordnung · ' + rules.length);
+    ZU.tip.bind(chip, '<b>Hausordnung</b>' + rules.map(function (id) {
+      return '<p><b>' + ZU.RULES[id].name + ':</b> ' + ZU.RULES[id].text + '</p>';
+    }).join(''));
+    return chip;
+  };
+
   ZU.fillOwned = function (container, run, onTrinket) {
     var map = {}, perks = run.s.perks || [], trinkets = run.s.trinkets, total = perks.length + trinkets.length;
     container.innerHTML = '';
@@ -215,18 +252,59 @@
 
   /* ---------- Vorladen: Bilder im Hintergrund holen, damit sie beim Erscheinen sofort da sind ---------- */
   var queue = [], loading = 0, done = {}, keep = [];
+  var ready = {}, waiters = []; // ready: fertig geladen (oder endgültig fehlgeschlagen); waiters: wer darauf wartet
   function pump() {
-    while (loading < 2 && queue.length) {
+    while (loading < 4 && queue.length) {
       var url = queue.shift();
       if (done[url]) continue;
       done[url] = true;
+      keepSrc[url] = true;
       loading++;
       var image = new Image();
-      image.onload = image.onerror = function () { loading--; pump(); };
+      image.onload = image.onerror = (function (url) {
+        return function () {
+          loading--;
+          ready[url] = true;
+          waiters.slice().forEach(function (check) { check(); });
+          pump();
+        };
+      })(url);
       image.src = url;
       keep.push(image);
     }
   }
+  /* Ist ein Bild schon da? */
+  ZU.isLoaded = function (url) { return !!ready[url]; };
+  /* Wartet, bis alle Bilder da sind (zieht sie in der Warteschlange nach vorn). onProgress(fertig, gesamt).
+     Nach "timeout" Millisekunden geht es auch ohne den Rest weiter: Ein fehlendes Bild soll das Spiel nie aufhalten. */
+  ZU.whenLoaded = function (urls, onProgress, timeout) {
+    urls = urls.filter(function (url, i) { return urls.indexOf(url) === i; });
+    return new Promise(function (resolve) {
+      var finished = false, timer = null;
+      function check() {
+        var have = urls.filter(function (url) { return ready[url]; }).length;
+        if (onProgress) onProgress(have, urls.length);
+        if (have >= urls.length) end();
+      }
+      function end() {
+        if (finished) return;
+        finished = true;
+        clearTimeout(timer);
+        var at = waiters.indexOf(check);
+        if (at >= 0) waiters.splice(at, 1);
+        resolve();
+      }
+      waiters.push(check);
+      // noch nicht angefragte Bilder nach vorn; bereits wartende ebenfalls vorziehen
+      var missing = urls.filter(function (url) { return !ready[url]; });
+      queue = queue.filter(function (url) { return missing.indexOf(url) < 0; });
+      missing.forEach(function (url) { if (!keepSrc[url]) delete done[url]; });
+      ZU.preload(missing, true);
+      timer = setTimeout(end, timeout || 12000);
+      check();
+    });
+  };
+  var keepSrc = {};
   /* urgent = true stellt die Bilder an den Anfang der Warteschlange (z. B. die nächsten Gegner). */
   ZU.preload = function (urls, urgent) {
     urls = urls.filter(function (url) { return !done[url]; });
@@ -242,6 +320,11 @@
     ZU.TRINKET_IDS.forEach(function (id) { urls.push(ZU.asset('trinkets/' + id + '.png')); });
     ZU.PERK_IDS.forEach(function (id) { urls.push(ZU.asset('perks/' + id + '.png')); });
     ZU.SPECIAL_IDS.forEach(function (id) { urls.push(ZU.asset('special/' + id + '.png')); });
+    (ZU.CASINO_ART || []).forEach(function (path) { urls.push(ZU.asset(path)); });
+    ZU.SEAL_IDS.concat(['flaw']).forEach(function (id) { urls.push(ZU.asset('seals/' + id + '.png')); });
+    urls.push(ZU.asset('manfred/shop.png'));
+    ['esme', 'room', 'pack-single', 'pack-double', 'pack-bag', 'tarot-back'].forEach(function (name) { urls.push(ZU.asset('esme/' + name + '.png')); });
+    ZU.Meta.UPGRADE_IDS.forEach(function (id) { urls.push(ZU.asset('upgrades/' + id + '.png')); });
     ZU.BOSS_ACTS.forEach(function (act, index) {
       if (index === 0) ZU.BATTLE_POOL.concat(ZU.ELITE_POOL).forEach(function (id) { urls.push(ZU.asset('enemies/' + id + '.png')); });
       act.forEach(function (id) { urls.push(ZU.asset('enemies/' + id + '.png')); });
@@ -276,7 +359,9 @@
     this.stiff = 190;
     this.damp = 20;
 
-    this.flipEl = h('div', 'spr-flip', [ZU.cardFace(this.def, card.bind), ZU.cardBack()]);
+    this.seal = card.seal || null;
+    this.flaw = card.flaw || null;
+    this.flipEl = h('div', 'spr-flip', [ZU.cardFace(this.def, card.bind, card), ZU.cardBack()]);
     this.tiltEl = h('div', 'spr-tilt', [this.flipEl]);
     this.shadowEl = h('div', 'spr-shadow');
     this.badgeEl = h('div', 'spr-badge');
