@@ -354,7 +354,7 @@
         vca.gain.setTargetAtTime(level, e.t, legato ? 0.03 : attack);
         if (!tied) vca.gain.setTargetAtTime(0, end, again ? 0.018 : release);
         vibAmt.gain.setTargetAtTime(0, e.t, 0.02);
-        if (e.d > 0.38) vibAmt.gain.setTargetAtTime(depth, e.t + (o.vibDelay || 0.24), 0.2);
+        if (e.d > (o.vibFrom || 0.38)) vibAmt.gain.setTargetAtTime(depth, e.t + (o.vibDelay || 0.24), o.vibRise || 0.2);
         prevEnd = again ? -1 : end;
       });
     };
@@ -396,6 +396,26 @@
     var kit = {
       k: function (t, v) { thump(t, 118, 46, 0.085, 0.42, 0.95 * v); burst(t, 0.012, 'lowpass', 1800, 0.5, 0.25 * v); },
       s: function (t, v) { burst(t, 0.2, 'bandpass', 1900, 0.7, 0.5 * v); burst(t, 0.12, 'highpass', 4500, 0.5, 0.16 * v); thump(t, 205, 165, 0.05, 0.13, 0.32 * v, 'triangle'); },
+      /* Weiche Snare: zwei Felltöne, die kurz abfallen, darüber ein enges Rauschband für den Teppich
+         und ein Hauch Hall – kein langes Zischen. */
+      sn: function (t, v) {
+        thump(t, 255, 182, 0.028, 0.15, 0.4 * v);
+        thump(t, 410, 325, 0.02, 0.085, 0.2 * v);
+        var src = ctx.createBufferSource(), hp = ctx.createBiquadFilter(), lp = ctx.createBiquadFilter(), g = ctx.createGain();
+        src.buffer = env.noise;
+        src.loop = true;
+        hp.type = 'highpass'; hp.frequency.value = 1500; hp.Q.value = 0.6;
+        lp.type = 'lowpass'; lp.frequency.value = 6800; lp.Q.value = 0.5;
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(0.5 * v, t + 0.001);
+        g.gain.setTargetAtTime(0.16 * v, t + 0.001, 0.018);
+        g.gain.setTargetAtTime(0, t + 0.04, 0.05);
+        src.connect(hp); hp.connect(lp); lp.connect(g); g.connect(env.out);
+        if (env.reverb) { var wet = ctx.createGain(); wet.gain.value = env.level * (o.snareReverb == null ? 0.3 : o.snareReverb); g.connect(wet); wet.connect(env.reverb); }
+        src.start(t, env.rand() * 1.5);
+        src.stop(t + 0.5);
+        burst(t, 0.07, 'bandpass', 950, 1.1, 0.16 * v);
+      },
       r: function (t, v) { burst(t, 0.03, 'bandpass', 1750, 5, 0.9 * v); thump(t, 830, 800, 0.01, 0.035, 0.22 * v, 'triangle'); },
       h: function (t, v) { burst(t, 0.045, 'highpass', 7800, 0.8, 0.3 * v); },
       o: function (t, v) { burst(t, 0.3, 'highpass', 7200, 0.8, 0.26 * v); },
@@ -598,7 +618,7 @@
         }
         var make = INST[tr.inst];
         if (!make) throw new Error('Unbekanntes Instrument: ' + tr.inst);
-        make(ctx, tr.opts || {}, { out: bus, noise: noise, rand: rand, lfo: lfo, L: L })(events);
+        make(ctx, tr.opts || {}, { out: bus, noise: noise, rand: rand, lfo: lfo, L: L, reverb: revIn, level: MU.db(tr.gain || 0) })(events);
       });
 
       return ctx.startRendering().then(function (buf) {

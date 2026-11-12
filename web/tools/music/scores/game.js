@@ -74,18 +74,18 @@
 
         /* ---- Schlagzeug */
         var last = bar === 63, rows;
-        if (calm) rows = { k: 'x.........x.....', r: '....x.......x...', h: 'o.-.o.-.o.-.o.-.' };
-        else if (bridge && s === 4 && i < 4) rows = { r: '............x...', h: 'o...o...o...o.-.', sh: '..-...-...-...-.' };
-        else if (bridge && s === 4) rows = { k: 'x...............', r: '....x.......x...', h: 'o.-.o.-.o.-.o.-.', sh: '..-...-...-...-.' };
+        if (calm) rows = { k: 'x.........x.....', sn: '....o.......o...', h: 'o.-.o.-.o.-.o.-.' };
+        else if (bridge && s === 4 && i < 4) rows = { sn: '............o...', h: 'o...o...o...o.-.', sh: '..-...-...-...-.' };
+        else if (bridge && s === 4) rows = { k: 'x...............', sn: '....o.......o...', h: 'o.-.o.-.o.-.o.-.', sh: '..-...-...-...-.' };
         else if (chorus) {
-          rows = { k: i % 2 ? 'x......x..x..o..' : 'x......x..x.....', s: '....o.......o...', r: '....x.......x...',
+          rows = { k: i % 2 ? 'x......x..x..o..' : 'x......x..x.....', sn: '....x.......x...',
             h: 'x.o-x.o.x.o-x.o.', sh: '-.o.-.o.-.o.-.o.', o: i % 4 === 3 ? '..............x.' : '................' };
           if (i % 4 === 1) { rows.ch = '.......o........'; rows.cl = '..........o..o..'; }
         } else {
-          rows = { k: 'x......o..x.....', r: '....x.......x...', h: 'x.o.x.o.x.o.x.o-', sh: '..-...o...-...o.' };
+          rows = { k: 'x......o..x.....', sn: '....x.......x...', h: 'x.o.x.o.x.o.x.o-', sh: '..-...o...-...o.' };
           if (i % 2) { rows.ch = '......o.........'; rows.cl = '.............o.o'; }
         }
-        if (last) rows = { k: 'x...............', r: '....x...........', h: 'x.o.x.o.........', ch: '........o..o....', cl: '..........o...oo' };
+        if (last) rows = { k: 'x...............', sn: '....o...........', h: 'x.o.x.o.........', ch: '........o..o....', cl: '..........o...oo' };
         add(drums, pattern(at, rows));
         if (i === 7 && !last) drums.push({ t: at + 2, d: 2, n: 'sw', v: sec === 'A' && s === 0 ? 0.5 : 0.8 });
         if (i === 0 && s > 0) drums.push({ t: at, d: 1, n: 'rd', v: 0.7 });
@@ -94,8 +94,8 @@
 
     /* ---- Melodie (notiert in der Lage des alten Stücks, klingt eine Oktave höher).
        Bewusst zurückhaltend, damit sie beim Spielen nicht drängt: wenige, lange Töne, Pausen zwischen den
-       Phrasen, und sie wandert zwischen Vibraphon und der weichen Melodiestimme. Der erste Achttakter
-       bleibt ganz ohne Thema, der letzte klingt auf dem Vibraphon aus. */
+       Phrasen. Meist singt sie die Melodiestimme mit deutlichem Vibrato auf den langen Tönen, im ersten
+       Refrain und in der ersten Brücke übernimmt das Vibraphon. Der erste Achttakter bleibt ohne Thema. */
     var UP = { transpose: 12, vel: 0.7 };
     var BELL = { transpose: 12, vel: 0.66, gate: 1 };
     var PICKUP = 'B3/.25 D4/.25 E4/.25 G4/.5 A4/.5';
@@ -112,7 +112,7 @@
     add(vibes, seq(128, BRIDGE, BELL));
     add(lead, seq(160, BRIDGE, UP));
     add(lead, seq(192, CHORUS_1, UP));
-    add(vibes, seq(224, CHORUS_2, BELL));
+    add(lead, seq(224, CHORUS_2, UP));
 
     /* ---- Vibraphon: kurze Antworten in den Lücken, wenn es nicht selbst die Melodie hat */
     var V = { vel: 0.6, gate: 1 };
@@ -124,14 +124,14 @@
     add(vibes, seq(120, '_/1 F#5/.5 D5/.5 C#5/.5 A4/.5 B4/1 | _/1 D5/.5 F#5/.5 A5/1 F#5/1', V));
     add(vibes, seq(196, '_/2 B4/.5 D5/.5 F#5/1', V));
     add(vibes, seq(220, '_/.5 C5/.5 D#5/.5 F#5/.5 A5/1', V));
-    add(vibes, seq(248, '_/1 F#5/.5 D5/.5 C#5/.5 A4/.5 B4/1 | _/1 D5/.5 F#5/.5', { vel: 0.5, gate: 1 }));
+    add(vibes, seq(248, '_/1 F#5/.5 D5/.5 C#5/.5 A4/.5 B4/1 | _/1 D5/.5 F#5/.5', V));
 
     return {
       name: 'game', bpm: 100, bars: 64, swing: 0.54, seed: 11,
       fx: { reverbTime: 2.5, reverbSeconds: 3, delayBeats: 0.75, delayFeedback: 0.4, delayTone: 2400 },
-      master: { wowCents: 4, flutterCents: 0.7, drive: 1.15, threshold: -17, ratio: 2.2, air: 1.5 },
+      master: { wowCents: 5, flutterCents: 0.7, drive: 1.15, threshold: -17, ratio: 2.2, air: 1.5 },
       tracks: [
-        { name: 'drums', inst: 'drums', notes: drums, gain: -1, reverb: -19, human: 0.003, velHuman: 0.15, opts: { levels: { h: 1.5, o: 1.4, sh: 1.9, s: 1.3, r: 1.2, rd: 1.6, sw: 1.5 } } },
+        { name: 'drums', inst: 'drums', notes: drums, gain: -1, reverb: -19, human: 0.003, velHuman: 0.15, opts: { levels: { h: 1.5, o: 1.4, sh: 1.9, sn: 1, rd: 1.6, sw: 1.5 } } },
         { name: 'bass', inst: 'bass', notes: bass, gain: -12, fx: { drive: 1.4 }, opts: { cutoff: 620, grit: 0.45 } },
         { name: 'pad', inst: 'pad', notes: pad, gain: -11, reverb: -9, duck: 0.22,
           fx: { hp: 180, phaser: { rate: 0.09, freq: 600, mix: 0.5 }, chorus: { rate: 0.45, depth: 0.003 } }, opts: { cutoff: 1500, attack: 0.55, release: 1.5 } },
@@ -140,8 +140,9 @@
         { name: 'pluck', inst: 'pluck', notes: pluck, gain: -5.5, pan: 0.25, reverb: -12, delay: -8, human: 0.004, velHuman: 0.2, fx: { hp: 300 }, opts: { cutoff: 3600 } },
         { name: 'vibes', inst: 'vibes', notes: vibes, gain: -9, pan: -0.25, reverb: -7, delay: -14, human: 0.006, velHuman: 0.15,
           fx: { tremolo: { rate: 5.4, depth: 0.3 } }, opts: { decay: 1.2 } },
-        { name: 'lead', inst: 'lead', notes: lead, gain: -13, reverb: -8, delay: -16,
-          fx: { hp: 200, chorus: { rate: 0.5, depth: 0.0015, mix: 0.3 } }, opts: { cutoff: 1500, glide: 0.05, vibCents: 10, attack: 0.03, waves: [['triangle', 0, 0.8], ['sawtooth', 6, 0.16]] } }
+        { name: 'lead', inst: 'lead', notes: lead, gain: -9, reverb: -9, delay: -14,
+          fx: { hp: 200, chorus: { rate: 0.5, depth: 0.0015, mix: 0.3 } }, opts: { cutoff: 2000, glide: 0.05, attack: 0.02, vibCents: 24, vibRate: 5.2, vibDelay: 0.15, vibRise: 0.09, vibFrom: 0.3,
+            waves: [['sawtooth', -7, 0.4], ['sawtooth', 7, 0.4], ['triangle', 0, 0.55]] } }
       ]
     };
   };
