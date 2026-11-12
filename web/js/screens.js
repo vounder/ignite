@@ -514,8 +514,7 @@
     var intro = !game.titleSeen && !calm;
     game.titleSeen = true;
 
-    var art = h('div', 'title-art');
-    art.style.backgroundImage = 'url(' + ZU.asset('title/backroom.png') + ')';
+    var scene = titleScene(calm), art = scene.el;
     var logo = ZU.titleLogo('ZÜNDUNG');
 
     var hand = h('div', 'title-hand');
@@ -580,8 +579,63 @@
       setTimeout(function () { if (game.screen === 'menu' && !ZU.modal.isOpen()) helpModal(); }, 600);
     }
     setTimeout(function () { if (game.screen === 'menu') unlockedPopup(game); }, intro ? 1400 : 450);
-    return function () { slot._off(); logo.destroy(); };
+    return function () { slot._off(); logo.destroy(); scene.stop(); };
   };
+
+  /* Titelkulisse aus Ebenen: Raum, die Herren und Damen der sechs Casinos, davor der Tisch.
+     Jede Figur ist ein Streifen aus drei Bildern (ruhig, Blinzeln, Grinsen) und lebt für sich:
+     Sie atmet (CSS), blinzelt in unregelmäßigen Abständen und grinst gelegentlich. */
+  var TITLE_CAST = [
+    // id, Mitte x, Unterkante y, Höhe, gespiegelt, Ebene – von außen nach innen, die mittlere sitzt jeweils weiter hinten
+    ['impresario', 108, 548, 372, false, 2],
+    ['house', 262, 520, 348, false, 1],
+    ['captain', 384, 552, 348, false, 3],
+    ['baroness', 896, 552, 348, true, 3],
+    ['prince', 1018, 520, 348, true, 1],
+    ['director', 1172, 548, 372, true, 2]
+  ];
+  ZU.TITLE_ART = ['title/room.png', 'title/table.png'].concat(TITLE_CAST.map(function (c) { return 'title/cast-' + c[0] + '.png'; }));
+  function titleScene(calm) {
+    var room = h('div', 'ts-layer ts-room'), cast = h('div', 'ts-layer ts-cast'), table = h('div', 'ts-layer ts-table');
+    room.style.backgroundImage = 'url(' + ZU.asset('title/room.png') + ')';
+    table.style.backgroundImage = 'url(' + ZU.asset('title/table.png') + ')';
+    var timers = [], dead = false;
+    TITLE_CAST.forEach(function (c, index) {
+      var height = c[3], width = Math.round(height * 440 / 480);
+      var img = h('i', 'ts-img');
+      img.style.backgroundImage = 'url(' + ZU.asset('title/cast-' + c[0] + '.png') + ')';
+      var fig = h('div', 'ts-fig' + (c[4] ? ' flip' : ''), [h('div', 'ts-breath', [img])]);
+      fig.style.cssText = 'left:' + (c[1] - width / 2) + 'px;top:' + (c[2] - height) + 'px;width:' + width + 'px;height:' + height + 'px;z-index:' + c[5] + ';';
+      fig.style.setProperty('--d', (-index * 0.9) + 's');
+      cast.appendChild(fig);
+      if (calm) return;
+      function frame(n) { img.style.backgroundPosition = (n * 50) + '% 0'; }
+      // Blinzeln: kurz, alle paar Sekunden, manchmal doppelt
+      (function blink() {
+        timers[index * 2] = setTimeout(function () {
+          if (dead) return;
+          frame(1);
+          setTimeout(function () { if (!dead && !fig._smug) frame(0); }, 130);
+          if (Math.random() < 0.2) setTimeout(function () { if (dead || fig._smug) return; frame(1); setTimeout(function () { if (!dead && !fig._smug) frame(0); }, 110); }, 300);
+          blink();
+        }, 1800 + Math.random() * 4200);
+      })();
+      // Grinsen: selten und für einen Moment, nie alle zugleich
+      (function smirk() {
+        timers[index * 2 + 1] = setTimeout(function () {
+          if (dead) return;
+          fig._smug = true;
+          frame(2);
+          setTimeout(function () { fig._smug = false; if (!dead) frame(0); }, 1400 + Math.random() * 1600);
+          smirk();
+        }, 5000 + index * 1300 + Math.random() * 12000);
+      })();
+    });
+    return {
+      el: h('div', 'title-art', [room, cast, table]),
+      stop: function () { dead = true; timers.forEach(clearTimeout); }
+    };
+  }
 
   /* Knopf ins Hinterzimmer; ein Punkt zeigt an, dass dort etwas Neues zu kaufen steht. */
   function backroomBtn(game) {
@@ -665,15 +719,19 @@
 
   /* ---------- Casino-Wahl: vor jedem Run ----------
      Alle sechs Häuser sind von Anfang an zu sehen; betreten lässt sich nur, was der Reihe nach geöffnet wurde. */
+  var CASINOS_PER_PAGE = 3;
+  ZU.CASINO_ART = ZU.CASINOS.map(function (casino) { return 'casinos/' + casino.id + '.png'; });
   screens.casino = function (game, root) {
     ZU.bg.set('select');
     var meta = ZU.Meta.get();
-    var grid = h('div', 'casino-grid');
+    var track = h('div', 'casino-track'), pages = [];
     ZU.CASINOS.forEach(function (casino, index) {
       var open = index <= meta.maxStake, last = index === meta.stake;
       var boss = casino.foes ? ZU.ENEMIES[casino.foes.boss] : null;
+      var picture = h('div', 'casino-pic', [h('div', 'casino-no', ZU.roman(index + 1)), open ? null : h('div', 'casino-lock', [ZU.iconEl('lock', 'lockico')])]);
+      picture.style.backgroundImage = 'url(' + ZU.asset('casinos/' + casino.id + '.png') + ')';
       var card = h('div', 'casino-card' + (open ? ' open' : ' locked') + (last && open ? ' last' : ''), [
-        h('div', 'casino-no', ZU.roman(index + 1)),
+        picture,
         h('div', 'casino-name', casino.name),
         h('p', 'casino-sub', casino.sub + '.'),
         h('div', 'casino-facts', [
@@ -683,21 +741,65 @@
         ]),
         h('p', 'casino-boss', boss ? 'Es gehört: ' + boss.name : 'Es gehört: dem Hausherrn oder Donna Scarlatta'),
         open
-          ? btn(last ? 'Eintreten' : 'Eintreten', last ? 'ember' : 'felt', function () {
+          ? btn('Eintreten', last ? 'ember' : 'felt', function () {
             ZU.Meta.setStake(index);
             game.go('starter');
           })
           : h('div', 'locked-note', [ZU.iconEl('lock', 'lockico'), 'Erst „' + ZU.CASINOS[index - 1].name + '“ ausräumen'])
       ]);
-      card.style.animationDelay = (index * 70) + 'ms';
-      grid.appendChild(card);
+      if (index % CASINOS_PER_PAGE === 0) { pages.push(h('div', 'casino-page')); track.appendChild(pages[pages.length - 1]); }
+      pages[pages.length - 1].appendChild(card);
     });
+
+    // Blättern: Knöpfe links und rechts, Wischen oder Mausrad; die Punkte zeigen die Seite.
+    var page = Math.floor(meta.stake / CASINOS_PER_PAGE);
+    var dots = h('div', 'casino-dots');
+    var prev = btn('◄', 'icon casino-prev', function () { show(page - 1, true); });
+    var next = btn('►', 'icon casino-next', function () { show(page + 1, true); });
+    prev.setAttribute('aria-label', 'Vorherige Seite');
+    next.setAttribute('aria-label', 'Nächste Seite');
+    pages.forEach(function (el, index) {
+      var dot = h('button', 'casino-dot', null, { type: 'button', 'aria-label': 'Seite ' + (index + 1) });
+      dot.addEventListener('click', function () { ZU.audio.click(); show(index, true); });
+      dots.appendChild(dot);
+    });
+    function mark() {
+      prev.disabled = page <= 0;
+      next.disabled = page >= pages.length - 1;
+      Array.prototype.forEach.call(dots.children, function (dot, index) { dot.classList.toggle('on', index === page); });
+    }
+    function show(index, smooth) {
+      page = Math.max(0, Math.min(pages.length - 1, index));
+      track.scrollTo({ left: pages[page].offsetLeft, behavior: smooth ? 'smooth' : 'auto' });
+      mark();
+    }
+    track.addEventListener('scroll', function () {
+      var width = track.clientWidth || 1, at = Math.round(track.scrollLeft / width);
+      if (at !== page) { page = Math.max(0, Math.min(pages.length - 1, at)); mark(); }
+    });
+    track.addEventListener('wheel', function (ev) {
+      if (Math.abs(ev.deltaY) < Math.abs(ev.deltaX)) return;
+      ev.preventDefault();
+      if (track._wheel) return; // ein Dreh am Rad blättert genau eine Seite
+      track._wheel = setTimeout(function () { track._wheel = null; }, 420);
+      show(page + (ev.deltaY > 0 ? 1 : -1), true);
+    }, { passive: false });
+    function keys(ev) {
+      if (ZU.modal.isOpen()) return;
+      if (ev.code === 'ArrowLeft') show(page - 1, true);
+      if (ev.code === 'ArrowRight') show(page + 1, true);
+    }
+    window.addEventListener('keydown', keys);
+
     root.appendChild(h('div', 'screen casinos', [
       h('h1', null, 'Wähle dein Casino'),
       h('p', 'sub', 'Wer ein Haus ausräumt, öffnet die Tür zum nächsten. Härtere Häuser zahlen mehr Asche.'),
-      grid,
+      h('div', 'casino-stage', [prev, track, next]),
+      dots,
       btn('Zurück', 'felt back', function () { game.toMenu(); })
     ]));
+    requestAnimationFrame(function () { show(page, false); });
+    return function () { window.removeEventListener('keydown', keys); };
   };
 
   /* ---------- Hauptmenü: „Freigeschaltet" ----------

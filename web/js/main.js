@@ -28,7 +28,7 @@
           self.pause();
         }
       });
-      ZU.preload([ZU.asset('title/backroom.png')], true);
+      ZU.preload(ZU.TITLE_ART.map(function (path) { return ZU.asset(path); }), true);
       this.go('menu');
       ZU.app.init(this);
       // Erst die Gegner eines gespeicherten Runs, dann nach und nach alles Übrige.
