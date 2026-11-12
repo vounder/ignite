@@ -224,3 +224,11 @@ Kerstin um 2,5 bzw. 5 Halbtöne angehoben), erzeugt mit Piper aus Stimmen,
 deren Datensätze gemeinfrei sind (Thorsten, Thorsten emotional, Kerstin; CC0). Skript: `tools/make_voices.py`
 (Arbeitsordner `/data/ignite/voice/`), es schreibt auch die Zeitmarken für `ZU.VOICE_CLIPS` in `js/data.js`.
 Tonhöhe je Figur (`ZU.VOICES`) und die Funkgerät-Verzerrung entstehen erst beim Abspielen (`js/audio.js`).
+
+### Eigene Figur (`avatar/`)
+
+Ebenen je 192×192 auf gemeinsamer Leinwand, ohne Versatz zu stapeln: `body-a` (Graustufen, wird mit der Hautfarbe
+multipliziert), `tattoo-*`, `outfit-*`, `face-<Ausdruck>` (Augen, Brauen, Mund), `hair-*` (Graustufen, eingefärbt),
+`hat-*`; `hat-N-hairmask` löscht das Haar unter dem Hut. Entstanden über eine magentafarbene Schablone des Körpers,
+auf die jedes Teil einzeln gezeichnet und danach registriert wird. Skripte, Prompts und Prüfbild:
+`/data/ignite/art/avatar/` (`gen.sh`, `build_items.py`, `check.png`).

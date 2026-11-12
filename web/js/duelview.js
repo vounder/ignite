@@ -54,6 +54,7 @@
     var sortRank = h('button', 'btn small', 'Wert', { onclick: function () { self.setSort('rank'); } });
     var sortSuit = h('button', 'btn small', 'Farbe', { onclick: function () { self.setSort('suit'); } });
     this.sortButtons = { rank: sortRank, suit: sortSuit };
+    this.me = ZU.avatar.el(ZU.avatar.clean(this.game.profile.avatar, ZU.Meta.get()), 'me');
     var rulesEl = h('div', 'rulerow');
     this.duel.tableRules.forEach(function (rule) {
       var chip = h('div', 'rulechip', ZU.RULES[rule].name);
@@ -76,6 +77,7 @@
       h('div', 'ecount', ['Handkarten: ', this.oppCount]),
       this.oppStatus,
       h('div', 'grow'),
+      h('div', 'me-row', [this.me, h('div', 'me-name', 'Du')]),
       this.turnFlag,
       this.turnCount,
       h('div', 'label', 'Deine Effekte'),
@@ -1102,6 +1104,9 @@
   DuelView.prototype.react = function (mood, ms) {
     if (this.mode === 'ended') return;
     this.portrait.setMood(mood, ms || 1700);
+    // Die eigene Figur reagiert gegenläufig: Freut sich der Gegner, ärgert sie sich – und umgekehrt.
+    var mine = { smug: 'angry', angry: 'smug', shocked: 'smug' }[mood];
+    if (mine && this.me) this.me.setMood(mine, ms || 1700);
   };
 
   /* Grundstimmung je nach Spielstand: nervös, wenn du kurz vor dem Sieg stehst, hämisch im umgekehrten Fall. */
@@ -1324,6 +1329,7 @@
     this.promptEl.classList.remove('on');
     this.portrait.classList.remove('thinking');
     this.portrait.setMood(won ? 'defeated' : 'smug', 60000);
+    this.me.setMood(won ? 'smug' : 'defeated', 60000);
     this.portrait.classList.add(won ? 'ko' : 'gloating');
     this.mode = 'ended';
     this.say(won ? 'lose' : 'win');

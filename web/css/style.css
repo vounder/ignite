@@ -1057,3 +1057,26 @@ body.nobg { background: radial-gradient(ellipse at 50% 85%, var(--bg-mid, #34170
 .service .svc-ico { width: 26px; height: 34px; }
 .service.kniff > .trinket.kniff { width: 46px; height: 46px; }
 .service-shelf { padding-bottom: 10px; }
+
+/* ---------- Eigene Figur ---------- */
+.portrait.avatar { --pbg: #2a3b36; border-color: #3aa58f; }
+.portrait.avatar .av-canvas { width: 100%; height: 100%; image-rendering: pixelated; background: none; }
+.portrait.avatar.huge { width: 300px; height: 300px; border-width: 4px; border-radius: 18px; }
+.portrait.avatar.av-mini { width: 84px; height: 84px; border-width: 2px; border-radius: 10px; }
+.portrait.avatar.av-mini .pt-bob { animation: none; }
+.portrait.avatar.me { width: 64px; height: 64px; border-width: 2px; border-radius: 10px; }
+.me-row { display: flex; align-items: center; gap: 10px; align-self: stretch; margin-bottom: 8px; }
+.me-name { font-family: var(--px); font-size: 13px; letter-spacing: 1px; color: #bff3ea; }
+.avatar-screen .br-head h1 { flex: 1; }
+.av-body { flex: 1; min-height: 0; display: flex; gap: 28px; }
+.av-left { width: 330px; flex: none; display: flex; flex-direction: column; align-items: center; gap: 14px; padding-top: 10px; }
+.av-moods { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.av-moods .btn { min-width: 0; padding-left: 10px; padding-right: 10px; }
+.av-right { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; background: rgba(14,9,6,.62); border: 2px solid rgba(107,85,54,.55); border-radius: 14px; padding: 12px 14px 14px; }
+.av-grid { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 12px; padding: 4px 2px; }
+.av-tile { width: 132px; min-height: 150px; cursor: pointer; padding: 12px 8px 10px; gap: 6px; }
+.av-tile.hidden { cursor: default; }
+.av-swatch { display: block; width: 64px; height: 64px; border-radius: 50%; border: 3px solid #1b110c; box-shadow: inset -6px -8px 0 rgba(0,0,0,.22), 0 3px 0 rgba(0,0,0,.45); }
+.av-lock { display: flex; align-items: center; justify-content: center; width: 64px; height: 64px; border-radius: 12px; background: #130c09; border: 2px dashed #4a3a2a; font-style: normal; font-family: var(--px-wide); font-size: 26px; color: #6b5536; }
+.av-tile .br-open.dim { font-family: var(--text); font-size: 10.5px; letter-spacing: 0; line-height: 1.25; text-transform: none; }
+.av-info { font-size: 12.5px; color: #c9bfae; }

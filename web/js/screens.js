@@ -578,9 +578,12 @@
     }));
     buttons.appendChild(h('div', 'menu-row', [
       backroomBtn(game),
-      btn('Einstellungen', 'felt', function () { settingsModal(game, false); })
+      btn('Deine Figur', 'felt', function () { game.go('avatar'); })
     ]));
-    buttons.appendChild(btn('So wird gezündet', 'felt', function () { helpModal(); }));
+    buttons.appendChild(h('div', 'menu-row', [
+      btn('Einstellungen', 'felt', function () { settingsModal(game, false); }),
+      btn('So wird gezündet', 'felt', function () { helpModal(); })
+    ]));
     Array.prototype.forEach.call(buttons.children, function (child, i) { child.style.setProperty('--i', i); });
 
     var slot = accountSlot();
