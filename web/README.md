@@ -37,6 +37,9 @@ zugehörigen Elemente blenden sich selbst aus.
   Schaukasten: Antippen legt ein Stück hinein, dort stehen Wirkung, Preis und
   der Kaufknopf. Der Unterreiter „Empfohlen“ nennt Platz 1–3 (`Meta.suggest`):
   das Wertvollste, das entdeckt und bezahlbar ist, sonst Sparziele.
+- **Stimmen:** Figuren rufen kurze Worte, wenn ihre Sprechblase erscheint (Begrüßung,
+  Häme, Ärger, Schreck, Sieg, Niederlage) – verzerrt wie aus einem Funkgerät. Eigener
+  Regler „Stimmen“ in den Einstellungen (0 = aus).
 - **Löschmittel:** Die Antwort der Gegner auf Glut (`ZU.DOUSE`, vergeben in
   `run.douse`): Löschsand (8 des Gegners: Kette −2), Löschwasser (Ass: Kette
   halbiert), Sprinkler (jeder 4. Gegnerzug: −5 % des Ziels an Glut), Löschdecke

@@ -3,7 +3,8 @@
   'use strict';
 
   var ctx = null, master = null, noiseBuf = null;
-  var sfxVolume = 0.7, musicVolume = 0.5;
+  var sfxVolume = 0.7, musicVolume = 0.5, voiceVolume = 0.7;
+  var voiceBuf = null, voiceState = 0, voiceOut = null, voiceLast = -9; // voiceState: 0 nicht geladen, 1 lädt, 2 bereit, 3 gescheitert
   var tracks = {}, current = null, wanted = null, unlocked = false, hidden = false;
   var SCALE = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24, 26, 28]; // Pentatonik: jede Kettenstufe klingt höher
 
@@ -69,8 +70,65 @@
       ensure();
       if (ctx && ctx.state === 'suspended' && !hidden) ctx.resume();
       if (wanted) A.music(wanted);
+      if (voiceVolume > 0) A.loadVoices();
     },
     setSfx: function (v) { sfxVolume = v; if (master) master.gain.value = v; },
+    setVoice: function (v) { voiceVolume = v; if (voiceOut) voiceOut.gain.value = v; },
+    /* Lädt die Stimmen (ein Stück mit allen Rufen). Still, wenn es nicht klappt – dann bleibt es bei den Sprechblasen. */
+    loadVoices: function () {
+      if (voiceState || !ensure() || !window.fetch) return;
+      voiceState = 1;
+      fetch(ZU.asset('voices/voices.mp3')).then(function (r) { return r.arrayBuffer(); }).then(function (data) {
+        return new Promise(function (ok, fail) { ctx.decodeAudioData(data, ok, fail); });
+      }).then(function (buf) { voiceBuf = buf; voiceState = 2; }).catch(function () { voiceState = 3; });
+    },
+    /* Ruf einer Figur wie aus einem alten Funkgerät: schmales Band, übersteuert, mit Rauschen und Knacken.
+       mood: greet | smug | angry | shocked | win | lose. Bosse klingen rauer. */
+    voice: function (enemyId, mood) {
+      if (hidden || !unlocked || voiceVolume <= 0 || !ensure()) return;
+      if (voiceState !== 2) { A.loadVoices(); return; }
+      var now = ctx.currentTime;
+      if (now - voiceLast < 1.2) return;
+      var prof = ZU.VOICES[enemyId] || ['m', 1], set = (ZU.VOICE_CLIPS[prof[0]] || {})[mood];
+      if (!set || !set.length) return;
+      voiceLast = now;
+      var clip = set[Math.floor(Math.random() * set.length)], boss = ZU.ENEMIES[enemyId] && ZU.ENEMIES[enemyId].kind === 'boss';
+      var rate = prof[1] * (0.97 + Math.random() * 0.06), dur = clip[1] / rate, t = now + 0.03;
+      if (!voiceOut) { voiceOut = ctx.createGain(); voiceOut.gain.value = voiceVolume; voiceOut.connect(ctx.destination); }
+      var src = ctx.createBufferSource(), hp = ctx.createBiquadFilter(), lp = ctx.createBiquadFilter(), peak = ctx.createBiquadFilter();
+      var drive = ctx.createWaveShaper(), gain = ctx.createGain();
+      src.buffer = voiceBuf;
+      src.playbackRate.value = rate;
+      hp.type = 'highpass'; hp.frequency.value = boss ? 420 : 340; hp.Q.value = 0.8;
+      lp.type = 'lowpass'; lp.frequency.value = boss ? 2400 : 2900; lp.Q.value = 0.9;
+      peak.type = 'peaking'; peak.frequency.value = 1500; peak.Q.value = 1.1; peak.gain.value = 7;
+      var curve = new Float32Array(257), k = boss ? 9 : 6;
+      for (var i = 0; i < 257; i++) { var x = i / 128 - 1; curve[i] = Math.tanh(k * x) / Math.tanh(k); }
+      drive.curve = curve;
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.exponentialRampToValueAtTime(0.55, t + 0.012);
+      gain.gain.setValueAtTime(0.55, t + Math.max(0.03, dur - 0.03));
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.02);
+      src.connect(hp); hp.connect(peak); peak.connect(drive); drive.connect(lp); lp.connect(gain); gain.connect(voiceOut);
+      src.start(t, clip[0], clip[1] + 0.02);
+      // Trägerrauschen unter dem Ruf, Knacken beim Auf- und Zudrücken der Sprechtaste
+      var hiss = ctx.createBufferSource(), hf = ctx.createBiquadFilter(), hg = ctx.createGain();
+      hiss.buffer = noiseBuf; hiss.loop = true;
+      hf.type = 'bandpass'; hf.frequency.value = 2100; hf.Q.value = 0.7;
+      hg.gain.setValueAtTime(0.0001, t - 0.02);
+      hg.gain.exponentialRampToValueAtTime(boss ? 0.07 : 0.045, t);
+      hg.gain.setValueAtTime(boss ? 0.07 : 0.045, t + dur);
+      hg.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.09);
+      hiss.connect(hf); hf.connect(hg); hg.connect(voiceOut);
+      hiss.start(t - 0.02, Math.random() * 0.5); hiss.stop(t + dur + 0.12);
+      [t - 0.02, t + dur + 0.05].forEach(function (at) {
+        var c = ctx.createBufferSource(), cf = ctx.createBiquadFilter(), cg = ctx.createGain();
+        c.buffer = noiseBuf; cf.type = 'highpass'; cf.frequency.value = 1800;
+        cg.gain.setValueAtTime(0.16, at); cg.gain.exponentialRampToValueAtTime(0.0001, at + 0.025);
+        c.connect(cf); cf.connect(cg); cg.connect(voiceOut);
+        c.start(at, Math.random() * 0.5); c.stop(at + 0.03);
+      });
+    },
     setMusic: function (v) { musicVolume = v; if (current && tracks[current]) tracks[current].el.volume = v * tracks[current].fade; },
 
     card: function () { noise(0.07, ZU.rand(2200, 3200), 1.2, 0.22); },

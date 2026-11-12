@@ -2,13 +2,13 @@
 (function (ZU) {
   'use strict';
 
-  ZU.VERSION = '2.4.2';
+  ZU.VERSION = '2.5.0';
   /* Stand der Casino-Liste. Ändert sich die Reihenfolge, rechnen js/meta.js und js/run.js gespeicherte Stände um. */
   ZU.CASINO_VERSION = 2;
   ZU.CASINO_REMAP = [0, 1, 3, 5, 6, 7]; // alter Index (sechs Häuser) → neuer Index (acht Häuser) // im Hauptmenü unten rechts angezeigt
   /* Build-Kennung: wird an alle Asset-Adressen gehängt, damit Browser und CDN nach einem Update frische
      Dateien holen. Nicht von Hand ändern: web/tools/stamp_version.py setzt den Wert. */
-  ZU.BUILD = '9d6fde96dd';
+  ZU.BUILD = '45e5a6f815';
   ZU.asset = function (path) { return 'assets/' + path + '?v=' + ZU.BUILD; };
 
   ZU.HAND_SIZE = 7;
@@ -1085,6 +1085,24 @@
   ZU.KIND_LABEL = { battle: 'Tisch', elite: 'Elite', boss: 'Boss' };
   ZU.ACT_NAMES = ['Hinterzimmer', 'Rauchsalon', 'Das Haus'];
   ZU.SPECIAL_SLOTS = 3; // so viele Spezialkarten fasst ein Deck; Upgrades und Trinkets erweitern das
+
+  /* ---------- Stimmen ----------
+     Kurze Rufe der Figuren (assets/voices/voices.mp3, ein Stück mit allen Aufnahmen). VOICE_CLIPS: Grundstimme ->
+     Stimmung -> [Beginn, Dauer] in Sekunden; erzeugt von /data/ignite/voice/gen.py aus Stimmen mit gemeinfreien Daten
+     (Thorsten, Kerstin). Grundstimmen: m = Mann, d = lallend, w = flüsternd, f = Frau.
+     VOICES: Figur -> [Grundstimme, Tempo/Tonhöhe]; wer fehlt, spricht mit 'm' und 1. */
+  ZU.VOICE_CLIPS = {"m":{"greet":[[0.1,0.325],[0.575,0.557],[1.282,0.279]],"smug":[[1.711,0.209],[2.07,0.36],[2.58,0.314],[3.044,0.685]],"angry":[[3.879,0.418],[4.447,0.488],[5.085,0.325],[5.56,0.94]],"shocked":[[6.65,0.325],[7.125,0.314],[7.589,0.546]],"win":[[8.285,0.383],[8.818,0.464]],"lose":[[9.432,0.65],[10.232,0.232]]},"d":{"greet":[[10.614,0.383],[11.147,0.848],[12.145,0.36]],"smug":[[12.655,0.255],[13.06,0.337],[13.547,0.534],[14.231,0.65]],"angry":[[15.031,0.488],[15.669,0.511],[16.33,0.267],[16.747,0.964]],"shocked":[[17.861,0.325],[18.336,0.348],[18.834,0.511]],"win":[[19.495,0.406],[20.051,0.662]],"lose":[[20.863,0.627],[21.64,0.406]]},"w":{"greet":[[22.196,0.65],[22.996,0.852],[23.998,0.518]],"smug":[[24.666,0.513],[25.329,0.374],[25.853,0.335],[26.338,0.78]],"angry":[[27.268,0.463],[27.881,0.628],[28.659,0.446],[29.255,0.737]],"shocked":[[30.142,0.458],[30.75,0.559],[31.459,0.755]],"win":[[32.364,0.673],[33.187,0.596]],"lose":[[33.933,0.717],[34.8,0.494]]},"f":{"greet":[[35.444,0.224],[35.818,0.416],[36.384,0.288]],"smug":[[36.822,0.336],[37.308,0.24],[37.698,0.48],[38.328,0.451]],"angry":[[38.929,0.288],[39.367,0.439],[39.956,0.301],[40.407,0.66]],"shocked":[[41.217,0.336],[41.703,0.304],[42.157,0.377]],"win":[[42.684,0.363],[43.197,0.617]],"lose":[[43.964,0.487],[44.601,0.256]]}};
+  ZU.VOICES = {
+    'ember-croupier': ['m', 1.04], 'curse-dealer': ['w', 0.86], cheater: ['m', 1.14], 'cigarette-girl': ['f', 1.12], barkeeper: ['d', 0.84],
+    showgirl: ['f', 1.05], bruiser: ['d', 0.76], pianist: ['m', 1.2], bookie: ['m', 0.94], 'card-counter': ['w', 1.1],
+    'double-igniter': ['m', 1.26], 'black-widow': ['f', 0.88], pickpocket: ['f', 1.18], bouncer: ['d', 0.72], 'boss-shark': ['m', 0.82],
+    'boss-dolores': ['f', 0.94], 'boss-smoke': ['f', 0.8], 'boss-consigliere': ['w', 0.8], 'boss-house': ['m', 0.74], 'boss-donna': ['f', 0.84],
+    'taxi-dancer': ['f', 1.22], bandleader: ['m', 1.1], 'boss-impresario': ['m', 0.9], sailor: ['d', 0.92], purser: ['m', 1.16],
+    'boss-captain': ['f', 0.86], bellboy: ['m', 1.3], concierge: ['w', 1.0], 'boss-baroness': ['f', 0.78], croupier: ['f', 1.0],
+    'vault-guard': ['d', 0.7], 'boss-director': ['m', 0.78], stoker: ['d', 0.8], siren: ['f', 1.08], 'boss-prince': ['w', 0.7],
+    hostess: ['f', 1.15], doorwoman: ['f', 0.82], 'boss-eddie': ['m', 0.86], rapper: ['m', 1.18], producer: ['m', 0.96],
+    'boss-label': ['d', 0.88], politician: ['m', 0.9], influencer: ['m', 1.24], undersecretary: ['f', 0.96], 'poker-pro': ['w', 0.92], bluffer: ['d', 0.98]
+  };
 
   /* ---------- Startschachteln ---------- */
   ZU.STARTERS = [

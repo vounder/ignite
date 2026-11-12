@@ -1080,6 +1080,7 @@
   DuelView.prototype.say = function (kind) {
     var lines = this.duel.enemy.say[kind], self = this;
     if (!lines || !lines.length) return;
+    ZU.audio.voice(this.duel.enemy.id, { start: 'greet', attack: 'smug', gloat: 'smug', hurt: 'angry', nervous: 'shocked', win: 'win', lose: 'lose' }[kind] || 'smug');
     this.bubble.textContent = lines[Math.floor(Math.random() * lines.length)];
     fx.punch(this.bubble, 'on');
     this.portrait.classList.add('talk');

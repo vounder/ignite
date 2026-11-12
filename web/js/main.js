@@ -54,6 +54,7 @@
       ZU.speed = s.speed;
       ZU.audio.setSfx(s.sfx);
       ZU.audio.setMusic(s.music);
+      ZU.audio.setVoice(s.voice == null ? 0.7 : s.voice);
       document.getElementById('crt').classList.toggle('off', !s.crt);
       ZU.bg.setEnabled(s.bg);
     },

@@ -227,6 +227,7 @@
       h('h2', null, inRun ? 'Pause' : 'Einstellungen'),
       slider('Musik', 'music', function (v) { ZU.audio.setMusic(v); }),
       slider('Effekte', 'sfx', function (v) { ZU.audio.setSfx(v); }),
+      slider('Stimmen', 'voice', function (v) { ZU.audio.setVoice(v); if (v > 0) ZU.audio.voice('barkeeper', 'smug'); }),
       h('div', 'setrow', [h('span', null, 'Tempo'), speeds]),
       h('div', 'setrow', [h('span', null, 'Röhren-Filter'), onOff('crt')]),
       h('div', 'setrow', [h('span', null, 'Hintergrund'), onOff('bg')]),
