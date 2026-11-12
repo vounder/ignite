@@ -2,10 +2,10 @@
 (function (ZU) {
   'use strict';
 
-  ZU.VERSION = '1.5.0'; // im Hauptmenü unten rechts angezeigt
+  ZU.VERSION = '1.6.0'; // im Hauptmenü unten rechts angezeigt
   /* Build-Kennung: wird an alle Asset-Adressen gehängt, damit Browser und CDN nach einem Update frische
      Dateien holen. Nicht von Hand ändern: web/tools/stamp_version.py setzt den Wert. */
-  ZU.BUILD = '9de3e378b2';
+  ZU.BUILD = '1530a1bc29';
   ZU.asset = function (path) { return 'assets/' + path + '?v=' + ZU.BUILD; };
 
   ZU.HAND_SIZE = 7;
@@ -189,6 +189,30 @@
     { id: 'inferno', tint: { a: [0.06, 0.01, 0.01], b: [0.27, 0.03, 0.02], c: [1.0, 0.34, 0.07] }, name: 'Das Inferno', sub: 'Hier hat noch keiner das Licht ausgemacht', acts: 6, ash: 5,
       rooms: ['Vorhof', 'Glutkammer', 'Aschegrube', 'Schwefelsaal', 'Thronsaal', 'Der Abgrund'], rules: ['last-call', 'wide-awake', 'markup', 'short-night', 'cover', 'sharp-sevens', 'house-edge', 'no-credit', 'marked', 'damp'] }
   ];
+
+  /* ---------- Veredelungen (Esmes Nebenzimmer) ----------
+     Ein Siegel wertet eine normale Karte für den ganzen Run auf; ein Makel ist der kleine Haken, mit dem
+     Esme ein Paket billiger macht. "value" bestimmt den Preis, "not" nennt Makel, die das Siegel aufhöben. */
+  ZU.SEALS = {
+    glut: { name: 'Glutsiegel', value: 5, weight: 10, text: 'Bringt doppelte Glut.', not: ['matt'] },
+    zuend: { name: 'Zündkopf', value: 4, weight: 10, text: 'Die Kette steigt um 1 zusätzlich.', not: ['stumpf'] },
+    gold: { name: 'Goldrand', value: 3, weight: 10, text: '1 Mark in die Bank beim Ausspielen.', not: ['zoll'] },
+    haken: { name: 'Widerhaken', value: 6, weight: 8, text: 'Der Gegner zieht 1 Karte.', not: ['klette'] },
+    anker: { name: 'Anker', value: 3, weight: 10, text: 'Liegt immer auf der Starthand.', not: ['spaet'] },
+    bumerang: { name: 'Bumerang', value: 5, weight: 8, text: 'Kehrt einmal je Duell auf die Hand zurück.', not: [] },
+    irrlicht: { name: 'Irrlicht', value: 8, weight: 3, text: 'Passt auf jede Karte.', not: [] }
+  };
+  ZU.SEAL_IDS = Object.keys(ZU.SEALS);
+  ZU.FLAWS = {
+    zoll: { name: 'Zoll', text: 'Kostet 1 Mark der Auszahlung, wenn du sie spielst.' },
+    matt: { name: 'Matt', text: 'Zählt 4 Glut weniger.' },
+    spaet: { name: 'Nachzügler', text: 'Liegt nie auf der Starthand.' },
+    stumpf: { name: 'Stumpf', text: 'Die Kette steigt bei dieser Karte nicht.' },
+    klette: { name: 'Klette', text: 'Du ziehst 1 Karte, wenn du sie spielst.' }
+  };
+  ZU.FLAW_IDS = Object.keys(ZU.FLAWS);
+  /* Preisregeln der Pakete: Mark je Wertpunkt, Nachlass für einen Makel, Mengenrabatt. */
+  ZU.SEAL_PRICE = { point: 2, flaw: 0.6, double: 0.85, bag: 0.45 };
 
   ZU.CARDS = cards;
   ZU.STANDARD_IDS = Object.keys(cards).filter(function (id) { return !cards[id].special; });

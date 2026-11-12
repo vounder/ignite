@@ -279,10 +279,13 @@
       tipOwner = null;
       tipEl.classList.remove('on');
     },
-    card: function (def, bind) {
+    card: function (def, bind, mark) {
       var rarity = ZU.RARITY[def.rarity];
       if (!def.special) {
-        return '<b>' + def.name + '</b><i class="rar common">Glut ' + def.base + '</i>' + (def.text ? '<p>' + def.text + '</p>' : '');
+        var extra = '';
+        if (mark && mark.seal && ZU.SEALS[mark.seal]) extra += '<p><b>' + ZU.SEALS[mark.seal].name + ':</b> ' + ZU.SEALS[mark.seal].text + '</p>';
+        if (mark && mark.flaw && ZU.FLAWS[mark.flaw]) extra += '<p class="dim"><b>Makel ' + ZU.FLAWS[mark.flaw].name + ':</b> ' + ZU.FLAWS[mark.flaw].text + '</p>';
+        return '<b>' + def.name + '</b><i class="rar common">Glut ' + def.base + '</i>' + (def.text ? '<p>' + def.text + '</p>' : '') + extra;
       }
       var bound = bind && bind !== 'none';
       return '<b>' + def.name + '</b>' +

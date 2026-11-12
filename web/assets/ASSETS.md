@@ -107,6 +107,10 @@ Hexenbrett, Kartenhai, Paschkönig, Dietrich, Generalschlüssel, Schwarze Serie,
 Karoschliff, Nachbrenner, Glutofen, Goldzahn, Zinseszins, Kellerschlüssel,
 Kurze Lunte, Falschgeld, Stempelkarte.
 
+Esme (`esme/esme.png`, sechs Bilder zu 384 Pixel: ruhig, Blinzeln, gierig, genervt, überrascht, verträumt) und die
+Siegel (`seals/`, sieben Siegel und der Makel, 64×64) entstanden am 12.11.2026 auf dieselbe Weise; Skripte und
+Prompts liegen unter `/data/ignite/art/esme/`. `upgrades/tarot.png` ist das Irrlicht-Siegel, vergrößert.
+
 Upgrades (`upgrades/`, 13 Stück, 12.11.2026): je ein Symbol für die dauerhaften Upgrades im Hinterzimmer,
 erzeugt wie die Trinkets (Bögen auf Chroma-Grün, Skripte unter `/data/ignite/art/upgrades/`).
 

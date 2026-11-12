@@ -183,7 +183,7 @@
     sp.el.addEventListener('pointerleave', function () { self.onHover(sp, false); });
     sp.el.addEventListener('pointermove', function (ev) { if (sp.hover) sp.pointer(ev); });
     sp.el.addEventListener('click', function () { self.onCardClick(sp); });
-    ZU.tip.bind(sp.el, function () { return sp.tflip === 0 ? ZU.tip.card(sp.def, sp.bind) : null; });
+    ZU.tip.bind(sp.el, function () { return sp.tflip === 0 ? ZU.tip.card(sp.def, sp.bind, sp) : null; });
     return sp;
   };
 
@@ -620,6 +620,17 @@
     return wait(330);
   };
 
+  /* Siegel „Bumerang": Eine Zwillingskarte kehrt vom Ablagestapel auf die Hand zurück. */
+  DuelView.prototype.on_boomerang = function (ev) {
+    var sp = this.spawn(ev.id, PILE.x, PILE.y);
+    sp.face(true);
+    this.pHand.push(sp);
+    this.sortHand();
+    this.layoutHand();
+    fx.pop(PILE.x, PILE.y - 100, 'Bumerang!', 'gold small');
+    ZU.audio.whoosh();
+    return wait(320);
+  };
   /* Eine Hausregel greift sichtbar ein (etwa „Böses Omen" zu Beginn). */
   DuelView.prototype.on_rule = function (ev) {
     fx.pop(PILE.x, PILE.y - 110, ZU.RULES[ev.id].name + '!', 'bad small');

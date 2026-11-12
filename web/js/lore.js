@@ -192,4 +192,25 @@
       'Der Vertrag des Hausherrn läuft ab, und der Fürst hat bemerkt, dass jemand mit einer Schachtel Streichhölzer durch seine Stadt zieht. Er hat nachgesehen: Mit dir hat er nichts unterschrieben. Das ist ihm seit sehr langer Zeit nicht mehr passiert, und es gefällt ihm ganz und gar nicht.'
     ]
   };
+
+  /* Hinter dem Tresen: Manfred und Esme. Ihre Akten öffnen sich nicht durch Siege, sondern durch Kundschaft
+     (feat: Zählwerk aus js/meta.js, steps: ab wie vielen Käufen bzw. Veredelungen). */
+  ZU.LORE_SHOP = {
+    manfred: {
+      name: 'Manfred', role: 'Händler', art: 'manfred/manfred.png', feat: 'bought', unit: 'Käufe', steps: [1, 15, 40],
+      pages: [
+        'Manfred verkauft alles, was sich tragen lässt, und einiges, was man besser liegen ließe. Sein Laden hat keine Adresse: Er steht einfach immer dort, wo gerade ein Tisch frei wird.',
+        'Er hat Sally und Anton großgezogen, zwischen Kisten und Kartenstapeln, und behauptet bis heute, das sei eine reine Geschäftsbeziehung gewesen. Auf seinem Tresen steht ein Rechenschieber, den Anton ihm geschnitzt hat. Er benutzt ihn nie und staubt ihn jeden Morgen ab.',
+        'Manfred hat bei Quoten-Otto hundert zu eins gewettet, dass das Haus brennt – und dir die Streichhölzer verkauft. Er hat einmal mit dem Fürsten gefeilscht und als Einziger nichts unterschrieben. Das Nebenzimmer hat er an Esme vermietet, viel zu billig, und hofft, dass sie es nie nachrechnet.'
+      ]
+    },
+    esme: {
+      name: 'Esme', role: 'Wahrsagerin', art: 'esme/esme.png', feat: 'sealed', unit: 'Veredelungen', steps: [1, 5, 15],
+      pages: [
+        'Esme hat das Nebenzimmer von Manfred gemietet, auf unbestimmte Zeit und zu einer Miete, über die beide seit Jahren mit Genuss streiten. Sie liest Karten, Hände und Kontoauszüge, am liebsten in dieser Reihenfolge.',
+        'Sie hat Madame Rauch die Zukunft gelegt, Vera vier Hochzeiten und der Baronin den Verlust ihres Colliers – jeweils gegen Vorkasse. Dem Hausherrn hat sie nur eine einzige Karte umgedreht und ihm das Geld zurückgegeben. Das ist ihr vorher und nachher nie wieder passiert.',
+        'Ihre eigenen Karten zeigen ihr seit Jahren denselben Mann: rote Weste, flinke Finger, erbärmlich im Kopfrechnen, sobald sie ihn ansieht. Esme hat die Karte aus dem Deck genommen. Sie liegt unter ihrer Kasse, mit dem Gesicht nach oben. Die Miete hat sie längst nachgerechnet.'
+      ]
+    }
+  };
 })(typeof window !== 'undefined' ? (window.ZU = window.ZU || {}) : (globalThis.ZU = globalThis.ZU || {}));

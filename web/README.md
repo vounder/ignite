@@ -80,6 +80,16 @@ zugehörigen Elemente blenden sich selbst aus.
 - **Freigeschaltet:** Das Hauptmenü zeigt in einem Fenster, was seit dem
   letzten Mal im Hinterzimmer aufgetaucht ist oder sich geöffnet hat; Einträge
   lassen sich einzeln („Gesehen“) oder zusammen („Alle gesehen“) abhaken.
+- **Veredeln:** Im Nebenzimmer von Manfreds Laden sitzt die Wahrsagerin Esme.
+  Sie verkauft Pakete mit **Siegeln** für normale Karten (Glutsiegel, Zündkopf,
+  Goldrand, Widerhaken, Anker, Bumerang, Irrlicht): Einzelsiegel und Doppelpack
+  für Karten deiner Wahl, die Wundertüte für drei zufällige. Eine Karte trägt
+  höchstens ein Siegel; ein neues ersetzt das alte. Günstige Pakete tragen oft
+  einen kleinen **Makel** – früh im Casino häufig, gegen Ende selten. Der Preis
+  folgt dem Wert der Siegel (`ZU.SEALS`, `ZU.FLAWS`, `ZU.SEAL_PRICE` in
+  `js/data.js`); mindestens ein Paket ist makellos, und wer sich nichts leisten
+  kann, bekommt einmal gratis neu ausgelegt. Siegel werden wie alles andere im
+  Hinterzimmer entdeckt und gekauft; drei sind von Anfang an dabei.
 - **Laden:** Gekaufte Erweiterungen und Rabatte gelten sofort – die Vitrine
   füllt ihren dritten Platz, das Große Regal legt eine Karte aus, der
   Doppelboden zieht schon beim nächsten Kauf.
