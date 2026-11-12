@@ -146,6 +146,7 @@
     /* Dauerhafte Upgrades: bewusst klein gehalten, damit frühe Runs nicht trivial werden. */
     UPGRADES: {
       startgeld: { name: 'Startkapital', text: '+2 Mark Startgeld je Stufe.', costs: [6, 10, 15] },
+      flinkefinger: { name: 'Flinke Finger', text: 'Du beginnst jeden Run mit dem Privileg Flinke Finger: Karten mit gleichem Wert gehen in einem Zug raus.', costs: [20] },
       etui: { name: 'Kartenetui', text: 'Dein Deck fasst eine Spezialkarte mehr je Stufe (ohne Ausbau: ' + ZU.SPECIAL_SLOTS + ').', costs: [10, 18, 30] },
       stammkunde: { name: 'Stammkunde', text: 'Die erste Neue Auslage in jedem Laden ist gratis.', costs: [10] },
       spuernase: { name: 'Spürnase', text: 'Im Spezialkarten-Regal liegt öfter etwas (+10 % je Stufe).', costs: [8, 14] },
@@ -158,7 +159,7 @@
       reserve: { name: 'Reserveholz', text: 'Du beginnst mit einem vierten Streichholz.', costs: [25] },
       gluecksbringer: { name: 'Glücksbringer', text: 'Du beginnst jeden Run mit einem zufälligen gewöhnlichen Trinket.', costs: [22] }
     },
-    UPGRADE_IDS: ['startgeld', 'etui', 'stammkunde', 'spuernase', 'sparbuch', 'zuendelei', 'schaufenster', 'handschlag', 'trinkgeld', 'aschesieb', 'reserve', 'gluecksbringer'],
+    UPGRADE_IDS: ['startgeld', 'flinkefinger', 'etui', 'stammkunde', 'spuernase', 'sparbuch', 'zuendelei', 'schaufenster', 'handschlag', 'trinkgeld', 'aschesieb', 'reserve', 'gluecksbringer'],
 
     /* Casinos als Stufen. Der Name STAKES und die Felder stake/maxStake stammen von den früheren „Einsätzen"
        und bleiben, damit gespeicherte Profile und Konten weiter passen. */
@@ -397,6 +398,7 @@
         bossTip: M.level(meta, 'trinkgeld') * 3,
         burnDiscount: M.level(meta, 'zuendelei'),
         luckyTrinket: M.level(meta, 'gluecksbringer') > 0,
+        nimble: M.level(meta, 'flinkefinger') > 0,
         trinkets: open('trinket', ZU.TRINKET_IDS),
         specials: open('special', ZU.SPECIAL_IDS)
       };

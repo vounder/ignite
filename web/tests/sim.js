@@ -303,6 +303,19 @@ ZU.STARTERS.forEach(starter => {
   assert.strictEqual(run.trinketPrice(0), Math.max(1, price + ZU.TRINKET_SURCHARGE - 4), 'Stempelkarte gilt sofort');
 }
 
+// Upgrade „Flinke Finger": für 20 Asche beginnt jeder Run mit dem Privileg.
+{
+  const meta = ZU.Meta.defaults();
+  assert.deepStrictEqual(ZU.Meta.UPGRADES.flinkefinger.costs, [20]);
+  assert.strictEqual(ZU.Meta.isFound(meta, 'upgrade', 'flinkefinger'), true, 'von Anfang an zu kaufen');
+  meta.upgrades.flinkefinger = 1;
+  const run = ZU.Run.start('classic', 12, ZU.Meta.runOptions(ZU.Meta.clean(meta)));
+  assert.ok(run.has('nimble-fingers'));
+  run._openShop();
+  assert.notStrictEqual(run.s.perkOffer.id, 'nimble-fingers', 'das Privileg wird nicht noch einmal angeboten');
+  assert.strictEqual(ZU.Run.start('igniter', 12, ZU.Meta.runOptions(ZU.Meta.clean(meta))).s.perks.filter(id => id === 'nimble-fingers').length, 1);
+}
+
 // Die 7 lässt nur noch 1 Karte ziehen und niemanden aussetzen.
 assert.deepStrictEqual(ZU.CARDS['hearts-7'].effects, [{ type: 'draw', amount: 1, reflectable: true }]);
 
