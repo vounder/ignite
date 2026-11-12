@@ -1,6 +1,7 @@
 /* Zündung – Spielmusik. h-Moll, 100 BPM, 64 Takte (rund 2:34), nahtlose Schleife.
    Die Melodien stammen aus dem bisherigen Spielstück: das Auftakt-Thema (h d e g a → fis) und
-   der Refrain (fis fis fis e d e …), dazu die Brücke mit den langen Tönen. Neu sind Tempo, Harmonien und Klang. */
+   der Refrain (fis fis fis e d e …, hier auf seine Haupttöne ausgedünnt), dazu die Brücke mit den langen
+   Tönen. Neu sind Tempo, Harmonien und Klang. */
 (function (MU) {
   'use strict';
   MU.scores = MU.scores || {};
@@ -91,50 +92,39 @@
       });
     });
 
-    /* ---- Melodie (notiert in der Lage des alten Stücks, klingt eine Oktave höher) */
-    var UP = { transpose: 12, vel: 0.8 };
+    /* ---- Melodie (notiert in der Lage des alten Stücks, klingt eine Oktave höher).
+       Bewusst zurückhaltend, damit sie beim Spielen nicht drängt: wenige, lange Töne, Pausen zwischen den
+       Phrasen, und sie wandert zwischen Vibraphon und der weichen Melodiestimme. Der erste Achttakter
+       bleibt ganz ohne Thema, der letzte klingt auf dem Vibraphon aus. */
+    var UP = { transpose: 12, vel: 0.7 };
+    var BELL = { transpose: 12, vel: 0.66, gate: 1 };
     var PICKUP = 'B3/.25 D4/.25 E4/.25 G4/.5 A4/.5';
-    function themeA(at, second) {
-      add(lead, seq(at, 'F#4/4:3.9 | _/2 D4/1.5 F#4/.5:3.2 | _/4 | _/2.25 ' + PICKUP, UP));
-      if (!second) add(lead, seq(at + 16, 'F#4/4:3.9 | _/2 D5/1.5 B4/.5:3.2 | _/4 | A4/1 G4/.5 F#4/.75:.6 ' + PICKUP, UP));
-      else add(lead, seq(at + 16, 'F#4/4:3.9 | _/2 D5/1.5 B4/.5:2.3 | _/2 _/1 A4/.5 G4/.5 | F#4/2:1.9 _/1 E4/.5 E4/.5', UP));
-    }
-    function chorus1(at) {
-      add(lead, seq(at, 'F#4/1 F#4/1 F#4/.5 E4/.5 D4/.5 E4/.5 | _/.5 D4/1 D4/2.5:2.2 | _/1 E4/.5 C#4/.5 E4/.5 F#4/.5 E4/.5 D4/.5 | _/.5 D4/1 D4/.5 B3/.5 C#4/.5 D4/.5 E4/.5', UP));
-      add(lead, seq(at + 16, 'F#4/1 F#4/1 F#4/.5 E4/.5 D4/.5 E4/.5 | _/.5 F#4/2.5:2.3 D4/1 | _/.25 C#4/1.75 C#4/.5 B3/.5 C#4/.5 D#4/.5:3 | _/3 E4/.5 E4/.5', UP));
-    }
-    function chorus2(at, toTheme) {
-      add(lead, seq(at, 'F#4/1 F#4/1 F#4/.5 E4/.5 D4/.5 E4/.5 | _/.5 D4/1 D4/2.5:2.2 | _/1 E4/.5 C#4/.5 E4/.5 F#4/.5 E4/.5 D4/.5 | _/.5 D4/1 D4/.5 B3/.5 C#4/.5 D4/.5 E4/.5', UP));
-      add(lead, seq(at + 16, 'F#4/1 F#4/1 F#4/.5 A4/.5 F#4/.5 E4/.5 | _/.5 F#4/1 D4/1 C#4/1 B3/.5:4.2 | _/4 | ' + (toTheme ? '_/2.25 ' + PICKUP : '_/4'), UP));
-    }
-    themeA(0, false);
-    themeA(32, true);
-    chorus1(64);
-    chorus2(96, false);
-    // Brücke: beim ersten Mal singt das Vibraphon die langen Töne, beim zweiten Mal die Melodiestimme mit Umspielungen
-    add(vibes, seq(128, '_/1 D4/1.5 B3/.5 D4/.5 F#4/.5:1.4 | _/1 F#4/.5 D4/2.5:2.3 | _/1 C#4/3:4.3 | _/1.5 D4/.5 C#4/2:1.8 | ' +
-      '_/1 F4/1.5 D4/.5 F4/1 | _/.5 G4/.5 A4/.5 F4/.5 D4/1 F4/1 | _/.5 E4/2 F#4/.5 E4/.5 C#4/.5:3.5 | _/4', { transpose: 12, vel: 0.78, gate: 1 }));
-    add(lead, seq(160, '_/1 D4/1.5 B3/.5 D4/.5 F#4/.5:1.4 | _/1 F#4/.5 G4/.5 A4/1 F#4/1 | C#4/1 A3/1.5 F#3/.5 A3/.5 C#4/.5 | _/.5 B3/.5 C#4/.5 D4/.5 C#4/2:1.8 | ' +
-      '_/1 F4/1.5 D4/.25 Eb4/.25 F4/1 | _/.5 G4/.5 A4/.5 F4/.5 D4/1 F4/1 | _/.5 E4/2 C#4/.5 E4/.5 F#4/.5:2.4 | _/3 E4/.5 E4/.5', UP));
-    chorus1(192);
-    chorus2(224, true);
+    var THEME = 'F#4/4:3.9 | _/2 D4/1.5 F#4/.5:3.2 | _/4 | _/2.25 ' + PICKUP + ' | F#4/4:3.9 | _/2 D4/1.5 B3/.5:2.6 | _/4 | _/4';
+    var CHORUS = 'F#4/2:1.9 F#4/1 E4/.5 D4/.5 | _/.5 D4/3.5:3 | _/1 E4/1 F#4/1 E4/1 | D4/2:1.8 _/2 | ';
+    var CHORUS_1 = CHORUS + 'F#4/2:1.9 F#4/1 E4/.5 D4/.5 | _/.5 F#4/2.5:2.3 D4/1 | C#4/2:1.9 _/.5 B3/.5 C#4/.5 D#4/.5:3 | _/4';
+    var CHORUS_2 = CHORUS + 'F#4/2:1.9 A4/1 F#4/.5 E4/.5 | _/.5 F#4/1 D4/1 C#4/1 B3/.5:4.2 | _/4 | _/4';
+    var BRIDGE = '_/1 D4/1.5 B3/.5 D4/.5 F#4/.5:1.4 | _/1 F#4/.5 D4/2.5:2.3 | _/1 C#4/3:4.3 | _/1.5 D4/.5 C#4/2:1.8 | ' +
+      '_/1 F4/1.5 D4/.5 F4/1 | _/.5 G4/.5 A4/.5 F4/.5 D4/1 F4/1 | _/.5 E4/2 F#4/.5 E4/.5 C#4/.5:3.5 | _/4';
+    add(lead, seq(30.25, PICKUP, UP));    // Auftakt in den zweiten Achttakter
+    add(lead, seq(32, THEME, UP));
+    add(vibes, seq(64, CHORUS_1, BELL));
+    add(lead, seq(96, CHORUS_2, UP));
+    add(vibes, seq(128, BRIDGE, BELL));
+    add(lead, seq(160, BRIDGE, UP));
+    add(lead, seq(192, CHORUS_1, UP));
+    add(vibes, seq(224, CHORUS_2, BELL));
 
-    /* ---- Vibraphon: Antworten in den Lücken, im letzten Refrain verdoppelt es das Motiv */
-    var V = { vel: 0.62, gate: 1 };
+    /* ---- Vibraphon: kurze Antworten in den Lücken, wenn es nicht selbst die Melodie hat */
+    var V = { vel: 0.6, gate: 1 };
     add(vibes, seq(8, '_/1 D5/.5 C#5/.5 A4/1 F#4/1', V));
     add(vibes, seq(24, '_/1.5 F#5/.5 D5/.5 B4/.5 A4/1', V));
     add(vibes, seq(40, '_/1 F#5/.5 E5/.5 C#5/.5 A4/.5 B4/1', V));
     add(vibes, seq(56, '_/.5 B5/.5 A5/.5 F#5/.5', V));
-    [64, 192].forEach(function (at) {
-      add(vibes, seq(at + 4, '_/2 B4/.5 D5/.5 F#5/1', V));
-      add(vibes, seq(at + 28, '_/.5 C5/.5 D#5/.5 F#5/.5 A5/1', V));
-    });
-    [96, 224].forEach(function (at) {
-      add(vibes, seq(at + 4, '_/2 B4/.5 D5/.5 F#5/1', V));
-      add(vibes, seq(at + 24, '_/1 F#5/.5 D5/.5 C#5/.5 A4/.5 B4/1 | _/1 D5/.5 F#5/.5' + (at === 96 ? ' A5/1 F#5/1' : ''), V));
-    });
-    add(vibes, seq(160, 'F#5/2 A5/2 | B5/2 D6/2 | E6/2 C#6/2 | B5/2 A5/2 | A5/2 F5/2 | D6/2 F6/2 | E6/2 D6/2 | C#6/2 E6/2', { vel: 0.4, gate: 1 }));
-    [192, 208, 224, 240].forEach(function (at) { add(vibes, seq(at, 'F#6/1 F#6/1 F#6/.5 ' + (at === 240 ? 'A6' : 'E6') + '/.5 ' + (at === 240 ? 'F#6' : 'D6') + '/.5 E6/.5', { vel: 0.4, gate: 1 })); });
+    add(vibes, seq(100, '_/2 B4/.5 D5/.5 F#5/1', V));
+    add(vibes, seq(120, '_/1 F#5/.5 D5/.5 C#5/.5 A4/.5 B4/1 | _/1 D5/.5 F#5/.5 A5/1 F#5/1', V));
+    add(vibes, seq(196, '_/2 B4/.5 D5/.5 F#5/1', V));
+    add(vibes, seq(220, '_/.5 C5/.5 D#5/.5 F#5/.5 A5/1', V));
+    add(vibes, seq(248, '_/1 F#5/.5 D5/.5 C#5/.5 A4/.5 B4/1 | _/1 D5/.5 F#5/.5', { vel: 0.5, gate: 1 }));
 
     return {
       name: 'game', bpm: 100, bars: 64, swing: 0.54, seed: 11,
@@ -148,10 +138,10 @@
         { name: 'ep', inst: 'ep', notes: ep, gain: -14, reverb: -12, delay: -22, duck: 0.12, human: 0.008, velHuman: 0.2,
           fx: { hp: 140, lp: 5200, autopan: { rate: 4.4, depth: 0.35 }, chorus: { rate: 0.7, depth: 0.0018, mix: 0.35 } }, opts: { decay: 1.7, bark: 1.25, tine: 0.8 } },
         { name: 'pluck', inst: 'pluck', notes: pluck, gain: -5.5, pan: 0.25, reverb: -12, delay: -8, human: 0.004, velHuman: 0.2, fx: { hp: 300 }, opts: { cutoff: 3600 } },
-        { name: 'vibes', inst: 'vibes', notes: vibes, gain: -10, pan: -0.25, reverb: -7, delay: -14, human: 0.006, velHuman: 0.15,
+        { name: 'vibes', inst: 'vibes', notes: vibes, gain: -9, pan: -0.25, reverb: -7, delay: -14, human: 0.006, velHuman: 0.15,
           fx: { tremolo: { rate: 5.4, depth: 0.3 } }, opts: { decay: 1.2 } },
-        { name: 'lead', inst: 'lead', notes: lead, gain: -7, reverb: -10, delay: -11,
-          fx: { hp: 200, chorus: { rate: 0.5, depth: 0.0015, mix: 0.3 } }, opts: { cutoff: 2600, glide: 0.045, vibCents: 16, waves: [['sawtooth', -7, 0.45], ['sawtooth', 7, 0.45], ['triangle', 0, 0.5]] } }
+        { name: 'lead', inst: 'lead', notes: lead, gain: -13, reverb: -8, delay: -16,
+          fx: { hp: 200, chorus: { rate: 0.5, depth: 0.0015, mix: 0.3 } }, opts: { cutoff: 1500, glide: 0.05, vibCents: 10, attack: 0.03, waves: [['triangle', 0, 0.8], ['sawtooth', 6, 0.16]] } }
       ]
     };
   };
