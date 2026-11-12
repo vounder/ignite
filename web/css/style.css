@@ -1047,3 +1047,13 @@ body.nobg { background: radial-gradient(ellipse at 50% 85%, var(--bg-mid, #34170
 .br-show > .trinket.kniff .kn-pips { bottom: -11px; gap: 7px; } .br-show > .trinket.kniff .kn-pips b { width: 18px; height: 18px; border-width: 3px; }
 .br-grid.big .br-tile > .trinket.kniff .kn-pips b { width: 10px; height: 10px; }
 .service.kniff > .trinket.kniff { width: 58px; height: 58px; }
+
+/* Dienste: drei Zeilen (Kniff, Verbrennen, Streichholz) müssen über den Weiter-Knopf passen */
+.services { gap: 7px; }
+.service { min-height: 58px; padding: 6px 10px; }
+.service .svc-name { font-size: 14px; margin-bottom: 1px; }
+.service.kniff .svc-name { font-size: 13px; }
+.service p { font-size: 11.5px; line-height: 1.25; }
+.service .svc-ico { width: 26px; height: 34px; }
+.service.kniff > .trinket.kniff { width: 46px; height: 46px; }
+.service-shelf { padding-bottom: 10px; }
