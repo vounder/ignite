@@ -37,7 +37,7 @@ function playDuel(run, rnd) {
     if (++steps >= 600) {
       console.log('P', duel.hand.player.map(i => duel.cards[i].def).join(' '));
       console.log('O', duel.hand.opp.map(i => duel.cards[i].def).join(' '));
-      console.log('top', duel.cards[duel.top()].def, 'stock', duel.stock.length, 'pile', duel.pile.length, 'status', JSON.stringify(duel.status), 'trinkets', duel.trinkets.join(','), 'noProgress', duel.noProgress, 'active', duel.active);
+      console.log('top', duel.cards[duel.top()].def, 'stock', duel.stocks.player.length + '/' + duel.stocks.opp.length, 'pile', duel.pile.length, 'status', JSON.stringify(duel.status), 'trinkets', duel.trinkets.join(','), 'noProgress', duel.noProgress, 'active', duel.active);
       console.log(trace.slice(-24).join(' | '));
       assert.fail('Duell endet nicht: ' + duel.enemy.id);
     }
@@ -111,7 +111,7 @@ function shop(run, rnd) {
       if (!offer.sold && s.money >= run.cardPrice(i) && rnd.next() < 0.08) run.buyCard(i);
     });
     if (s.lives < ZU.MAX_LIVES && !s.shop.healed && s.money >= run.healPrice()) run.heal();
-    if (s.collection.length > 7 && s.money >= run.burnPrice() && rnd.next() < 0.5) {
+    if (s.collection.length > 12 && s.money >= run.burnPrice() && rnd.next() < 0.5) {
       const plain = s.collection.filter(c => !ZU.CARDS[c.def].special);
       if (plain.length) run.burn(plain[0].id);
     }
@@ -266,6 +266,41 @@ for (let n = 0; n < RUNS; n++) {
   assert.strictEqual(ZU.Meta.get().ash, after);
   assert.strictEqual(ZU.Meta.feat(ZU.Meta.get(), 'casino'), 1);
   ZU.Profile._memory = null;
+}
+
+// Startdeck: 16 normale Karten plus die Spezialkarten der Schachtel; jede Seite zieht vom eigenen Stapel.
+ZU.STARTERS.forEach(starter => {
+  const run = ZU.Run.start(starter.id, 900, ZU.Meta.runOptions(ZU.Meta.defaults()));
+  const specials = run.s.collection.filter(c => ZU.CARDS[c.def].special);
+  assert.strictEqual(run.s.collection.length - specials.length, ZU.DECK_SIZE, starter.id + ': 16 normale Karten');
+  assert.strictEqual(specials.length, starter.special ? 1 : starter.cards.filter(d => ZU.CARDS[d].special).length, starter.id + ': Spezialkarten');
+  const duel = run.newDuel();
+  duel.start();
+  const own = new Set(run.s.collection.map(c => c.id));
+  assert.strictEqual(duel.hand.player.length + duel.stocks.player.length, run.s.collection.length, 'das ganze Deck liegt auf Hand und eigenem Stapel');
+  assert.ok(duel.hand.player.concat(duel.stocks.player).every(id => own.has(id)), 'der Spieler hält nur eigene Karten');
+  assert.ok(duel.hand.opp.concat(duel.stocks.opp).every(id => !own.has(id)), 'der Gegner hat sein eigenes Blatt');
+});
+
+// Der Laden übernimmt Erweiterungen und Rabatte sofort.
+{
+  const run = ZU.Run.start('classic', 4711);
+  run._openShop();
+  run.s.money = 500;
+  const trinkets = run.s.shop.trinkets.length;
+  run.s.perkOffer = { id: 'showcase', price: 1, sold: false, act: run.s.act };
+  run.buyPerk();
+  assert.strictEqual(run.s.shop.trinkets.length, trinkets + 1, 'Vitrine füllt den neuen Platz gleich');
+  const specials = run.s.shop.specials.length;
+  run.s.perkOffer = { id: 'shelf', price: 1, sold: false, act: run.s.act };
+  run.buyPerk();
+  assert.strictEqual(run.s.shop.specials.length, specials + 1, 'Großes Regal legt gleich eine Karte aus');
+  const before = run.cardPrice(0);
+  run._gainTrinket('false-bottom');
+  assert.strictEqual(run.cardPrice(0), Math.max(1, before - 2), 'Doppelboden gilt schon in diesem Laden');
+  const price = run.trinketPrice(0);
+  run._gainTrinket('loyalty');
+  assert.strictEqual(run.trinketPrice(0), Math.max(1, price + ZU.TRINKET_SURCHARGE - 4), 'Stempelkarte gilt sofort');
 }
 
 // Die 7 lässt nur noch 1 Karte ziehen und niemanden aussetzen.

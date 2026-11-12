@@ -48,7 +48,7 @@
     this.nextId = opts.nextId;
     this.cards = {};
     this.hand = { player: [], opp: [] };
-    this.stock = [];
+    this.stocks = { player: [], opp: [] }; // jede Seite zieht von ihrem eigenen Stapel
     this.pile = [];
     this.staging = [];
     this.status = { skip: { player: 0, opp: 0 }, curse: { player: 0, opp: 0 }, spy: 0, blaze: 0, hodl: [] };
@@ -115,17 +115,13 @@
     var opening = owned.slice(0, handSize);
     var rest = owned.slice(handSize);
 
-    // Ein gemeinsames 32er-Blatt: eigene Standardkarten belegen ihre Plätze.
-    var house = ZU.STANDARD_IDS.slice();
-    this.collection.forEach(function (c) {
-      var index = house.indexOf(c.def);
-      if (index >= 0) house.splice(index, 1);
-    });
-    rng.shuffle(house);
+    // Der Gegner spielt mit einem eigenen Blatt des Hauses: 24 zufällige Karten aus dem 32er-Blatt plus seine Spezialkarten.
+    // Das Deck des Spielers bleibt für sich; dieselbe Karte kann also auf beiden Seiten vorkommen.
+    var house = rng.shuffle(ZU.STANDARD_IDS.slice());
+    house.length = ZU.OPP_DECK;
 
     var counts = ZU.enemySpecials(this.kind, this.act);
-    var stockSpecials = Math.min(counts.stock, Math.max(0, house.length - 14));
-    house.length -= stockSpecials;
+    var stockSpecials = counts.stock;
 
     var tableIndex = -1;
     for (var i = 0; i < house.length; i++) {
@@ -134,10 +130,11 @@
     if (tableIndex < 0) tableIndex = 0;
     var tableDef = house.splice(tableIndex, 1)[0];
 
-    house.forEach(function (defId) { self.stock.push(self._register(defId, 'house', false)); });
-    for (var s = 0; s < stockSpecials; s++) this.stock.push(this._register(rng.pick(this.enemy.pool), 'enemy', false, null, ZU.rollBind(rng, this.act)));
-    rest.forEach(function (id) { self.stock.push(id); });
-    rng.shuffle(this.stock);
+    var mine = this.stocks.player, theirs = this.stocks.opp;
+    house.forEach(function (defId) { theirs.push(self._register(defId, 'house', false)); });
+    for (var s = 0; s < stockSpecials; s++) theirs.push(this._register(rng.pick(this.enemy.pool), 'enemy', false, null, ZU.rollBind(rng, this.act)));
+    rng.shuffle(theirs);
+    rest.forEach(function (id) { mine.push(id); }); // schon gemischt
 
     var tableId = this._register(tableDef, 'house', false);
     this.pile.push(tableId);
@@ -151,29 +148,28 @@
     for (var h = 0; h < counts.hand && oppOpening.length < oppSize; h++) {
       oppOpening.push(this._register(rng.pick(this.enemy.pool), 'enemy', false, null, ZU.rollBind(rng, this.act)));
     }
-    while (oppOpening.length < oppSize && this.stock.length) oppOpening.push(this.stock.pop());
+    while (oppOpening.length < oppSize && theirs.length) oppOpening.push(theirs.pop());
     if (this.enemy.passive === 'light' && !oppOpening.some(function (id) { return self.def(id).rank === '7'; })) {
       // Feuer gefällig: eine 7 aus dem Stapel gegen eine normale Handkarte tauschen
       var seven = -1, plain = -1;
-      this.stock.forEach(function (id, index) { if (seven < 0 && self.def(id).rank === '7') seven = index; });
+      theirs.forEach(function (id, index) { if (seven < 0 && self.def(id).rank === '7') seven = index; });
       oppOpening.forEach(function (id, index) { if (plain < 0 && !self.def(id).special) plain = index; });
       if (seven >= 0 && plain >= 0) {
         var swapped = oppOpening[plain];
-        oppOpening[plain] = this.stock[seven];
-        this.stock[seven] = swapped;
+        oppOpening[plain] = theirs[seven];
+        theirs[seven] = swapped;
       }
     }
-    while (opening.length < handSize && this.stock.length) opening.push(this.stock.pop());
 
     var rounds = Math.max(opening.length, oppOpening.length);
     for (var r = 0; r < rounds; r++) {
       if (r < opening.length) {
         this.hand.player.push(opening[r]);
-        ev.push({ t: 'move', id: opening[r], from: 'stock', to: 'player', cause: 'deal' });
+        ev.push({ t: 'move', id: opening[r], from: 'stock', pile: 'player', to: 'player', cause: 'deal' });
       }
       if (r < oppOpening.length) {
         this.hand.opp.push(oppOpening[r]);
-        ev.push({ t: 'move', id: oppOpening[r], from: 'stock', to: 'opp', cause: 'deal' });
+        ev.push({ t: 'move', id: oppOpening[r], from: 'stock', pile: 'opp', to: 'opp', cause: 'deal' });
       }
     }
 
@@ -222,7 +218,7 @@
       ev.push({ t: 'trinket', id: 'black-book' });
       ev.push(this._statusEvent());
     }
-    if (this.has('ashtray') && this.stock.length) {
+    if (this.has('ashtray') && mine.length) {
       this.phase = 'decision';
       this.pending = { kind: 'mulligan', actor: 'player', pool: 'hand', options: this.hand.player.slice(), min: 0, max: 1 };
       ev.push({ t: 'trinket', id: 'ashtray' });
@@ -471,25 +467,30 @@
   };
 
   /* ---------- Kartenbewegung ---------- */
-  Duel.prototype._take = function (ev) {
-    if (!this.stock.length) {
+  /* Wem eine Karte gehört: Karten aus dem Deck des Spielers ihm, alle anderen dem Gegner. */
+  Duel.prototype._side = function (id) { return this.cards[id].owner === 'player' ? 'player' : 'opp'; };
+
+  /* Nimmt die oberste Karte vom Stapel von "actor". Ist er leer, werden dessen eigene abgelegte Karten neu gemischt. */
+  Duel.prototype._take = function (ev, actor) {
+    var stock = this.stocks[actor];
+    if (!stock.length) {
       if (this.rules.indexOf('one-pass') >= 0) {
         // Letzter Stapel: nichts wird neu gemischt, das Duell endet mit dem Kartenvergleich.
         this.showdown = true;
         return null;
       }
-      if (this.pile.length <= 1) return null;
-      var top = this.pile.pop(), self = this;
-      this.stock = this.pile.filter(function (id) {
-        if (self.cards[id].retired) { self.cards[id].gone = true; return false; }
-        return true;
+      var top = this.pile[this.pile.length - 1], self = this, back = [];
+      this.pile = this.pile.filter(function (id) {
+        if (id === top || self._side(id) !== actor) return true;
+        if (self.cards[id].retired) self.cards[id].gone = true; else back.push(id);
+        return false;
       });
-      this.pile = [top];
-      this.rng.shuffle(this.stock);
-      ev.push({ t: 'reshuffle', count: this.stock.length });
-      if (!this.stock.length) return null;
+      if (!back.length) return null;
+      this.rng.shuffle(back);
+      this.stocks[actor] = stock = back;
+      ev.push({ t: 'reshuffle', actor: actor, ids: back.slice(), count: back.length });
     }
-    return this.stock.pop();
+    return stock.pop();
   };
 
   Duel.prototype._drawInto = function (actor, amount, cause, ev, applyCurse) {
@@ -505,10 +506,10 @@
     }
     var drawn = 0;
     for (var i = 0; i < amount; i++) {
-      var id = this._take(ev);
+      var id = this._take(ev, actor);
       if (id == null) break;
       this.hand[actor].push(id);
-      ev.push({ t: 'move', id: id, from: 'stock', to: actor, cause: cause });
+      ev.push({ t: 'move', id: id, from: 'stock', pile: actor, to: actor, cause: cause });
       drawn++;
     }
     if (actor === 'player') this.stats.drawn += drawn;
@@ -862,10 +863,10 @@
         var reveal = item.amount + (src === 'player' && this.has('loaded-die') ? 2 : 0);
         if (src === 'player' && this.has('loaded-die')) ev.push({ t: 'trinket', id: 'loaded-die' });
         for (var g = 0; g < reveal; g++) {
-          var id = this._take(ev);
+          var id = this._take(ev, src);
           if (id == null) break;
           this.staging.push(id);
-          ev.push({ t: 'move', id: id, from: 'stock', to: 'staging', cause: 'gamble', actor: src });
+          ev.push({ t: 'move', id: id, from: 'stock', pile: src, to: 'staging', cause: 'gamble', actor: src });
         }
         var options = this.staging.filter(function (cid) {
           var def = self.def(cid);
@@ -1161,7 +1162,8 @@
     }
     this.hand.player.forEach(mark('player'));
     this.hand.opp.forEach(mark('opp'));
-    this.stock.forEach(mark('stock'));
+    this.stocks.player.forEach(mark('stock'));
+    this.stocks.opp.forEach(mark('oppstock'));
     this.pile.forEach(mark('pile'));
     this.staging.forEach(mark('staging'));
     Object.keys(this.cards).forEach(function (id) {

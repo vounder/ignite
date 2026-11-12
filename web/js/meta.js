@@ -102,14 +102,14 @@
     'trinket:mitgift': ['money', 70, 'Halte 70 Mark auf einmal.', 2],
     'trinket:echo': ['casino', 2, '', NIE],
     'trinket:gezinktes-blatt': ['nodraw', 1, 'Gewinne ein Duell, ohne eine einzige Karte zu ziehen.', 2],
-    'trinket:schmale-hand': ['slim', 1, 'Gewinne ein Duell mit einem Deck aus höchstens 5 Karten.', 1],
+    'trinket:schmale-hand': ['slim', 1, 'Gewinne ein Duell mit einem Deck aus höchstens 10 Karten.', 1],
     // --- legendär ---
     'trinket:lauffeuer': ['chain', 16, 'Erreiche eine Kette von ×16.', 3],
     'trinket:phoenixfeder': ['last', 8, 'Gewinne 8 Duelle mit dem letzten Streichholz.', 3],
     'trinket:midas-hand': ['bank', 30, 'Kassiere in einem Duell eine Bank von 30 Mark.', 4],
     'trinket:teufelspakt': ['casino', 4, '', NIE],
     // --- Spezialkarten ---
-    'special:zytokinese': ['deck', 12, 'Baue ein Deck aus 12 Karten.'],
+    'special:zytokinese': ['deck', 22, 'Baue ein Deck aus 22 Karten.'],
     'special:zocken': ['foe:bookie', 1, 'Schlage Quoten-Otto.'],
     'special:tausch': ['left', 6, 'Gewinne, während der Gegner noch 6 Karten hält.'],
     'special:bonusgeld': ['bosses', 5, 'Schlage 5 Bosse.'],
@@ -285,7 +285,7 @@
         if (duel.turns <= 16) changes.fast = 1;
         if (duel.wonBy === 'curfew') changes.curfew = 1;
         if (s.lives === 1) changes.last = 1;
-        if (s.collection.length <= 5) changes.slim = 1;
+        if (s.collection.length <= 10) changes.slim = 1;
         if (s.endless) changes.endless = s.act - run.acts();
         if (s.cleared && !s.endless) {
           changes.casino = (run.meta().stake || 0) + 1;
