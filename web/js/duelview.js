@@ -704,8 +704,57 @@
   };
 
   DuelView.prototype.on_curfew = function () {
+    var self = this;
     ZU.audio.boss();
-    return fx.banner('Sperrstunde!', 'swap', 1200);
+    return fx.banner('Sperrstunde!', 'swap', 1200).then(function () { return self.countHands(); });
+  };
+
+  /* Kartenvergleich am Ende (Sperrstunde, leerer Stapel, Patt): Beide Hände werden gleichzeitig durchgezählt.
+     Erst zügig, die letzte gemeinsame Karte langsamer, dann eine kurze Pause – und danach nur noch die
+     überzähligen Karten dessen, der mehr hält. Wer weniger hat, gewinnt. */
+  DuelView.prototype.countHands = function () {
+    var self = this, mine = this.pHand.slice(), theirs = this.oHand.slice();
+    var common = Math.min(mine.length, theirs.length), most = Math.max(mine.length, theirs.length);
+    var me = h('div', 'handcount me', '0'), opp = h('div', 'handcount opp', '0');
+    // rechts neben den Händen, damit weder Ablagestapel noch Karten verdeckt werden
+    me.style.left = opp.style.left = (CENTER + 330) + 'px';
+    me.style.top = (HAND_Y - 40) + 'px';
+    opp.style.top = (OPP_Y - 22) + 'px';
+    this.layer.appendChild(me);
+    this.layer.appendChild(opp);
+    function tick(list, el, n) {
+      if (n > list.length) return;
+      list[n - 1].el.classList.add('counted');
+      el.textContent = n;
+      fx.punch(el);
+    }
+    var chain = wait(250);
+    for (var n = 1; n <= most; n++) {
+      (function (n) {
+        chain = chain.then(function () {
+          if (self.destroyed) return null;
+          tick(mine, me, n);
+          tick(theirs, opp, n);
+          if (n < common) { ZU.audio.tick(); return wait(120); }
+          if (n === common) { ZU.audio.select(true); return wait(420).then(function () { return wait(300); }); } // die knappe Stelle, dann Luft holen
+          ZU.audio.select(false);
+          return wait(300);
+        });
+      })(n);
+    }
+    return chain.then(function () {
+      if (self.destroyed) return null;
+      var winner = self.duel.winner;
+      me.classList.add(winner === 'player' ? 'win' : 'lose');
+      opp.classList.add(winner === 'player' ? 'lose' : 'win');
+      if (mine.length === theirs.length) fx.pop(PILE.x, PILE.y - 110, winner === 'player' ? 'Gleichstand – Kellerschlüssel!' : 'Gleichstand: Das Haus gewinnt', winner === 'player' ? 'good' : 'bad');
+      if (winner === 'player') ZU.audio.chip(); else ZU.audio.error();
+      return wait(900);
+    }).then(function () {
+      me.remove();
+      opp.remove();
+      mine.concat(theirs).forEach(function (sp) { sp.el.classList.remove('counted'); });
+    });
   };
   DuelView.prototype.on_stalemate = DuelView.prototype.on_curfew;
 
@@ -713,7 +762,8 @@
     ZU.audio.boss();
     fx.shake(8);
     fx.smoke(STOCK.x, STOCK.y, 22);
-    return fx.banner('Stapel leer!', 'swap', 1300);
+    var self = this;
+    return fx.banner('Stapel leer!', 'swap', 1300).then(function () { return self.countHands(); });
   };
 
   /* ---------- Status-Anzeige ---------- */

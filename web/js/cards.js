@@ -251,6 +251,7 @@
     ZU.TRINKET_IDS.forEach(function (id) { urls.push(ZU.asset('trinkets/' + id + '.png')); });
     ZU.PERK_IDS.forEach(function (id) { urls.push(ZU.asset('perks/' + id + '.png')); });
     ZU.SPECIAL_IDS.forEach(function (id) { urls.push(ZU.asset('special/' + id + '.png')); });
+    (ZU.CASINO_ART || []).forEach(function (path) { urls.push(ZU.asset(path)); });
     ZU.BOSS_ACTS.forEach(function (act, index) {
       if (index === 0) ZU.BATTLE_POOL.concat(ZU.ELITE_POOL).forEach(function (id) { urls.push(ZU.asset('enemies/' + id + '.png')); });
       act.forEach(function (id) { urls.push(ZU.asset('enemies/' + id + '.png')); });

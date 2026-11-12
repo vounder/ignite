@@ -121,7 +121,23 @@ Each cell holds ONE separate chunky object, centred in its cell, all at the
 same scale, with a wide empty green gap between neighbours …“, gefolgt von den
 neun Motiven und derselben Stilzeile wie oben.
 
-### Kulisse des Titelbildschirms (`title/backroom.png`)
+### Kulisse des Titelbildschirms (`title/`, seit 12.11.2026 in Ebenen)
+
+Die Kulisse besteht aus `room.png` (Raum ohne Menschen, 1280×720), `table.png`
+(nur der Tisch im Vordergrund, darüber durchsichtig) und sechs Figuren
+`cast-<id>.png` – den Herren und Damen der sechs Casinos (Hausherr, Impresario,
+Kapitänin Fortuna, Baronin von Hohenstein, Direktor Monopol, Der Fürst). Jede
+Figur ist ein Streifen aus drei Bildern zu 440×480 (ruhig, Blinzeln, Grinsen);
+Bild 2 und 3 sind Bild 1 mit ausgetauschtem Gesicht, damit nichts springt.
+Erzeugt mit der Codex CLI auf Chroma-Grün (Vorlage: das jeweilige Porträt aus
+`enemies/`), freigestellt und zusammengesetzt mit den Skripten unter
+`/data/ignite/art/title/work/`. `js/screens.js` (`titleScene`) legt die Ebenen
+übereinander und lässt die Figuren atmen, blinzeln und grinsen.
+
+Die Bilder der Häuser für die Casino-Wahl liegen unter `casinos/<id>.png`
+(480×270, ebenfalls 12.11.2026, Vorlage war die alte Titelkulisse).
+
+### Frühere Kulisse des Titelbildschirms (`title/backroom.png`, entfernt)
 
 Ein Bild im Format 16:9, mit der Codex CLI am 11.11.2026 generiert (Referenz:
 vier vorhandene Gegnerporträts): das verrauchte Hinterzimmer vom eigenen Platz
