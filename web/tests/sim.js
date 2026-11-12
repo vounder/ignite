@@ -268,6 +268,27 @@ for (let n = 0; n < RUNS; n++) {
   ZU.Profile._memory = null;
 }
 
+// Die 7 lässt nur noch 1 Karte ziehen und niemanden aussetzen.
+assert.deepStrictEqual(ZU.CARDS['hearts-7'].effects, [{ type: 'draw', amount: 1, reflectable: true }]);
+
+// Jedes Casino nach dem ersten setzt seine eigenen Figuren: Tisch in Akt 1, Elite in Akt 2, Boss im letzten Akt.
+ZU.CASINOS.forEach((casino, index) => {
+  if (!index) { assert.strictEqual(casino.foes, undefined); return; }
+  ['battle', 'elite', 'boss'].forEach(kind => assert.strictEqual(ZU.ENEMIES[casino.foes[kind]].kind, kind));
+  const meta = ZU.Meta.defaults();
+  meta.maxStake = meta.stake = index;
+  const run = ZU.Run.start('classic', 31 + index, ZU.Meta.runOptions(ZU.Meta.clean(meta)));
+  assert.strictEqual(run.s.encounters[0].enemy, casino.foes.battle);
+  for (let act = 2; act <= casino.acts; act++) {
+    run.s.act = act;
+    run._encounters();
+    if (act === 2) assert.strictEqual(run.s.encounters[1].enemy, casino.foes.elite);
+    assert.strictEqual(run.s.encounters[2].enemy === casino.foes.boss, act === casino.acts, 'der Boss des Hauses wartet im letzten Akt');
+    run.s.encounters.forEach(e => assert.ok(!ZU.ENEMIES[e.enemy].casino || ZU.ENEMIES[e.enemy].casino === index, 'fremde Hausfigur: ' + e.enemy));
+  }
+});
+assert.ok(ZU.BATTLE_POOL.concat(ZU.ELITE_POOL).every(id => !ZU.ENEMIES[id].casino));
+
 // Determinismus: gleicher Seed, gleiche Entscheidungen => gleicher Verlauf
 function fingerprint(seed) {
   const run = ZU.Run.start('classic', seed), rnd = new ZU.Rng(7);

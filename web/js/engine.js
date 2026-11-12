@@ -144,9 +144,9 @@
     ev.push({ t: 'table', id: tableId });
 
     var oppSize = ZU.OPP_HAND + (this.kind === 'battle' ? 1 : 0) + (this.enemy.handBonus || 0) -
-      (this.enemy.passive === 'head-start' ? 2 : this.enemy.passive === 'house' ? 1 : 0);
+      (this.enemy.passive === 'head-start' || this.enemy.passive === 'baroness' ? 2 : this.enemy.passive === 'house' ? 1 : 0);
     oppSize = Math.max(4, oppSize + (this.mods.oppHand || 0) - (this.rule('house-edge') ? 1 : 0)) + (this.has('klebefinger') ? 1 : 0);
-    if (this.enemy.passive === 'jewels') counts.hand = 3;
+    if (this.enemy.passive === 'jewels' || this.enemy.passive === 'director') counts.hand = 3;
     var oppOpening = [];
     for (var h = 0; h < counts.hand && oppOpening.length < oppSize; h++) {
       oppOpening.push(this._register(rng.pick(this.enemy.pool), 'enemy', false, null, ZU.rollBind(rng, this.act)));
@@ -177,14 +177,20 @@
       }
     }
 
-    if (this.enemy.passive === 'house' || this.enemy.passive === 'venom' || this.enemy.passive === 'evil-eye') {
-      this.status.curse.player += this.enemy.passive === 'house' ? 3 : this.enemy.passive === 'venom' ? 2 : 1;
+    var opening = { house: 3, prince: 3, venom: 2, baroness: 2, 'evil-eye': 1 }[this.enemy.passive];
+    if (opening) {
+      this.status.curse.player += opening;
       ev.push({ t: 'passive', id: this.enemy.passive });
       ev.push(this._statusEvent());
     }
-    if (this.enemy.passive === 'donna') {
-      ev.push({ t: 'passive', id: 'donna' });
-      this._drawInto('player', 2, 'deal', ev, false);
+    if (this.enemy.passive === 'donna' || this.enemy.passive === 'list') {
+      ev.push({ t: 'passive', id: this.enemy.passive });
+      this._drawInto('player', this.enemy.passive === 'donna' ? 2 : 1, 'deal', ev, false);
+    }
+    if (this.enemy.passive === 'upbeat') {
+      this.status.skip.player = 1;
+      ev.push({ t: 'passive', id: 'upbeat' });
+      ev.push(this._statusEvent());
     }
     if (this.rule('marked')) {
       this.status.curse.player += 1;
@@ -251,6 +257,7 @@
         if (this.has('master-key')) return ZU.SUIT_ORDER;
         if (ZU.SUITS[card.bind] && this.has('skeleton-key')) return ZU.bindSuits(ZU.SUITS[card.bind].red ? 'red' : 'black');
       }
+      if (actor === 'opp' && this.enemy.passive === 'keys') return ZU.SUIT_ORDER;
       return ZU.bindSuits(card.bind);
     }
     if (def.rank === 'A' && ((actor === 'player' && this.has('ace-sleeve')) || (actor === 'opp' && this.enemy.passive === 'sleeve'))) {
@@ -375,6 +382,11 @@
         this.queue.push({ type: 'note', trinket: 'echo', src: actor });
         this._queueEffects(actor, check.order, false);
       }
+    }
+    if (actor === 'opp' && this.enemy.passive === 'finale' && !this.used.finale && this.hand.opp.length > 0 && this.hand.opp.length <= 2) {
+      this.used.finale = true;
+      this.queue.push({ type: 'passive', id: 'finale', src: actor });
+      this.queue.push({ type: 'draw', amount: 2, reflectable: true, src: actor });
     }
     if (actor === 'player' && check.order.length >= 2 && this.has('pair-king')) {
       this.queue.push({ type: 'note', trinket: 'pair-king', src: actor });
@@ -590,9 +602,10 @@
     ids.forEach(function (id) {
       var def = self.def(id);
       def.effects.forEach(function (effect) {
-        if (effect.type === 'draw') draw += effect.amount + (actor === 'opp' && def.rank === '7' && self.enemy.passive === 'heavy-hand' ? 1 : 0) +
+        if (effect.type === 'draw' && actor === 'opp' && def.rank === '7' && self.has('asbesthandschuh')) rest.push({ type: 'note', trinket: 'asbesthandschuh', src: actor });
+        else if (effect.type === 'draw') draw += effect.amount + (actor === 'opp' && def.rank === '7' && self.enemy.passive === 'heavy-hand' ? 1 : 0) +
             (actor === 'player' && def.rank === '7' && self.has('seven-sleeper') ? 1 : 0) + (def.rank === '7' && self.rule('sharp-sevens') ? 1 : 0);
-        else if (effect.type === 'skip') { if (!(actor === 'opp' && def.rank === '7' && self.has('asbesthandschuh'))) skip = true; }
+        else if (effect.type === 'skip') skip = true;
         else rest.push({ type: effect.type, amount: effect.amount || 0, duration: effect.duration || 0, reflectable: !!effect.reflectable, src: actor, card: id });
       });
       if (actor === 'player' && def.rank === '9' && self.has('neunmalklug')) {
@@ -628,6 +641,7 @@
   Duel.prototype._effect = function (item, ev) {
     var src = item.src, tgt = other(src), self = this;
     if (item.type === 'note') { ev.push({ t: 'trinket', id: item.trinket }); return; }
+    if (item.type === 'passive') { ev.push({ t: 'passive', id: item.id }); return; }
     if (item.reflectable) {
       if (src === 'player' && this.enemy.passive === 'smoke' && !this.used.smoke) {
         this.used.smoke = true;
@@ -649,6 +663,12 @@
           this.used.amplify = true;
           amount += 2;
           ev.push({ t: 'passive', id: 'amplify' });
+        }
+        if (src === 'player' && tgt === 'opp' && this.enemy.passive === 'armored' && (this.used.armored || 0) < 2) {
+          this.used.armored = (this.used.armored || 0) + 1;
+          ev.push({ t: 'passive', id: 'armored' });
+          ev.push({ t: 'effect', type: 'skip-blocked', src: src, tgt: tgt });
+          break;
         }
         if (src === 'player' && this.has('brass-knuckles') && !this.used['brass-knuckles']) {
           this.used['brass-knuckles'] = true;
@@ -736,7 +756,7 @@
           this.used['pocket-watch'] = true;
           ev.push({ t: 'trinket', id: 'pocket-watch' });
           ev.push({ t: 'effect', type: 'skip-blocked', src: src, tgt: tgt });
-        } else if (tgt === 'opp' && this.enemy.passive === 'thick-skin' && !this.used['thick-skin']) {
+        } else if (tgt === 'opp' && (this.enemy.passive === 'thick-skin' || this.enemy.passive === 'prince') && !this.used['thick-skin']) {
           this.used['thick-skin'] = true;
           ev.push({ t: 'passive', id: 'thick-skin' });
           ev.push({ t: 'effect', type: 'skip-blocked', src: src, tgt: tgt });
@@ -971,7 +991,13 @@
     this.active = actor;
     this.phase = 'action';
     this.turns++;
-    if (actor === 'opp') this.oppTurns++;
+    if (actor === 'opp') {
+      this.oppTurns++;
+      if (this.enemy.passive === 'storm' && this.oppTurns % 5 === 0) {
+        ev.push({ t: 'passive', id: 'storm' });
+        this._drawInto('player', 1, 'effect', ev, true);
+      }
+    }
     if (actor === 'player') {
       var changed = false, self = this;
       if (this.status.spy > 0) { this.status.spy--; changed = true; }
@@ -1003,7 +1029,7 @@
     var mine = this.hand.opp.length, theirs = this.hand.player.length;
     var value = def.base;
     if (!def.special) {
-      if (def.rank === '7') value += 60 + (theirs <= 3 ? 60 : 0) + (ai === 'pressure' ? 30 : 0);
+      if (def.rank === '7') value += 30 + (theirs <= 3 ? 40 : 0) + (ai === 'pressure' ? 20 : 0);
       return value;
     }
     switch (def.id) {
@@ -1034,7 +1060,7 @@
 
   Duel.prototype._aiPlan = function () {
     var self = this, hand = this.hand.opp, best = null;
-    var sees = this.enemy.passive === 'sees-hand' || (this.enemy.passive === 'by-ear' && this.oppTurns <= 3);
+    var sees = this.enemy.passive === 'sees-hand' || this.enemy.passive === 'director' || (this.enemy.passive === 'by-ear' && this.oppTurns <= 3);
     var chainCap = this.enemy.chain, chains = chainCap > 1; // nur wenige Gegner legen mehrere Karten
 
     function follow(cardId) { // wie viele Spielerkarten könnten direkt anlegen?
@@ -1115,7 +1141,7 @@
       }
       var check = self.canPlay('player', group);
       if (!check.ok) return;
-      var value = group.length * 40 + (def.special ? 30 : 0) + (def.rank === '7' ? 50 : 0);
+      var value = group.length * 40 + (def.special ? 30 : 0) + (def.rank === '7' ? 25 : 0);
       if (def.id === 'tausch') value = hand.length - 1 > self.hand.opp.length ? 200 : -100;
       if (def.id === 'opfer') value += 80;
       if (!best || value > best.value) best = { value: value, order: check.order };

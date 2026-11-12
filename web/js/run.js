@@ -110,10 +110,14 @@
     else if (s.act === 2) bosses = ZU.BOSS_ACTS[1];
     else bosses = ZU.BOSS_ACTS[0].concat(ZU.BOSS_ACTS[1]);
     var lastCall = this.rule('last-call');
+    // Eigene Figuren des Casinos: Ihr Tisch eröffnet das Haus, ihre Elite wartet im zweiten Akt, ihr Boss im letzten.
+    var foes = (!this.meta().legacy && this.casino().foes) || null, inside = s.act <= acts;
+    var battles = ZU.BATTLE_POOL.concat(foes ? [foes.battle] : []), elites = ZU.ELITE_POOL.concat(foes ? [foes.elite] : []);
+    function own(id) { if (s.seen.indexOf(id) < 0) s.seen.push(id); return id; }
     s.encounters = [
-      { enemy: fresh(ZU.BATTLE_POOL), kind: 'battle' },
-      { enemy: fresh(ZU.ELITE_POOL), kind: 'elite' },
-      { enemy: fresh(bosses), kind: 'boss' }
+      { enemy: foes && inside && s.act === 1 ? own(foes.battle) : fresh(battles), kind: 'battle' },
+      { enemy: foes && inside && s.act === 2 ? own(foes.elite) : fresh(elites), kind: 'elite' },
+      { enemy: foes && s.act === acts ? own(foes.boss) : fresh(bosses), kind: 'boss' }
     ];
     // Hausregeln: am allerersten Tisch nie, danach mit jedem Akt häufiger.
     s.encounters.forEach(function (encounter, index) {
@@ -195,8 +199,9 @@
 
     var lines = [], base = this.baseReward(e.kind);
     lines.push({ label: ZU.KIND_LABEL[e.kind] + 'prämie', amount: base });
-    if (duel.bank > 0) lines.push({ label: 'Bank', amount: duel.bank });
-    if (duel.bonusMult > 1) lines.push({ label: 'Bonusgeld ×' + duel.bonusMult, amount: (base + duel.bank) * (duel.bonusMult - 1) });
+    var bank = duel.enemy.passive === 'purser' ? Math.floor(duel.bank / 2) : duel.bank; // Zahlmeister Pfennig behält die Hälfte ein
+    if (bank > 0) lines.push({ label: bank < duel.bank ? 'Bank (halbiert)' : 'Bank', amount: bank });
+    if (duel.bonusMult > 1) lines.push({ label: 'Bonusgeld ×' + duel.bonusMult, amount: (base + bank) * (duel.bonusMult - 1) });
     var left = Math.min(this.has('gold-tooth') ? 10 : 5, duel.hand.opp.length);
     if (left > 0) lines.push({ label: 'Restkarten des Gegners (' + duel.hand.opp.length + ')', amount: left });
     var heat = this.has('furnace') ? Math.min(20, Math.floor(duel.glut / 150)) : Math.min(8, Math.floor(duel.glut / 250));

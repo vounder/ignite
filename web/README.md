@@ -23,8 +23,7 @@ zugehörigen Elemente blenden sich selbst aus.
 
 - **Duell:** Mau-Mau gegen den Dealer. Gelegt wird auf gleiche Farbe oder
   gleichen Wert; wer zuerst keine Karten mehr hat, gewinnt. Ein Klick auf eine
-  passende Handkarte spielt sie sofort. Die 7 lässt den Gegner 2 Karten ziehen
-  und aussetzen.
+  passende Handkarte spielt sie sofort. Die 7 lässt den Gegner 1 Karte ziehen.
 - **Ziehen:** Wer nicht legen kann oder will, zieht eine Karte. Passt sie, darf
   sie sofort gelegt werden; sonst endet der Zug.
 - **Trinkets:** 83 Stück mit Synergie-Familien (Zieh-Druck und Flüche,
@@ -51,8 +50,10 @@ zugehörigen Elemente blenden sich selbst aus.
   der Stapel leer und muss jemand ziehen, gewinnt, wer weniger Karten hält.
 - **Glut:** Jede gespielte Karte bringt Kartenwert × Kette. Die Kette wächst
   mit jeder Karte und fällt beim Ziehen zurück. Glut zahlt beim Sieg Mark.
-- **Gegner:** 20 Charaktere – neun Tische, fünf Eliten und sechs Bosse (zwei je
-  Akt). Fast alle haben eine Eigenheit (z. B. „Ass im Ärmel" oder „Schwere
+- **Gegner:** 35 Charaktere. 20 sitzen in jedem Haus – neun Tische, fünf Eliten
+  und sechs Bosse. Dazu bringt jedes Casino nach dem ersten drei eigene mit:
+  einen Tisch (eröffnet das Haus), eine Elite (zweiter Akt) und seinen Boss
+  (letzter Akt). Fast alle haben eine Eigenheit (z. B. „Ass im Ärmel" oder „Schwere
   Hand"), dazu eigene Dialoge und animierte Porträts, die auf den Spielverlauf
   reagieren.
 - **Casinos:** Sechs Häuser, der Reihe nach zu öffnen (ein Sieg im bisher

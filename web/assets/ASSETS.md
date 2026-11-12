@@ -26,13 +26,18 @@ Alle Bilder wurden am 11.11.2026 mit der Bildgenerierung von OpenAI über die
 Codex-CLI speziell für Zündung erzeugt, jeweils auf Chroma-Grün, und mit
 `web/tools/prepare_assets.py` freigestellt und verkleinert.
 
-### Gegner (`enemies/`, 20 Sprite-Streifen)
+### Gegner (`enemies/`, 35 Sprite-Streifen)
 
 Jeder Gegner entstand als Ausdrucks-Sheet mit 3×2 Feldern (neutral, Blinzeln,
 hämisch, wütend, geschockt, geschlagen). `prepare_assets.py --sheets` erkennt
 das Raster, legt die sechs Bilder deckungsgleich übereinander und speichert sie
 als Streifen von 6 × 192 Pixeln. Für die acht Figuren der ersten Fassung diente
 deren bisheriges Einzelporträt als Vorlage.
+
+Die 15 Hausfiguren der Casinos (12.11.2026: Mimi, Kapellmeister Bela, Der Impresario, Matrose Hein, Zahlmeister
+Pfennig, Kapitänin Fortuna, Page Anton, Concierge Laurent, Baronin von Hohenstein, Croupier Klara, Tresorwächter
+Brock, Direktor Monopol, Heizer Ruß, Die Sirene, Der Fürst) entstanden einzeln mit demselben Prompt; als Stilvorlage
+diente ein fertiger Streifen (`boss-consigliere.png` bzw. `boss-dolores.png`).
 
 Gemeinsamer Prompt:
 
