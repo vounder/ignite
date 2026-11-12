@@ -112,6 +112,20 @@ function shop(run, rnd) {
       if (!offer.sold && s.money >= run.cardPrice(i) && rnd.next() < 0.08) run.buyCard(i);
     });
     if (s.lives < ZU.MAX_LIVES && !s.shop.healed && s.money >= run.healPrice()) run.heal();
+    // Esmes Nebenzimmer: Pakete prüfen und gelegentlich kaufen
+    s.shop.esme.packs.forEach((pack, i) => {
+      assert.ok(pack.price >= 2 && pack.items.length === { single: 1, double: 2, bag: 3 }[pack.kind]);
+      pack.items.forEach(item => { assert.ok(ZU.SEALS[item.seal]); if (item.flaw) assert.ok(ZU.FLAWS[item.flaw] && !ZU.SEALS[item.seal].not.includes(item.flaw), 'Makel hebt das Siegel auf'); });
+      if (pack.sold || s.money < pack.price || rnd.next() > 0.5) return;
+      const pool = run.sealable();
+      if (pool.length < pack.items.length) return;
+      const result = run.buyPack(i, pack.kind === 'bag' ? null : pool.slice(0, pack.items.length).map(c => c.id));
+      assert.strictEqual(result.length, pack.items.length);
+      result.forEach(r => { const c = s.collection.find(x => x.id === r.id); assert.ok(!ZU.CARDS[c.def].special && c.seal === r.seal); });
+      assert.throws(() => run.buyPack(i, pool.slice(0, pack.items.length).map(c => c.id)), 'verkauftes Paket');
+    });
+    if (s.shop.esme.packs.length) assert.ok(s.shop.esme.packs.some(p => p.kind !== 'bag' ? p.items.every(x => !x.flaw) || p.sold : false) || s.shop.esme.packs.every(p => p.kind === 'bag' || p.sold), 'ein makelloses Paket liegt aus');
+    if (rnd.next() < 0.15 && s.money >= run.esmeRerollPrice()) run.esmeReroll();
     if (s.collection.length > 12 && s.money >= run.burnPrice() && rnd.next() < 0.5) {
       const plain = s.collection.filter(c => !ZU.CARDS[c.def].special);
       if (plain.length) run.burn(plain[0].id);
@@ -323,6 +337,30 @@ Object.keys(ZU.ENEMIES).forEach(id => {
 });
 assert.deepStrictEqual(Object.keys(ZU.LORE).sort(), Object.keys(ZU.ENEMIES).sort(), 'Akte ohne Figur');
 Object.values(ZU.LORE_STEPS).forEach(steps => assert.ok(steps.length === 3 && steps[0] === 1 && steps[0] < steps[1] && steps[1] < steps[2]));
+
+// Veredelungen wirken im Duell: Glutsiegel verdoppelt, Makel „Matt" zieht 4 ab, Anker liegt auf der Starthand.
+{
+  const run = ZU.Run.start('classic', 2024);
+  const plain = run.sealable();
+  plain[0].seal = 'glut'; plain[1].seal = 'anker'; plain[2].seal = 'zuend'; plain[2].flaw = 'matt'; plain[3].flaw = 'spaet'; plain[3].seal = 'gold';
+  for (let i = 0; i < 20; i++) {
+    const duel = run.newDuel();
+    duel.start();
+    assert.ok(duel.hand.player.includes(plain[1].id), 'Anker auf der Starthand');
+    assert.ok(!duel.hand.player.includes(plain[3].id), 'Nachzügler nicht auf der Starthand');
+  }
+  const duel = run.newDuel();
+  duel.start();
+  const before = duel.glut, chain = duel.chain, base = ZU.CARDS[plain[0].def].base;
+  duel.pile.push(duel._register(plain[0].def, 'house', false)); // passender Stapel
+  if (!duel.hand.player.includes(plain[0].id)) { duel.stocks.player.splice(duel.stocks.player.indexOf(plain[0].id), 1); duel.hand.player.push(plain[0].id); }
+  duel.phase = 'action'; duel.active = 'player'; duel.pending = null;
+  duel.play('player', [plain[0].id]);
+  assert.strictEqual(duel.glut - before, base * chain * 2, 'Glutsiegel verdoppelt');
+  // Esme: früh viele Makel, spät wenige
+  const early = ZU.Run.start('classic', 1); const late = ZU.Run.start('classic', 1); late.s.act = late.acts();
+  assert.ok(early.flawChance() > 0.6 && late.flawChance() < 0.3);
+}
 
 // Die 7 lässt nur noch 1 Karte ziehen und niemanden aussetzen.
 assert.deepStrictEqual(ZU.CARDS['hearts-7'].effects, [{ type: 'draw', amount: 1, reflectable: true }]);

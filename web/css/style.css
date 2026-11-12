@@ -836,3 +836,56 @@ body.nobg { background: radial-gradient(ellipse at 50% 85%, var(--bg-mid, #34170
 /* Oben und unten läuft der Inhalt des Hinterzimmers weich aus, statt hart abgeschnitten zu werden. */
 .br-content { -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14px, #000 calc(100% - 22px), transparent 100%); mask-image: linear-gradient(to bottom, transparent 0, #000 14px, #000 calc(100% - 22px), transparent 100%); }
 #stage .hud .trinkets, #stage .casino-track { scrollbar-width: none; }
+
+/* ---------- Veredelte Karten: Siegel unten links, Makel daneben ---------- */
+.card-seal { position: absolute; left: 3px; bottom: 3px; width: 30px; height: 30px; background-size: contain; background-repeat: no-repeat; image-rendering: pixelated; filter: drop-shadow(0 2px 0 rgba(0,0,0,.55)); z-index: 2; }
+.card-flaw { position: absolute; left: 31px; bottom: 4px; width: 18px; height: 18px; background-size: contain; background-repeat: no-repeat; image-rendering: pixelated; z-index: 2; }
+.card.sealed { box-shadow: inset 0 0 0 2px rgba(255,215,94,.55); }
+.cardstatic.picked .card.front { box-shadow: inset 0 0 0 4px #b78cff, inset 0 0 0 6px var(--ember-hot); }
+.cardstatic.picked { transform: translateY(-6px); }
+.trinket.seal { animation: none; border-radius: 50%; border-color: #b78cff; background: radial-gradient(circle at 35% 30%, #3a2a55, #150e1f 78%); cursor: help; }
+.trinket.seal .tk-img { inset: 5px; }
+.br-tile.hidden > .trinket.seal { filter: brightness(0) opacity(.5); }
+
+/* ---------- Esmes Nebenzimmer ---------- */
+.esme-door { position: absolute; left: 30px; top: 98px; z-index: 4; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 9px 16px 7px; border: 3px solid #b78cff; border-radius: 12px 12px 4px 4px; cursor: pointer;
+  background: linear-gradient(180deg, #4a2f6e, #2a1a40); color: #f3e9d2; font-family: var(--px); font-size: 15px; letter-spacing: 1px; box-shadow: 0 5px 0 #150e1f, 0 0 16px rgba(183,140,255,.35); }
+.esme-door small { font-family: var(--text); font-size: 11px; font-weight: 700; letter-spacing: 0; color: #d9c8ff; }
+@media (hover: hover) { .esme-door:hover { filter: brightness(1.15); transform: translateY(-1px); } }
+.shop .shopbubble { top: 150px; }
+.esme-fig { position: absolute; left: -24px; bottom: 34px; width: 350px; height: 350px; filter: drop-shadow(0 8px 0 rgba(0,0,0,.35)); }
+.esme-bob { position: absolute; inset: 0; animation: breathe 3.6s ease-in-out infinite; transform-origin: 50% 100%; }
+.esme-img { position: absolute; inset: 0; background-size: 600% 100%; background-position: 0 0; background-repeat: no-repeat; }
+.shop.esme .shopbubble { top: 96px; }
+.shop-sign.esme-sign { background: linear-gradient(180deg, #c9a8ff, #8a5fd0); color: #1c1030; }
+.esme-main { position: absolute; left: 340px; right: 26px; top: 96px; bottom: 96px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.esme-title { font-family: var(--px-wide); font-size: 26px; letter-spacing: 1px; color: #e9d8ff; text-shadow: 0 3px 0 rgba(0,0,0,.6); }
+.esme-sub { font-size: 13.5px; color: var(--ivory-dim); }
+.esme-packs { display: flex; gap: 14px; justify-content: center; align-items: stretch; margin-top: 6px; }
+.esme-pack { width: 276px; min-height: 330px; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 12px 12px 14px; border-radius: 14px; border: 3px solid #7d5fb5; background: linear-gradient(180deg, #2c1f44, #1a1228);
+  box-shadow: inset 0 0 0 2px rgba(0,0,0,.45), 0 6px 0 rgba(0,0,0,.45); animation: dropin .4s cubic-bezier(.3,1.5,.5,1) backwards; }
+.esme-packs.four .esme-pack { width: 222px; }
+.esme-pack.k-bag { border-color: #e2b23c; background: linear-gradient(180deg, #3d2c14, #20160a); }
+.esme-pack.sold { justify-content: center; opacity: .6; }
+.esme-kind { font-family: var(--px-wide); font-size: 18px; letter-spacing: 1px; color: var(--ember-hot); }
+.esme-kindtext { font-size: 12px; color: var(--ivory-dim); text-align: center; min-height: 30px; }
+.esme-items { display: flex; flex-direction: column; gap: 7px; width: 100%; flex: 1; }
+.esme-item { display: flex; gap: 9px; align-items: center; padding: 6px 8px; border-radius: 9px; background: rgba(0,0,0,.32); }
+.esme-item .trinket.seal { width: 44px; height: 44px; flex: none; }
+.esme-itemmain { text-align: left; }
+.esme-seal { font-family: var(--px); font-size: 13px; letter-spacing: .5px; color: #e9d8ff; }
+.esme-itemmain p { font-size: 11.5px; line-height: 1.3; color: #e6dabd; }
+.esme-itemmain p.esme-flaw { color: #ff9c8a; }
+.esme-itemmain p.esme-clean { color: var(--good); }
+.esme-mix { margin-top: 6px; }
+.esme-mix .btn { gap: 8px; }
+.esme-mix .ico.coin { width: 18px; height: 18px; }
+.esme-result { display: flex; gap: 26px; justify-content: center; padding: 10px 0 4px; }
+.esme-got { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.esme-gotname { font-family: var(--px); font-size: 13px; letter-spacing: .5px; color: #e9d8ff; }
+.shop-facebox { width: 76px; height: 76px; border-radius: 10px; overflow: hidden; border: 3px solid var(--brass-dark); background: #1b110c; }
+.shop-facebox.big { width: 150px; height: 150px; flex: none; }
+.shop-face { display: block; width: 100%; height: 100%; background-repeat: no-repeat; background-position: 0 0; image-rendering: pixelated; }
+.shop-face.f-manfred { background-size: 1200% 100%; }
+.shop-face.f-esme { background-size: 600% 100%; }
+.br-tile.closed .shop-face { filter: brightness(0) opacity(.5); }

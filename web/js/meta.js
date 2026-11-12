@@ -9,7 +9,8 @@
   var BASE = {
     starter: ['classic'],
     trinket: ['lucky-chip', 'ashtray', 'false-bottom', 'ledger', 'fuse', 'brass-knuckles', 'pocket-watch', 'gold-tooth', 'cellar-key', 'counterfeit', 'loyalty'],
-    special: ['stillstand', 'addieren', 'spion', 'fluch', 'hodl', 'opfer']
+    special: ['stillstand', 'addieren', 'spion', 'fluch', 'hodl', 'opfer'],
+    seal: ['glut', 'gold', 'anker']
   };
   var STARTER_COST = { igniter: 8, cheater: 10, alchemist: 10 };
 
@@ -19,7 +20,7 @@
     trinkets: 'max', perks: 'max', casino: 'max', flawless: 'max', endless: 'max',
     played: 'sum', sevens: 'sum', eights: 'sum', aces: 'sum', specials: 'sum', pairs: 'sum', skips: 'sum', curses: 'sum', reflects: 'sum',
     swaps: 'sum', sacrificed: 'sum', nodraw: 'sum', fast: 'sum', curfew: 'sum', last: 'sum', slim: 'sum', losses: 'sum',
-    burned: 'sum', sold: 'sum', rerolls: 'sum', healed: 'sum'
+    burned: 'sum', sold: 'sum', rerolls: 'sum', healed: 'sum', sealed: 'sum', bought: 'sum'
   };
 
   /* Bedingungen, unter denen etwas im Hinterzimmer auftaucht: [Zählwerk, Schwelle, Hinweis, ab wann der Hinweis zu lesen ist].
@@ -125,7 +126,13 @@
     'special:mischmasch': ['swaps', 5, 'Spiele 5-mal Tausch.', 2],
     'special:reservefunke': ['flawless', 1, 'Räume ein Casino aus, ohne ein Streichholz zu verlieren.', 2],
     'special:inferno': ['casino', 5, '', NIE],
+    // --- Veredelungen (Esme) ---
+    'seal:zuend': ['sealed', 2, 'Lass bei Esme 2 Karten veredeln.'],
+    'seal:haken': ['sealed', 6, 'Lass bei Esme 6 Karten veredeln.'],
+    'seal:bumerang': ['pairs', 15, 'Lege 15-mal mehrere Karten auf einmal.'],
+    'seal:irrlicht': ['sealed', 20, 'Lass bei Esme 20 Karten veredeln.', 1],
     // --- Upgrades ---
+    'upgrade:tarot': ['sealed', 4, 'Lass bei Esme 4 Karten veredeln.'],
     'upgrade:stammkunde': ['rerolls', 5, 'Lass Manfred 5-mal neu auslegen.'],
     'upgrade:spuernase': ['specials', 10, 'Spiele 10 Spezialkarten.'],
     'upgrade:sparbuch': ['money', 25, 'Halte 25 Mark auf einmal.'],
@@ -157,9 +164,10 @@
       trinkgeld: { name: 'Trinkgeld', text: 'Jeder besiegte Boss zahlt 3 Mark extra je Stufe.', costs: [8, 12] },
       aschesieb: { name: 'Aschesieb', text: '+10 % Asche je Stufe.', costs: [12, 20, 30] },
       reserve: { name: 'Reserveholz', text: 'Du beginnst mit einem vierten Streichholz.', costs: [25] },
+      tarot: { name: 'Viertes Blatt', text: 'Esme legt ein Paket mehr aus.', costs: [16] },
       gluecksbringer: { name: 'Glücksbringer', text: 'Du beginnst jeden Run mit einem zufälligen gewöhnlichen Trinket.', costs: [22] }
     },
-    UPGRADE_IDS: ['startgeld', 'flinkefinger', 'etui', 'stammkunde', 'spuernase', 'sparbuch', 'zuendelei', 'schaufenster', 'handschlag', 'trinkgeld', 'aschesieb', 'reserve', 'gluecksbringer'],
+    UPGRADE_IDS: ['startgeld', 'flinkefinger', 'etui', 'stammkunde', 'spuernase', 'sparbuch', 'zuendelei', 'schaufenster', 'handschlag', 'trinkgeld', 'aschesieb', 'reserve', 'tarot', 'gluecksbringer'],
 
     /* Casinos als Stufen. Der Name STAKES und die Felder stake/maxStake stammen von den früheren „Einsätzen"
        und bleiben, damit gespeicherte Profile und Konten weiter passen. */
@@ -212,6 +220,7 @@
       if (kind === 'starter') return ZU.STARTERS.some(function (s) { return s.id === id; });
       if (kind === 'trinket') return !!ZU.TRINKETS[id];
       if (kind === 'special') return !!(ZU.CARDS[id] && ZU.CARDS[id].special);
+      if (kind === 'seal') return !!ZU.SEALS[id];
       return false;
     },
 
@@ -318,7 +327,7 @@
     /* Alles Entdeckte, das noch nicht gekauft ist (für das „Neu"-Zeichen im Menü). */
     openOffers: function (meta) {
       var list = [];
-      [['starter', ZU.STARTERS.map(function (s) { return s.id; })], ['trinket', ZU.TRINKET_IDS], ['special', ZU.SPECIAL_IDS]].forEach(function (group) {
+      [['starter', ZU.STARTERS.map(function (s) { return s.id; })], ['trinket', ZU.TRINKET_IDS], ['special', ZU.SPECIAL_IDS], ['seal', ZU.SEAL_IDS]].forEach(function (group) {
         group[1].forEach(function (id) {
           if (!M.isUnlocked(meta, group[0], id) && M.isFound(meta, group[0], id)) list.push(group[0] + ':' + id);
         });
@@ -332,6 +341,7 @@
     cost: function (kind, id) {
       if (kind === 'starter') return STARTER_COST[id] || 10;
       if (kind === 'trinket') return [4, 6, 9, 14][ZU.TRINKETS[id].rarity];
+      if (kind === 'seal') return 4 + ZU.SEALS[id].value * 2;
       return [4, 6, 9, 14][ZU.CARDS[id].rarity];
     },
 
@@ -400,7 +410,9 @@
         luckyTrinket: M.level(meta, 'gluecksbringer') > 0,
         nimble: M.level(meta, 'flinkefinger') > 0,
         trinkets: open('trinket', ZU.TRINKET_IDS),
-        specials: open('special', ZU.SPECIAL_IDS)
+        specials: open('special', ZU.SPECIAL_IDS),
+        seals: open('seal', ZU.SEAL_IDS),
+        esmePacks: 3 + M.level(meta, 'tarot')
       };
     },
 

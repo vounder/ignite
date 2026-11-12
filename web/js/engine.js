@@ -82,6 +82,7 @@
     this.afterDraw = null; // nach dem Ziehen: { actor, ids } der Karten, die sofort gelegt werden dürfen
     this.suitRun = { suit: null, n: 0 }; // Farbenlehre: gleiche Symbole in Folge
     this.lifeGain = 0; // Reservefunke
+    this.toll = 0; // Makel „Zoll": Mark, die bei der Auszahlung abgehen
     this.wonBy = null; // 'curfew', wenn Sperrstunde oder Kartenvergleich entschieden hat
     // Zählwerke für Auszahlung und Hinterzimmer (was der Spieler in diesem Duell geschafft hat)
     this.stats = { played: 0, drawn: 0, sevens: 0, eights: 0, aces: 0, specials: 0, pairs: 0, pushed: 0, skips: 0, curses: 0, reflects: 0, swaps: 0, sacrificed: 0 };
@@ -105,12 +106,22 @@
   /* ---------- Aufbau ---------- */
   Duel.prototype.start = function () {
     var self = this, ev = [], rng = this.rng;
-    var owned = this.collection.map(function (c) { return self._register(c.def, 'player', true, c.id, c.bind); });
+    var owned = this.collection.map(function (c) {
+      var cid = self._register(c.def, 'player', true, c.id, c.bind);
+      // Veredelung der Karte: Siegel und Makel wirken nur, wenn der Spieler sie selbst ausspielt.
+      if (c.seal) self.cards[cid].seal = c.seal;
+      if (c.flaw) self.cards[cid].flaw = c.flaw;
+      return cid;
+    });
     rng.shuffle(owned);
     if (this.has('gezinktes-blatt')) {
       // Gezinktes Blatt: Spezialkarten wandern nach vorn und damit sicher auf die Starthand.
       owned = owned.filter(function (id) { return self.def(id).special; }).concat(owned.filter(function (id) { return !self.def(id).special; }));
     }
+    // Anker-Karten wandern nach vorn (sichere Starthand), Nachzügler nach hinten.
+    owned = owned.filter(function (id) { return self.cards[id].seal === 'anker'; })
+      .concat(owned.filter(function (id) { return self.cards[id].seal !== 'anker' && self.cards[id].flaw !== 'spaet'; }))
+      .concat(owned.filter(function (id) { return self.cards[id].seal !== 'anker' && self.cards[id].flaw === 'spaet'; }));
     var handSize = ZU.HAND_SIZE - (this.has('schmale-hand') ? 1 : 0);
     var opening = owned.slice(0, handSize);
     var rest = owned.slice(handSize);
@@ -260,6 +271,7 @@
       return ZU.SUIT_ORDER;
     }
     if (def.rank === 'J' && actor === 'player' && this.has('bubenstueck')) return ZU.SUIT_ORDER;
+    if (actor === 'player' && card.seal === 'irrlicht') return ZU.SUIT_ORDER;
     return [def.suit];
   };
 
@@ -539,8 +551,10 @@
     var def = this.def(id), event = { t: 'play', id: id, actor: actor, from: from === 'hand' ? actor : 'staging' };
     if (actor === 'player') {
       var face = def.rank === 'J' || def.rank === 'Q' || def.rank === 'K', low = def.rank === '7' || def.rank === '8' || def.rank === '9';
+      var mark = this.cards[id], seal = mark.seal, flaw = mark.flaw;
       var base = def.base + (low && this.has('kleinvieh') ? 6 : 0) + (face && this.has('hofstaat') ? 5 : 0) +
         (this.has('zunder') ? 4 : 0) + (def.special && this.has('tintenfass') ? 15 : 0);
+      if (flaw === 'matt') base = Math.max(1, base - 4);
       var points = base * this.chain, doubled = false;
       if (def.suit === 'hearts' && this.has('heartblood')) { points *= 2; doubled = true; }
       if (def.suit === 'diamonds' && this.has('karoglanz')) { points *= 2; doubled = true; }
@@ -551,13 +565,18 @@
       if (!this.hand.player.length && this.has('letzte-glut')) { points *= 5; doubled = true; }
       if (this.status.blaze > 0) { this.status.blaze--; points *= 2; doubled = true; }
       if (this.has('teufelspakt')) { points *= 2; doubled = true; }
+      if (seal === 'glut') { points *= 2; doubled = true; }
       this.glut += points;
       event.score = { base: base, chain: this.chain, points: points, glut: this.glut, doubled: doubled };
       var step = this.has('afterburner') ? 2 : 1;
       if (def.special && this.has('blasebalg')) step += 2;
+      if (seal === 'zuend') step += 1;
       if (below && def.suit && below.suit && ZU.SUITS[def.suit].red && ZU.SUITS[below.suit].red && this.has('roter-teppich')) step += 1;
+      if (flaw === 'stumpf') step = 0;
       this._setChain(this.chain + step);
       event.score.next = this.chain;
+      if (seal) event.seal = seal;
+      if (flaw) event.flaw = flaw;
       this.stats.played++;
       if (def.special) this.stats.specials++;
       else if (def.rank === '7') this.stats.sevens++;
@@ -566,6 +585,18 @@
     }
     ev.push(event);
     if (actor === 'player') {
+      var worn = this.cards[id];
+      if (worn.seal === 'gold') { this.bank += 1; ev.push(this._statusEvent()); }
+      if (worn.flaw === 'zoll') this.toll++;
+      if (worn.seal === 'haken') this.queue.push({ type: 'draw', amount: 1, reflectable: true, src: actor });
+      if (worn.flaw === 'klette') this.queue.push({ type: 'selfdraw', amount: 1, src: actor });
+      if (worn.seal === 'bumerang' && !this.used['boom' + id] && from === 'hand' && this.hand.player.length > 0) {
+        // Bumerang: Die Karte bleibt liegen, eine Zwillingskarte für dieses Duell kehrt auf die Hand zurück.
+        this.used['boom' + id] = true;
+        var twin = this._register(def.id, 'player', false);
+        this.hand.player.push(twin);
+        ev.push({ t: 'boomerang', id: twin, from: id });
+      }
       if (this.has('midas-hand') && (this.used.midas || 0) < 10) {
         this.used.midas = (this.used.midas || 0) + 1;
         this.bank += 1;
@@ -705,6 +736,10 @@
         if (tgt === 'opp') this.stats.pushed += Math.max(0, dealt - held.length);
         break;
       }
+      case 'selfdraw':
+        ev.push({ t: 'effect', type: 'draw', src: other(item.src), tgt: item.src, amount: item.amount });
+        this._drawInto(item.src, item.amount, 'effect', ev, false);
+        break;
       case 'again':
         this.retain = true;
         ev.push({ t: 'effect', type: 'again', src: src, tgt: src });

@@ -70,7 +70,7 @@
       this.screen = name;
       if (this.run && this.run.s.encounters) ZU.preloadEnemies(this.run.s.encounters.map(function (e) { return e.enemy; }), true);
       // Farbwelt: im Run die des Casinos, bei der Schachtelwahl die des gewählten Hauses, sonst neutral.
-      var inRun = this.run && ['select', 'duel', 'shop', 'reward', 'victory', 'defeat'].indexOf(name) >= 0 && !this.run.meta().legacy;
+      var inRun = this.run && ['select', 'duel', 'shop', 'esme', 'reward', 'victory', 'defeat'].indexOf(name) >= 0 && !this.run.meta().legacy;
       ZU.bg.setTheme(inRun ? this.run.casino().tint : name === 'starter' ? ZU.CASINOS[ZU.Meta.get().stake].tint : null);
       root.classList.remove('enter');
       root.innerHTML = '';

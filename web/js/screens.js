@@ -89,7 +89,7 @@
       }
       grid.style.zoom = zoom.toFixed(2);
       cards.forEach(function (card) {
-        var el = ZU.cardStatic(ZU.CARDS[card.def], { cls: burn ? 'clickable burnable' : '', bind: card.bind });
+        var el = ZU.cardStatic(ZU.CARDS[card.def], { cls: burn ? 'clickable burnable' : '', bind: card.bind, seal: card.seal, flaw: card.flaw });
         if (burn) el.addEventListener('click', function () {
           ZU.audio.burn();
           var p = ZU.stagePos(el);
@@ -115,6 +115,44 @@
   }
   ZU.deckModal = deckModal;
 
+  /* Lässt "count" normale Karten aus dem Deck wählen (Esmes Pakete). Liefert die Karten-IDs oder null. */
+  function pickCards(game, count, title, text) {
+    return new Promise(function (resolve) {
+      var run = game.run, done = false, entry, chosen = [];
+      function finish(value) { if (done) return; done = true; ZU.modal.close(entry); resolve(value); }
+      var grid = h('div', 'deckgrid');
+      var cards = sortedCollection(run).filter(function (card) { return !ZU.CARDS[card.def].special; });
+      var zoom = 1;
+      for (; zoom > 0.42; zoom -= 0.04) {
+        var perRow = Math.max(1, Math.floor((920 + 12 * zoom) / ((104 + 12) * zoom)));
+        if (Math.ceil(cards.length / perRow) * (146 + 14) * zoom <= 330) break;
+      }
+      grid.style.zoom = zoom.toFixed(2);
+      var ok = btn(count > 1 ? 'Veredeln (0/' + count + ')' : 'Veredeln', 'ember', function () { finish(chosen.slice()); });
+      ok.disabled = true;
+      cards.forEach(function (card) {
+        var el = ZU.cardStatic(ZU.CARDS[card.def], { cls: 'clickable', bind: card.bind, seal: card.seal, flaw: card.flaw });
+        el.addEventListener('click', function () {
+          var at = chosen.indexOf(card.id);
+          if (at >= 0) chosen.splice(at, 1);
+          else { if (chosen.length >= count) { var first = chosen.shift(); grid.querySelector('[data-card="' + first + '"]').classList.remove('picked'); } chosen.push(card.id); }
+          el.classList.toggle('picked', chosen.indexOf(card.id) >= 0);
+          ZU.audio.select(chosen.indexOf(card.id) >= 0);
+          ok.disabled = chosen.length !== count;
+          if (count > 1) ok.textContent = 'Veredeln (' + chosen.length + '/' + count + ')';
+        });
+        el.dataset.card = card.id;
+        grid.appendChild(el);
+      });
+      entry = ZU.modal.open([
+        h('h2', null, title),
+        h('p', 'modal-text', text),
+        grid,
+        h('div', 'btnrow', [btn('Doch nicht', 'felt', function () { finish(null); }), ok])
+      ], { cls: 'wide', onClose: function () { finish(null); } });
+    });
+  }
+
   function helpModal() {
     var touch = ZU.app.isTouch();
     var entry = ZU.modal.open([
@@ -135,6 +173,7 @@
           '<p>Siege zahlen <b>Mark</b>: Tischprämie, Restkarten des Gegners, Glut-Bonus, Bank und Zinsen (1 Mark je 5 gesparte Mark).</p>' +
           '<h3>Der Run</h3>' +
           '<p>Jeder Akt hat drei Tische: Gegner, Elite, Boss. Dazwischen wartet <b>Manfreds Laden</b> mit Karten, Trinkets und Diensten. Das erste <b>Casino</b> hat drei Akte; wer es ausräumt, öffnet das nächste – größer, härter, mit eigener Hausordnung und mehr Asche.</p>' +
+          '<p>Im Nebenzimmer des Ladens <b>veredelt Esme</b> normale Karten: Ein Siegel macht eine Karte für den ganzen Run stärker. Günstige Pakete haben oft einen kleinen Makel.</p>' +
           '<p><b>Trinkets</b> sind unbegrenzt, werden aber mit jedem weiteren teurer. <b>Privilegien</b> gelten den ganzen Run; Manfred bietet je Akt genau eines an.</p>' +
           '<p>Du spielst mit deinem eigenen <b>Deck</b>: Zu Beginn jedes Duells wird es gemischt, 7 Karten kommen auf die Hand, der Rest ist dein Nachziehstapel. Der Gegner zieht von seinem eigenen Stapel.</p>' +
           '<p>Eine Niederlage kostet ein <b>Streichholz</b>. Sind alle abgebrannt, endet der Run.</p>' +
@@ -815,6 +854,7 @@
     var parts = key.split(':'), kind = parts[0], id = parts[1];
     if (kind === 'trinket') return { visual: ZU.trinketEl(id), name: ZU.TRINKETS[id].name, kind: 'Trinket', text: ZU.TRINKETS[id].text };
     if (kind === 'special') return { visual: ZU.cardStatic(ZU.CARDS[id], { cls: 'mini', bind: 'none', noTip: true }), name: ZU.CARDS[id].name, kind: 'Spezialkarte', text: ZU.CARDS[id].text };
+    if (kind === 'seal') return { visual: ZU.sealEl(id), name: ZU.SEALS[id].name, kind: 'Veredelung', text: ZU.SEALS[id].text };
     if (kind === 'upgrade') return { visual: ZU.upgradeEl(id), name: ZU.Meta.UPGRADES[id].name, kind: 'Upgrade', text: ZU.Meta.UPGRADES[id].text };
     if (kind === 'casino') return { visual: h('div', 'un-badge', ZU.roman(Number(id) + 1)), name: ZU.CASINOS[id].name, kind: 'Casino', text: ZU.CASINOS[id].sub + '. ' + casinoFacts(ZU.CASINOS[id]) + '.', open: true };
     var starter = ZU.STARTERS.filter(function (s) { return s.id === id; })[0];
@@ -939,6 +979,9 @@
         var visual = found ? ZU.cardStatic(ZU.CARDS[id], { cls: 'mini', bind: 'none' }) : h('div', 'cardstatic mini', [ZU.cardBack()]);
         return tile(meta, 'special', id, visual, ZU.CARDS[id].name);
       }));
+      section('Veredelungen' + counter(meta, 'seal', ZU.SEAL_IDS), ZU.SEAL_IDS.map(function (id) {
+        return tile(meta, 'seal', id, ZU.sealEl(id), ZU.SEALS[id].name);
+      }));
     }
 
     function renderUpgrade(meta) {
@@ -1037,6 +1080,41 @@
       });
     }
 
+    /* Hinter dem Tresen: Manfred und Esme. Ihre Akten öffnen sich mit Käufen bzw. Veredelungen. */
+    function renderShopFile(meta) {
+      var tiles = Object.keys(ZU.LORE_SHOP).map(function (id) {
+        var who = ZU.LORE_SHOP[id], count = ZU.Meta.feat(meta, who.feat);
+        var open = who.steps.filter(function (need) { return count >= need; }).length;
+        var img = h('i', 'shop-face f-' + id);
+        img.style.backgroundImage = 'url(' + ZU.asset(who.art) + ')';
+        var el = h('div', 'br-tile file' + (open ? ' open known' : ' closed'), [
+          h('div', 'shop-facebox', [img]),
+          h('div', 'br-name', open ? who.name : '???'),
+          h('div', 'br-open', who.role),
+          open ? h('div', 'br-lore', 'Akte ' + open + '/3') : null
+        ]);
+        if (open) el.addEventListener('click', function () {
+          ZU.audio.click();
+          var entry = ZU.modal.open([
+            h('div', 'lore-head', [h('div', 'shop-facebox big', [img.cloneNode()]), h('div', 'lore-who', [
+              h('h2', null, who.name), h('div', 'lore-role', who.role), h('div', 'lore-count', count + ' ' + who.unit)
+            ])]),
+            h('div', 'lore-pages', who.pages.map(function (text, index) {
+              var ok = count >= who.steps[index];
+              return h('div', 'lore-page' + (ok ? '' : ' locked'), [
+                h('div', 'lore-no', ZU.roman(index + 1)),
+                h('p', null, ok ? text : '?????'),
+                ok ? null : h('div', 'lore-need', 'Noch ' + (who.steps[index] - count) + ' ' + who.unit)
+              ]);
+            })),
+            h('div', 'btnrow', [btn('Akte schließen', 'felt', function () { ZU.modal.close(entry); })])
+          ], { cls: 'wide dossier' });
+        });
+        return el;
+      });
+      section('Hinter dem Tresen', tiles);
+    }
+
     function render() {
       var meta = ZU.Meta.get();
       fx.count(ashEl, meta.ash, 300);
@@ -1045,7 +1123,7 @@
       if (tab === 'unlock') renderUnlock(meta);
       else if (tab === 'upgrade') renderUpgrade(meta);
       else if (tab === 'stake') renderStake(meta);
-      else renderFile(meta);
+      else { renderFile(meta); renderShopFile(meta); }
       content.scrollTop = 0;
     }
 
@@ -1241,8 +1319,28 @@
     reroll: ['Neue Auslage, neues Glück.', 'Moment … so. Besser?'],
     heal: ['Ein frisches Hölzchen. Pass drauf auf.'],
     sell: ['Nehm ich. Zum halben Preis, versteht sich.'],
-    bye: ['Mach sie fertig.', 'Bring mir was Schönes mit.']
+    bye: ['Mach sie fertig.', 'Bring mir was Schönes mit.'],
+    // ganz selten: Er schwärmt von der Wahrsagerin nebenan, ohne es zu merken
+    esme: ['Die Esme nebenan nimmt für einen Blick in die Zukunft mehr als ich für die Gegenwart. Respekt.',
+      'Hast du gesehen, wie sie feilscht? Da wird einem ganz warm ums Kassenbuch.',
+      'Nicht weitersagen: Wenn sie „Mark auf den Tisch“ sagt, vergesse ich kurz das Wechselgeld.']
   };
+  var RARE_LINE = 0.04; // etwa jeder 25. Besuch
+
+  /* Esme, die Wahrsagerin im Nebenzimmer: so geldgierig wie Manfred, und heimlich von ihm angetan. */
+  var ESME = {
+    greet: ['Setz dich. Die Karten haben schon von dir gesprochen. Billig wird es nicht.', 'Ah, Kundschaft. Die Zukunft kostet – die Vergangenheit hast du ja schon bezahlt.', 'Ich sehe … Geld. Deins. Bald meins.', 'Hand aufs Tuch, Mark auf den Tisch.'],
+    buy: ['Die Karten danken. Ich auch.', 'Ein kluger Kauf. Sagen die Sterne. Und meine Kasse.', 'So. Das hält bis zum Jüngsten Tag – oder bis du sie verbrennst.'],
+    poor: ['Ohne Mark schweigen die Karten.', 'Die Zukunft gibt keinen Kredit.', 'Komm wieder, wenn dein Beutel klimpert.'],
+    reroll: ['Neu gemischt. Das Schicksal ist heute flexibel.', 'Andere Karten, anderer Preis. Fürs Mischen.'],
+    pity: ['Du hast ja gar nichts. Na schön – einmal mische ich umsonst. Erzähl es keinem.'],
+    bag: ['Die Wundertüte! Ich sehe … Überraschungen.', 'Augen zu. Die Karten suchen sich selbst aus.'],
+    bye: ['Grüß mir das Glück.', 'Geh nur. Du kommst wieder. Das sehe ich.'],
+    love: ['Dieser Manfred verkauft einem Ertrinkenden noch das Wasser. Was für ein Mann.',
+      'Hast du gesehen, wie er wechselt? Kein Pfennig zu viel. Hach.',
+      'Sag ihm nicht, dass ich das gesagt habe: Seine Preise sind ein Gedicht.']
+  };
+  var ESME_FRAMES = ['idle', 'blink', 'greedy', 'annoyed', 'surprised', 'dreamy'];
 
   /* Manfred: ein Sprite-Streifen mit zwölf Posen (assets/manfred/manfred.png) und kleine Abläufe daraus. */
   var MANFRED_FRAMES = ['idle', 'blink', 'talk', 'grin', 'annoyed', 'surprised', 'hat', 'coin', 'match', 'cards', 'side', 'wink'];
@@ -1508,6 +1606,10 @@
       ]));
     }
 
+    // Tür zum Nebenzimmer: Esme veredelt normale Karten.
+    var esmeDoor = btn([h('span', null, 'Nebenzimmer'), h('small', null, 'Esme · Karten veredeln')], 'esme-door', function () { game.go('esme'); });
+    if (s.shop.esme.packs.some(function (pack) { return !pack.sold; })) esmeDoor.appendChild(h('i', 'newdot', String(s.shop.esme.packs.filter(function (pack) { return !pack.sold; }).length)));
+
     function sell(id) {
       var value = run.sellValue(id);
       confirmBox(ZU.TRINKETS[id].name + ' verkaufen?', 'Manfred zahlt ' + value + ' Mark dafür.', 'Verkaufen').then(function (yes) {
@@ -1523,6 +1625,7 @@
     root.appendChild(h('div', 'screen shop', [
       bar.el,
       h('div', 'shop-left', [bubble, manfred, h('div', 'shop-sign', 'Manfreds Laden')]),
+      esmeDoor,
       h('div', 'shop-main', [
         h('div', 'shelf-top', [
           h('div', 'shelf cards-shelf', [h('div', 'shelf-label', 'Karten'), cardsRow]),
@@ -1543,8 +1646,143 @@
       })
     ]));
     render();
-    var greeting = setTimeout(function () { mf.act('greet'); say('greet'); }, 350);
+    var greeting = setTimeout(function () { mf.act('greet'); say(Math.random() < RARE_LINE ? 'esme' : 'greet'); }, 350);
     return function () { clearTimeout(greeting); mf.stop(); };
+  };
+
+  /* ---------- Esmes Nebenzimmer: normale Karten veredeln ---------- */
+  screens.esme = function (game, root) {
+    var run = game.run, s = run.s, esme = s.shop.esme;
+    ZU.bg.set('elite');
+    ZU.audio.music('shop');
+    var bar = hud(game);
+    var img = h('i', 'esme-img');
+    img.style.backgroundImage = 'url(' + ZU.asset('esme/esme.png') + ')';
+    var figure = h('div', 'esme-fig', [h('div', 'esme-bob', [img])]);
+    var bubble = h('div', 'bubble shopbubble esmebubble');
+    var mood = 'idle', moodTimer = null, blinkTimer = null, dead = false;
+    function show(name) { img.style.backgroundPosition = (ESME_FRAMES.indexOf(name) * 100 / (ESME_FRAMES.length - 1)) + '% 0'; }
+    function face(name, ms) {
+      mood = name;
+      show(name);
+      clearTimeout(moodTimer);
+      if (name !== 'idle') moodTimer = setTimeout(function () { mood = 'idle'; if (!dead) show('idle'); }, ms || 1600);
+    }
+    (function blink() {
+      blinkTimer = setTimeout(function () {
+        if (dead) return;
+        if (mood === 'idle') { show('blink'); setTimeout(function () { if (!dead && mood === 'idle') show('idle'); }, 130); }
+        blink();
+      }, 2200 + Math.random() * 3600);
+    })();
+    function say(kind, look) {
+      var lines = ESME[kind], text = lines[Math.floor(Math.random() * lines.length)];
+      bubble.textContent = text;
+      fx.punch(bubble, 'on');
+      if (look) face(look, Math.min(2600, 900 + text.length * 30));
+    }
+    var row = h('div', 'esme-packs'), mixBox = h('div', 'esme-mix');
+    var KIND = { single: 'Einzelsiegel', double: 'Doppelpack', bag: 'Wundertüte' };
+    var KIND_TEXT = {
+      single: 'Ein Siegel für eine Karte deiner Wahl.',
+      double: 'Zwei Siegel für zwei Karten deiner Wahl.',
+      bag: 'Drei Siegel – die Karten suchen sich selbst aus.'
+    };
+
+    function applied(result, bag) {
+      var list = h('div', 'esme-result');
+      result.forEach(function (r) {
+        var card = s.collection.filter(function (c) { return c.id === r.id; })[0];
+        list.appendChild(h('div', 'esme-got', [
+          ZU.cardStatic(ZU.CARDS[r.def], { cls: bag ? '' : 'mini2', seal: card.seal, flaw: card.flaw }),
+          h('div', 'esme-gotname', ZU.SEALS[r.seal].name + (r.flaw ? ' · Makel ' + ZU.FLAWS[r.flaw].name : ''))
+        ]));
+      });
+      var entry = ZU.modal.open([
+        h('h2', null, bag ? 'Die Wundertüte hat gewählt' : 'Veredelt'),
+        list,
+        h('div', 'btnrow', [btn('Schön', 'ember', function () { ZU.modal.close(entry); })])
+      ], { cls: 'wide' });
+    }
+
+    function render() {
+      bar.update();
+      row.innerHTML = '';
+      mixBox.innerHTML = '';
+      row.classList.toggle('four', esme.packs.length > 3);
+      esme.packs.forEach(function (pack, index) {
+        var tile = h('div', 'esme-pack k-' + pack.kind + (pack.sold ? ' sold' : ''));
+        if (pack.sold) {
+          tile.appendChild(h('div', 'soldout', 'Verkauft'));
+        } else {
+          tile.appendChild(h('div', 'esme-kind', KIND[pack.kind]));
+          tile.appendChild(h('p', 'esme-kindtext', KIND_TEXT[pack.kind]));
+          var items = h('div', 'esme-items');
+          pack.items.forEach(function (item) {
+            items.appendChild(h('div', 'esme-item', [
+              ZU.sealEl(item.seal),
+              h('div', 'esme-itemmain', [
+                h('div', 'esme-seal', ZU.SEALS[item.seal].name),
+                h('p', null, ZU.SEALS[item.seal].text),
+                item.flaw ? h('p', 'esme-flaw', 'Makel ' + ZU.FLAWS[item.flaw].name + ': ' + ZU.FLAWS[item.flaw].text) : h('p', 'esme-clean', 'Makellos.')
+              ])
+            ]));
+          });
+          tile.appendChild(items);
+          var poorNow = s.money < pack.price;
+          var buy = btn([ZU.iconEl('coin', 'coin'), h('span', null, String(pack.price))], 'price gold' + (poorNow ? ' poor' : ''), function () {
+            if (s.money < pack.price) { ZU.audio.error(); fx.punch(buy, 'shake'); say('poor', 'annoyed'); return; }
+            if (run.sealable().length < pack.items.length) { ZU.audio.error(); fx.punch(buy, 'shake'); return; }
+            var finish = function (ids) {
+              var result = run.buyPack(index, ids);
+              ZU.audio.coin(4);
+              ZU.audio.ignite();
+              say(pack.kind === 'bag' ? 'bag' : 'buy', 'greedy');
+              var p = ZU.stagePos(tile);
+              fx.burst(p.x, p.y, { n: 30, speed: 320, life: 1.1, colors: ['#e9d8ff', '#b78cff', '#ffd75e', '#fff3c4'] });
+              render();
+              applied(result, pack.kind === 'bag');
+            };
+            if (pack.kind === 'bag') { finish(null); return; }
+            var n = pack.items.length;
+            pickCards(game, n, n > 1 ? 'Welche zwei Karten?' : 'Welche Karte?',
+              (n > 1 ? 'Die erste gewählte Karte bekommt ' + ZU.SEALS[pack.items[0].seal].name + ', die zweite ' + ZU.SEALS[pack.items[1].seal].name + '. '
+                : 'Sie bekommt ' + ZU.SEALS[pack.items[0].seal].name + '. ') + 'Ein vorhandenes Siegel wird ersetzt.').then(function (ids) { if (ids) finish(ids); });
+          });
+          tile.appendChild(buy);
+        }
+        row.appendChild(tile);
+      });
+      var mixPrice = run.esmeRerollPrice(), anyLeft = esme.packs.some(function (pack) { return !pack.sold; });
+      var mix = btn([h('span', null, mixPrice ? 'Neu auslegen' : 'Neu auslegen – gratis'), mixPrice ? ZU.iconEl('coin', 'coin') : null, mixPrice ? h('b', null, String(mixPrice)) : null], 'felt', function () {
+        if (s.money < mixPrice) { ZU.audio.error(); fx.punch(mix, 'shake'); say('poor', 'annoyed'); return; }
+        var free = mixPrice === 0;
+        run.esmeReroll();
+        ZU.audio.shuffle();
+        say(free ? 'pity' : 'reroll', free ? 'surprised' : 'greedy');
+        render();
+      });
+      mix.disabled = !anyLeft && !esme.packs.length;
+      mixBox.appendChild(mix);
+      if (!esme.packs.length) row.appendChild(h('div', 'shelf-empty', 'Esme hat heute geschlossen.'));
+    }
+
+    root.appendChild(h('div', 'screen shop esme', [
+      bar.el,
+      h('div', 'shop-left', [bubble, figure, h('div', 'shop-sign esme-sign', 'Esmes Nebenzimmer')]),
+      h('div', 'esme-main', [
+        h('div', 'esme-title', 'Karten veredeln'),
+        h('p', 'esme-sub', 'Nur normale Karten. Jede trägt höchstens ein Siegel; es gilt für den ganzen Run.'),
+        row,
+        mixBox
+      ]),
+      btn('Zurück zu Manfred', 'big felt shop-next', function () { game.go('shop'); })
+    ]));
+    render();
+    var greeting = setTimeout(function () {
+      if (Math.random() < RARE_LINE) say('love', 'dreamy'); else say('greet', 'greedy');
+    }, 350);
+    return function () { dead = true; clearTimeout(greeting); clearTimeout(moodTimer); clearTimeout(blinkTimer); };
   };
 
   /* ---------- Ende ---------- */
