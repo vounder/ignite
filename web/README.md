@@ -26,7 +26,16 @@ zugehörigen Elemente blenden sich selbst aus.
   passende Handkarte spielt sie sofort. Die 7 lässt den Gegner 1 Karte ziehen.
 - **Ziehen:** Wer nicht legen kann oder will, zieht eine Karte. Passt sie, darf
   sie sofort gelegt werden; sonst endet der Zug.
-- **Trinkets:** 83 Stück mit Synergie-Familien (Zieh-Druck und Flüche,
+- **Glutziel:** Jeder Tisch hat ein Glutziel (Tisch 600, Elite 800, Boss 1.100;
+  verdoppelt sich je Akt, +50 % je Casino-Stufe). Wer es erreicht, hat den Tisch
+  „abgefackelt“ und gewinnt sofort; die Auszahlung zahlt dafür +50 % der Prämie
+  und weitere +50 % je Verdopplung über dem Ziel (ohne Deckel), dazu Asche.
+  Werte in `ZU.GLUT_TARGET` (`js/data.js`).
+- **Wirtschaft in Prozent:** Prämien, Preise, Bank und Zinsdeckel wachsen je Akt
+  um 15 % (`ZU.ACT_GROWTH`); Rabatte, Aufschläge und Geld-Trinkets rechnen in
+  Prozent, damit sie in späten Akten noch zählen.
+- **Trinkets:** 92 Stück (darunter neun Wachstums-Trinkets, die über den Run
+  stärker werden) mit Synergie-Familien (Zieh-Druck und Flüche,
   Aussetzen, Kette und Glut, Mehrfachwahl, Spezialkarten, Kasse, Schutz). Es
   gibt keine Obergrenze; dafür kostet jedes weitere Trinket im Laden 3 Mark
   mehr. Elf Trinkets sind von Anfang an im Spiel, der Rest wird im Hinterzimmer

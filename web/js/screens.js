@@ -170,6 +170,7 @@
           '<p><b>Sperrstunde:</b> Nach ' + ZU.TURN_LIMIT + ' Zügen gewinnt, wer weniger Karten hält.</p></div>' +
           '<div><h3>Glut und Mark</h3>' +
           '<p>Jede gespielte Karte bringt <b>Glut</b>: Kartenwert × Kette. Die Kette wächst mit jeder Karte und fällt zurück, wenn du ziehst.</p>' +
+          '<p>Jeder Tisch hat ein <b>Glutziel</b>. Erreichst du es, brennt der Tisch: Du gewinnst sofort, auch mit voller Hand. Wer das Ziel vervielfacht, kassiert für jede Verdopplung extra Mark und Asche – ohne Obergrenze.</p>' +
           '<p>Siege zahlen <b>Mark</b>: Tischprämie, Restkarten des Gegners, Glut-Bonus, Bank und Zinsen (1 Mark je 5 gesparte Mark).</p>' +
           '<h3>Der Run</h3>' +
           '<p>Jeder Akt hat drei Tische: Gegner, Elite, Boss. Dazwischen wartet <b>Manfreds Laden</b> mit Karten, Trinkets und Diensten. Das erste <b>Casino</b> hat drei Akte; wer es ausräumt, öffnet das nächste – größer, härter, mit eigener Hausordnung und mehr Asche.</p>' +
@@ -1190,6 +1191,7 @@
         h('div', 'ename', enemy.name),
         h('div', 'erole', enemy.role),
         h('p', 'epassive', enemy.passiveText),
+        h('div', 'etarget', [ZU.iconEl('flame', 'flame'), 'Glutziel ' + ZU.fmt(run.glutTarget(enc.kind))]),
         ruleRow(enc),
         h('ul', 'rewards', rewards),
         foot
@@ -1234,6 +1236,7 @@
         list,
         h('div', 'paytotal', [h('span', null, 'Summe'), ZU.iconEl('coin', 'coin'), totalEl, h('span', 'unit', 'Mark')]),
         h('div', 'paywallet', ['Kasse: ', walletEl, ' Mark']),
+        result.burnt ? h('div', 'payburnt', 'Tisch abgefackelt' + (result.doublings ? ' · Glutziel ×' + Math.pow(2, result.doublings) + ' übertroffen' : '')) : null,
         result.ash ? h('div', 'payash', [ZU.iconEl('ash', 'ashico'), h('b', null, '+' + result.ash), h('span', null, 'Asche fürs Hinterzimmer')]) : null,
         result.lostCards ? h('div', 'paynote', result.lostCards + (result.lostCards === 1 ? ' erzeugte Spezialkarte fand' : ' erzeugte Spezialkarten fanden') + ' keinen Platz mehr im Deck.') : null,
         h('div', 'btnrow', [go])

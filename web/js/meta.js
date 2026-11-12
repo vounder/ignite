@@ -20,7 +20,7 @@
     trinkets: 'max', perks: 'max', casino: 'max', flawless: 'max', endless: 'max',
     played: 'sum', sevens: 'sum', eights: 'sum', aces: 'sum', specials: 'sum', pairs: 'sum', skips: 'sum', curses: 'sum', reflects: 'sum',
     swaps: 'sum', sacrificed: 'sum', nodraw: 'sum', fast: 'sum', curfew: 'sum', last: 'sum', slim: 'sum', losses: 'sum',
-    burned: 'sum', sold: 'sum', rerolls: 'sum', healed: 'sum', sealed: 'sum', bought: 'sum'
+    burned: 'sum', sold: 'sum', rerolls: 'sum', healed: 'sum', sealed: 'sum', bought: 'sum', burnt: 'sum', overkill: 'max'
   };
 
   /* Bedingungen, unter denen etwas im Hinterzimmer auftaucht: [Zählwerk, Schwelle, Hinweis, ab wann der Hinweis zu lesen ist].
@@ -104,6 +104,16 @@
     'trinket:echo': ['casino', 2, '', NIE],
     'trinket:gezinktes-blatt': ['nodraw', 1, 'Gewinne ein Duell, ohne eine einzige Karte zu ziehen.', 2],
     'trinket:schmale-hand': ['slim', 1, 'Gewinne ein Duell mit einem Deck aus höchstens 10 Karten.', 1],
+    // --- wachsende Trinkets ---
+    'trinket:schneeball': ['burnt', 1, 'Fackle einen Tisch ab: Erreiche sein Glutziel.'],
+    'trinket:brandstifter': ['burned', 8, 'Verbrenne 8 Karten.'],
+    'trinket:sippschaft': ['trinkets', 6, 'Trage 6 Trinkets in einem Run.'],
+    'trinket:funkenregen': ['burnt', 5, 'Fackle 5 Tische ab.'],
+    'trinket:wucherer': ['money', 60, 'Halte 60 Mark auf einmal.', 1],
+    'trinket:glutspeicher': ['burnt', 12, 'Fackle 12 Tische ab.', 1],
+    'trinket:trophaeenschrank': ['bosses', 10, 'Schlage 10 Bosse.', 1],
+    'trinket:perpetuum': ['overkill', 4, 'Übertriff ein Glutziel um das Vierfache.', 2],
+    'trinket:kettenreaktion': ['chain', 14, 'Erreiche eine Kette von ×14.', 3],
     // --- legendär ---
     'trinket:lauffeuer': ['chain', 16, 'Erreiche eine Kette von ×16.', 3],
     'trinket:phoenixfeder': ['last', 8, 'Gewinne 8 Duelle mit dem letzten Streichholz.', 3],
@@ -157,11 +167,11 @@
       etui: { name: 'Kartenetui', text: 'Dein Deck fasst eine Spezialkarte mehr je Stufe (ohne Ausbau: ' + ZU.SPECIAL_SLOTS + ').', costs: [10, 18, 30] },
       stammkunde: { name: 'Stammkunde', text: 'Die erste Neue Auslage in jedem Laden ist gratis.', costs: [10] },
       spuernase: { name: 'Spürnase', text: 'Im Spezialkarten-Regal liegt öfter etwas (+10 % je Stufe).', costs: [8, 14] },
-      sparbuch: { name: 'Sparbuch', text: 'Zinsen bringen 1 Mark mehr je Stufe.', costs: [8, 14] },
-      zuendelei: { name: 'Zündelei', text: 'Verbrennen kostet 1 Mark weniger.', costs: [7] },
+      sparbuch: { name: 'Sparbuch', text: 'Die Obergrenze der Zinsen steigt um 25 % je Stufe.', costs: [8, 14] },
+      zuendelei: { name: 'Zündelei', text: 'Verbrennen kostet 25 % weniger.', costs: [7] },
       schaufenster: { name: 'Schaufenster', text: 'Manfred zeigt ein Trinket mehr.', costs: [20] },
-      handschlag: { name: 'Handschlag', text: 'Privilegien kosten 3 Mark weniger.', costs: [9] },
-      trinkgeld: { name: 'Trinkgeld', text: 'Jeder besiegte Boss zahlt 3 Mark extra je Stufe.', costs: [8, 12] },
+      handschlag: { name: 'Handschlag', text: 'Privilegien kosten 20 % weniger.', costs: [9] },
+      trinkgeld: { name: 'Trinkgeld', text: 'Jeder besiegte Boss zahlt 20 % mehr Prämie je Stufe.', costs: [8, 12] },
       aschesieb: { name: 'Aschesieb', text: '+10 % Asche je Stufe.', costs: [12, 20, 30] },
       reserve: { name: 'Reserveholz', text: 'Du beginnst mit einem vierten Streichholz.', costs: [25] },
       tarot: { name: 'Viertes Blatt', text: 'Esme legt ein Paket mehr aus.', costs: [16] },
@@ -300,6 +310,7 @@
         if (!st.drawn) changes.nodraw = 1;
         if (duel.turns <= 16) changes.fast = 1;
         if (duel.wonBy === 'curfew') changes.curfew = 1;
+        if (duel.target && duel.glut >= duel.target) { changes.burnt = 1; changes.overkill = Math.floor(duel.glut / duel.target); }
         if (s.lives === 1) changes.last = 1;
         if (s.collection.length <= 10) changes.slim = 1;
         if (s.endless) changes.endless = s.act - run.acts();
@@ -411,9 +422,9 @@
         specialSlots: ZU.SPECIAL_SLOTS + M.level(meta, 'etui'),
         interest: M.level(meta, 'sparbuch'),
         trinketOffers: M.level(meta, 'schaufenster'),
-        perkDiscount: M.level(meta, 'handschlag') * 3,
-        bossTip: M.level(meta, 'trinkgeld') * 3,
-        burnDiscount: M.level(meta, 'zuendelei'),
+        perkDiscount: M.level(meta, 'handschlag') * 0.2,
+        bossTip: M.level(meta, 'trinkgeld') * 0.2,
+        burnDiscount: M.level(meta, 'zuendelei') * 0.25,
         luckyTrinket: M.level(meta, 'gluecksbringer') > 0,
         nimble: M.level(meta, 'flinkefinger') > 0,
         trinkets: open('trinket', ZU.TRINKET_IDS),

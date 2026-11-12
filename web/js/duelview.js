@@ -131,11 +131,16 @@
 
     this.chainEl = h('div', 'chain', [ZU.iconEl('flame', 'flame'), h('b', null, '×' + this.chain)]);
     this.glutEl = h('b', 'glutnum', '0');
+    // Glutziel: Balken und Zahl; wer es erreicht, fackelt den Tisch ab.
+    this.targetFill = h('i', 'target-fill');
+    this.targetEl = h('div', 'target', [h('div', 'target-bar', [this.targetFill]), h('span', 'target-num', 'Ziel ' + ZU.fmt(this.duel.target))]);
     this.board = h('div', 'scoreboard', [
       h('div', 'label', 'Kette'), this.chainEl,
-      h('div', 'label', 'Glut'), this.glutEl
+      h('div', 'label', 'Glut'), this.glutEl,
+      this.duel.target ? this.targetEl : null
     ]);
-    ZU.tip.bind(this.board, '<b>Glut</b> = Kartenwert × Kette. Jede gespielte Karte erhöht die Kette um 1, Ziehen setzt sie zurück. Je 250 Glut gibt es beim Sieg 1 Mark extra (höchstens 8).');
+    ZU.tip.bind(this.board, '<b>Glut</b> = Kartenwert × Kette. Jede gespielte Karte erhöht die Kette um 1, Ziehen setzt sie zurück.' +
+      (this.duel.target ? '<p><b>Glutziel ' + ZU.fmt(this.duel.target) + ':</b> Erreichst du es, brennt der Tisch und du gewinnst sofort – egal, wie viele Karten du noch hältst. Jede Verdopplung darüber zahlt extra Mark und Asche.</p>' : ''));
 
     this.promptEl = h('div', 'prompt');
     this.bubble = h('div', 'bubble');
@@ -443,6 +448,7 @@
         fx.pop(PILE.x + ZU.rand(-20, 20), PILE.y - 96, '+' + ZU.fmt(sc.points), 'score' + (sc.chain >= 5 ? ' hot' : ''));
         fx.burst(PILE.x, PILE.y, { n: 6 + sc.chain * 3, speed: 200 + sc.chain * 30 });
         fx.count(self.glutEl, sc.glut, 380);
+        self.setTarget(sc.glut);
         fx.punch(self.glutEl);
         self.setChain(sc.next, true);
         if (sc.chain >= 4) { fx.shake(2 + sc.chain * 0.9); ZU.bg.flash(0.08 + hot * 0.3); }
@@ -457,6 +463,34 @@
       (ev.trig || []).forEach(function (id) { chain = chain.then(function () { return self.destroyed ? null : self.trinketFx(id, true); }); });
       return chain;
     });
+  };
+
+  /* Füllstand des Glutziels; kurz vor dem Ziel glüht der Balken. */
+  DuelView.prototype.setTarget = function (glut) {
+    var target = this.duel.target;
+    if (!target) return;
+    var part = Math.min(1, glut / target);
+    this.targetFill.style.width = (part * 100).toFixed(1) + '%';
+    this.targetEl.classList.toggle('near', part >= 0.75 && part < 1);
+    this.targetEl.classList.toggle('done', part >= 1);
+  };
+  /* Glutziel erreicht: Der Tisch geht in Flammen auf. */
+  DuelView.prototype.on_burnt = function (ev) {
+    var self = this, times = Math.floor(ev.glut / ev.target);
+    ZU.audio.ignite();
+    ZU.audio.win();
+    ZU.bg.flash(1);
+    fx.shake(14);
+    this.react('shocked', 2400);
+    for (var i = 0; i < 7; i++) {
+      (function (k) {
+        setTimeout(function () {
+          if (self.destroyed) return;
+          fx.burst(300 + k * 110, 620 - Math.abs(3 - k) * 30, { n: 34, speed: 520, grav: -520, life: 1.4, size: 8, colors: ['#fff3c4', '#ffd75e', '#ff9f3a', '#d2452f'] });
+        }, k * 70 / ZU.speed);
+      })(i);
+    }
+    return fx.banner(times >= 2 ? 'Der Tisch brennt! Ziel ×' + times : 'Der Tisch brennt!', 'win', 1500);
   };
 
   /* ---------- Effekte: Siegel, Makel und Trinkets ---------- */
@@ -611,7 +645,15 @@
     hofstaat: ['pile', ['#ffe98a', '#a878e0', '#5a2a8a'], 'chip'],
     tintenfass: ['pile', ['#b8c8ff', '#3a4aa0', '#10142a'], 'flip'],
     blasebalg: ['chain', ['#f3e9d2', '#b98a4a', '#f08a24'], 'whoosh'],
-    'roter-teppich': ['chain', ['#ffb0a0', '#c8273a', '#e2b23c'], 'select']
+    'roter-teppich': ['chain', ['#ffb0a0', '#c8273a', '#e2b23c'], 'select'],
+    // wachsende Trinkets
+    brandstifter: ['pile', ['#ffe08a', '#ff7a1e', '#7a1c08'], 'burn'],
+    trophaeenschrank: ['pile', ['#fff6c8', '#e2b23c', '#7a5210'], 'chip', 'ring'],
+    schneeball: ['pile', ['#ffffff', '#cfe8ff', '#ff9f3a'], 'tick'],
+    wucherer: ['pile', ['#fff1b8', '#d79a1e', '#3a2408'], 'coin'],
+    sippschaft: ['pile', ['#f3e9d2', '#b98a4a', '#7c1f1c'], 'select'],
+    kettenreaktion: ['chain', ['#ffffff', '#ffe98a', '#ff5a1e'], 'ignite', 'ring'],
+    perpetuum: ['stock', ['#fff1b8', '#c79a3f', '#3aa58f'], 'flip', 'ring']
   };
   DuelView.prototype.trinketFx = function (id, quick) {
     var el = this.trinketEls[id], spec = TRINKET_FX[id] || ['pile', ['#fff3c4', '#ffd75e', '#e2b23c'], 'chip'], self = this;

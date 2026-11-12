@@ -942,3 +942,15 @@ body.nobg { background: radial-gradient(ellipse at 50% 85%, var(--bg-mid, #34170
 .vs-sub { font-family: var(--px); font-size: 15px; letter-spacing: 4px; color: #b79ad0; opacity: 0; transform: translateY(6px); transition: opacity .4s, transform .4s; }
 .vsplash.named .vs-sub { opacity: 1; transform: none; }
 .vs-skip { position: absolute; bottom: 70px; font-family: var(--px); font-size: 12px; letter-spacing: 2px; color: #6f5c86; }
+
+/* ---------- Glutziel ---------- */
+.target { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 3px; margin-top: 2px; }
+.target-bar { height: 12px; border-radius: 6px; background: #1b110c; border: 2px solid var(--brass-dark); overflow: hidden; }
+.target-fill { display: block; width: 0; height: 100%; background: linear-gradient(90deg, #a82a16, #f08a24 60%, #ffd75e); transition: width .35s ease-out; }
+.target-num { font-family: var(--px); font-size: 12px; letter-spacing: 1px; color: var(--ivory-dim); }
+.target.near .target-bar { animation: glow .7s infinite; border-color: var(--ember); }
+.target.done .target-fill { background: linear-gradient(90deg, #ffd75e, #fff3c4); }
+.target.done .target-num { color: var(--ember-hot); }
+.etarget { display: flex; align-items: center; justify-content: center; gap: 6px; font-family: var(--px); font-size: 12px; letter-spacing: 1px; color: var(--ember-hot); }
+.etarget .ico { width: 16px; height: 18px; }
+.payburnt { text-align: center; font-family: var(--px); font-size: 14px; letter-spacing: 1px; color: #2a1202; background: linear-gradient(180deg, #ffd75e, #f08a24); border-radius: 8px; padding: 5px 10px 3px; }

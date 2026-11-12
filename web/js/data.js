@@ -2,13 +2,13 @@
 (function (ZU) {
   'use strict';
 
-  ZU.VERSION = '1.9.0';
+  ZU.VERSION = '2.0.0';
   /* Stand der Casino-Liste. Ändert sich die Reihenfolge, rechnen js/meta.js und js/run.js gespeicherte Stände um. */
   ZU.CASINO_VERSION = 2;
   ZU.CASINO_REMAP = [0, 1, 3, 5, 6, 7]; // alter Index (sechs Häuser) → neuer Index (acht Häuser) // im Hauptmenü unten rechts angezeigt
   /* Build-Kennung: wird an alle Asset-Adressen gehängt, damit Browser und CDN nach einem Update frische
      Dateien holen. Nicht von Hand ändern: web/tools/stamp_version.py setzt den Wert. */
-  ZU.BUILD = '0d8e275546';
+  ZU.BUILD = '1af23aacf5';
   ZU.asset = function (path) { return 'assets/' + path + '?v=' + ZU.BUILD; };
 
   ZU.HAND_SIZE = 7;
@@ -164,14 +164,14 @@
     sober: { name: 'Nüchterne Runde', text: 'Gegner verschenken nur noch halb so oft einen Zug.' },
     markup: { name: 'Teures Pflaster', text: 'Alles in Manfreds Laden kostet 20 % mehr.' },
     'short-night': { name: 'Frühe Sperrstunde', text: 'Sperrstunde schon nach 36 Zügen.' },
-    cover: { name: 'Gedeck', text: 'Jede Tischprämie fällt 2 Mark niedriger aus.' },
+    cover: { name: 'Gedeck', text: 'Jede Tischprämie fällt 25 % niedriger aus.' },
     'sharp-sevens': { name: 'Scharfe Siebenen', text: 'Jede 7 lässt 2 Karten ziehen statt 1 – auf beiden Seiten.' },
     'house-edge': { name: 'Hausvorteil', text: 'Gegner beginnen mit einer Karte weniger.' },
     'no-credit': { name: 'Kein Kredit', text: 'Es gibt keine Zinsen.' },
     marked: { name: 'Böses Omen', text: 'Du beginnst jedes Duell verflucht (×1).' },
     'wide-awake': { name: 'Hellwach', text: 'Gegner verschenken keinen Zug mehr.' },
     damp: { name: 'Feuchte Luft', text: 'Deine Kette steigt nie über ×8.' },
-    'cover-charge': { name: 'Eintritt', text: 'Jeder Besuch in Manfreds Laden kostet 2 Mark.' },
+    'cover-charge': { name: 'Eintritt', text: 'Jeder Besuch in Manfreds Laden kostet 10 % deiner Mark (mindestens 2).' },
     hype: { name: 'Hype', text: 'Gegner mischen 2 Spezialkarten mehr in ihren Stapel.' }
   };
   ZU.RULE_CHANCE = { 'one-pass': [0.1, 0.3, 0.5, 0.7] };
@@ -231,16 +231,20 @@
   /* Grundpreis je Seltenheit. Dazu kommt im Laden ein Aufschlag je bereits getragenem Trinket –
      das ersetzt die frühere feste Obergrenze. */
   ZU.TRINKET_PRICES = [15, 22, 32, 46];
-  ZU.TRINKET_SURCHARGE = 3;
+  ZU.TRINKET_SURCHARGE = 0.12; // Aufschlag je getragenem Trinket, als Anteil des Preises
+  /* Mit jedem Akt wachsen Prämien und Preise um diesen Anteil – damit Prozent-Effekte ihren Wert behalten. */
+  ZU.ACT_GROWTH = 0.15;
+  /* Glutziel je Tisch: Grundwert je Art, Faktor je Akt und Zuschlag je Casino. */
+  ZU.GLUT_TARGET = { battle: 600, elite: 800, boss: 1100, perAct: 2, perCasino: 0.5 };
   var trinkets = {};
   function trinket(id, name, rarity, text) {
     trinkets[id] = { id: id, name: name, rarity: rarity, price: ZU.TRINKET_PRICES[rarity], text: text };
   }
-  trinket('lucky-chip', 'Glückschip', 0, '+2 Mark nach jedem Sieg.');
+  trinket('lucky-chip', 'Glückschip', 0, 'Jede Tischprämie fällt 20 % höher aus.');
   trinket('ashtray', 'Aschenbecher', 0, 'Zu Duellbeginn darfst du eine Handkarte gegen eine neue tauschen.');
-  trinket('false-bottom', 'Doppelboden', 0, 'Der erste Kartenkauf in jedem Laden kostet 2 Mark weniger.');
+  trinket('false-bottom', 'Doppelboden', 0, 'Der erste Kartenkauf in jedem Laden kostet die Hälfte.');
   trinket('fuse', 'Zündschnur', 0, 'Deine Kette startet bei ×2 statt ×1.');
-  trinket('ledger', 'Kassenbuch', 0, 'Zinsen bringen bis zu 6 statt 3 Mark.');
+  trinket('ledger', 'Kassenbuch', 0, 'Die Obergrenze der Zinsen verdoppelt sich.');
   trinket('brass-knuckles', 'Messingknöchel', 0, 'Dein erster Zieheffekt je Duell lässt den Gegner 1 Karte mehr ziehen.');
   trinket('pocket-watch', 'Taschenuhr', 1, 'Das erste Aussetzen gegen dich je Duell wird ignoriert.');
   trinket('loaded-die', 'Gezinkter Würfel', 1, 'Zocken deckt 5 statt 3 Karten auf.');
@@ -257,24 +261,24 @@
   trinket('seven-sleeper', 'Siebenschläfer', 1, 'Deine 7en lassen den Gegner 2 Karten ziehen statt 1.');
   trinket('hex-board', 'Hexenbrett', 1, 'Der Gegner beginnt jedes Duell verflucht (×2).');
   trinket('voodoo', 'Voodoopuppe', 1, 'Flüche auf dem Gegner wirken doppelt: 2 Karten mehr statt 1.');
-  trinket('gold-tooth', 'Goldzahn', 0, 'Restkarten des Gegners zahlen bis zu 10 statt 5 Mark.');
+  trinket('gold-tooth', 'Goldzahn', 0, 'Bis zu 10 statt 5 Restkarten des Gegners werden bezahlt.');
   // --- Aussetzen ---
   trinket('stopwatch', 'Stoppuhr', 1, 'Jedes Mal, wenn der Gegner aussetzt, wandert 1 Mark in die Bank.');
   // --- Kette und Glut ---
   trinket('card-shark', 'Kartenhai', 0, 'Passt die gezogene Karte, bleibt deine Kette erhalten.');
   trinket('afterburner', 'Nachbrenner', 2, 'Deine Kette steigt je Karte um 2 statt 1.');
   trinket('black-series', 'Schwarze Serie', 0, 'Pik- und Kreuz-Karten bringen 50 % mehr Glut.');
-  trinket('furnace', 'Glutofen', 2, 'Der Glut-Bonus zahlt schon je 150 statt je 250 Glut – und bis zu 20 statt 8 Mark.');
+  trinket('furnace', 'Glutofen', 2, 'Der Glut-Bonus der Auszahlung zählt doppelt.');
   // --- Mehrfachwahl ---
   trinket('pair-king', 'Paschkönig', 2, 'Legst du 2 oder mehr Karten auf einmal, zieht der Gegner 1 Karte.');
   // --- Spezialkarten ---
   trinket('skeleton-key', 'Dietrich', 1, 'Deine symbolgebundenen Spezialkarten passen auf die ganze Farbe (Rot oder Schwarz).');
   trinket('master-key', 'Generalschlüssel', 3, 'Alle deine Spezialkarten passen auf jede Karte.');
-  trinket('counterfeit', 'Falschgeld', 0, 'Spezialkarten kosten im Laden 3 Mark weniger.');
+  trinket('counterfeit', 'Falschgeld', 0, 'Spezialkarten kosten im Laden 25 % weniger.');
   // --- Kasse ---
   trinket('diamond-cut', 'Karoschliff', 1, 'Jede gespielte Karo-Karte bringt 1 Mark in die Bank (höchstens 5 je Duell).');
   trinket('compound', 'Zinseszins', 1, 'Zinsen gibt es schon je 4 statt je 5 Mark.');
-  trinket('loyalty', 'Stempelkarte', 0, 'Trinkets kosten im Laden 4 Mark weniger.');
+  trinket('loyalty', 'Stempelkarte', 0, 'Trinkets kosten im Laden 20 % weniger.');
   // --- Regeln ---
   trinket('cellar-key', 'Kellerschlüssel', 0, 'Bei Sperrstunde und „Letzter Stapel“ gewinnst du auch bei Gleichstand.');
   trinket('short-fuse', 'Kurze Lunte', 0, 'Der Gegner setzt zu Beginn jedes Duells einmal aus.');
@@ -311,21 +315,21 @@
   trinket('asbesthandschuh', 'Asbesthandschuh', 2, 'Die 7en des Gegners lassen dich keine Karte mehr ziehen.');
   trinket('pestmaske', 'Pestmaske', 1, 'Flüche gegen dich halten nur halb so lange (aufgerundet).');
   trinket('dicke-brieftasche', 'Dicke Brieftasche', 0, 'Verlierst du ein Duell, behältst du trotzdem dessen Bank.');
-  trinket('police', 'Police', 1, 'Verlierst du ein Duell, zahlt die Versicherung 6 Mark.');
+  trinket('police', 'Police', 1, 'Verlierst du ein Duell, zahlt die Versicherung 60 % der Tischprämie.');
   trinket('phoenixfeder', 'Phönixfeder', 3, 'Die erste Niederlage in jedem Akt kostet kein Streichholz.');
   // --- Kasse ---
   trinket('sparschwein', 'Sparschwein', 0, 'Die Bank beginnt jedes Duell mit 2 Mark.');
-  trinket('zylinder', 'Zylinder', 1, 'Erreichst du im Duell Kette ×8, gibt es beim Sieg 4 Mark extra.');
-  trinket('sturmfeuerzeug', 'Sturmfeuerzeug', 1, 'Gewinnst du in höchstens 16 Zügen, gibt es 4 Mark extra.');
-  trinket('kopfgeld', 'Kopfgeld', 1, 'Elite und Bosse zahlen 4 Mark mehr.');
-  trinket('sammleralbum', 'Sammleralbum', 2, 'Nach jedem Sieg 1 Mark je 3 Trinkets, die du trägst.');
-  trinket('mitgift', 'Mitgift', 2, 'Jeder Laden schenkt dir beim Betreten 3 Mark.');
+  trinket('zylinder', 'Zylinder', 1, 'Erreichst du im Duell Kette ×8, fällt die Tischprämie 40 % höher aus.');
+  trinket('sturmfeuerzeug', 'Sturmfeuerzeug', 1, 'Gewinnst du in höchstens 16 Zügen, fällt die Tischprämie 40 % höher aus.');
+  trinket('kopfgeld', 'Kopfgeld', 1, 'Elite und Bosse zahlen 40 % mehr Prämie.');
+  trinket('sammleralbum', 'Sammleralbum', 2, 'Je 3 Trinkets, die du trägst, fällt jede Tischprämie 10 % höher aus.');
+  trinket('mitgift', 'Mitgift', 2, 'Jeder Laden schenkt dir beim Betreten 15 % deiner Mark (mindestens 3).');
   trinket('midas-hand', 'Midas-Hand', 3, 'Jede gespielte Karte bringt 1 Mark in die Bank (höchstens 10 je Duell).');
   trinket('urne', 'Urne', 1, 'Jeder besiegte Boss bringt 2 Asche zusätzlich.');
   // --- Laden ---
   trinket('pfandschein', 'Pfandschein', 0, 'Manfred kauft Trinkets zum vollen Preis zurück.');
   trinket('gratisfeuer', 'Gratisfeuer', 0, 'Das erste Verbrennen in jedem Laden ist gratis.');
-  trinket('feuerversicherung', 'Feuerversicherung', 0, 'Streichhölzer kosten im Laden 3 Mark weniger.');
+  trinket('feuerversicherung', 'Feuerversicherung', 0, 'Streichhölzer kosten im Laden 40 % weniger.');
   trinket('kartenetui', 'Kartenetui', 1, 'Dein Deck fasst eine Spezialkarte mehr.');
   // --- Spezialkarten ---
   trinket('echo', 'Echo', 2, 'Deine erste Spezialkarte je Duell wirkt zweimal (außer Zytokinese und Reservefunke).');
@@ -335,6 +339,16 @@
   trinket('schmale-hand', 'Schmale Hand', 2, 'Du beginnst jedes Duell mit 6 statt 7 Karten.');
   trinket('freibier', 'Freibier', 1, 'Gegner verschenken öfter einen Zug.');
   trinket('nachtlaterne', 'Nachtlaterne', 0, 'Die Sperrstunde kommt 10 Züge später.');
+  // --- Wachsende Trinkets: werden mit dem Run stärker ---
+  trinket('glutspeicher', 'Glutspeicher', 2, 'Deine Kette startet beim halben Höchststand deines letzten Duells.');
+  trinket('brandstifter', 'Brandstifter', 1, '+10 % Glut je Karte, die du in diesem Run verbrannt hast.');
+  trinket('trophaeenschrank', 'Trophäenschrank', 2, '+25 % Glut je Boss, den du in diesem Run besiegt hast.');
+  trinket('schneeball', 'Schneeball', 1, '+2 % Glut je Karte, die du in diesem Duell schon gespielt hast.');
+  trinket('wucherer', 'Wucherer', 2, '+1 % Glut je Mark in deiner Kasse (höchstens +300 %).');
+  trinket('sippschaft', 'Sippschaft', 1, '+8 % Glut je Trinket, das du trägst.');
+  trinket('kettenreaktion', 'Kettenreaktion', 3, 'Über Kette ×10 zählt jede weitere Stufe doppelt.');
+  trinket('perpetuum', 'Perpetuum', 2, 'Nach jeder fünften Karte, die du im Duell spielst, ziehst du eine nach – die Kette bleibt.');
+  trinket('funkenregen', 'Funkenregen', 1, 'Fackelst du einen Tisch ab, zählt der Überschuss doppelt.');
   trinket('teufelspakt', 'Teufelspakt', 3, 'Alle deine Karten bringen doppelte Glut. Du beginnst jedes Duell verflucht (×2).');
   ZU.TRINKETS = trinkets;
   ZU.TRINKET_IDS = Object.keys(trinkets);
@@ -347,7 +361,7 @@
   perk('nimble-fingers', 'Flinke Finger', 12, 'Mehrfachwahl: Lege mehrere Karten mit gleichem Wert in einem Zug.');
   perk('shelf', 'Großes Regal', 14, 'Das Spezialkarten-Regal hat 3 statt 2 Plätze.');
   perk('showcase', 'Vitrine', 14, 'Manfred zeigt 3 statt 2 Trinkets.');
-  perk('regular', 'Stammplatz', 16, 'Jede Tischprämie fällt 2 Mark höher aus.');
+  perk('regular', 'Stammplatz', 16, 'Jede Tischprämie fällt 25 % höher aus.');
   perk('grinder', 'Schleifer', 16, 'Spezialkarten im Laden sind mindestens farbgebunden.');
   perk('bell', 'Glockenrecht', 12, 'Die Neue Auslage kostet immer nur 2 Mark.');
   perk('ashbin', 'Aschekasten', 10, 'Verbrennen kostet immer nur 2 Mark.');
@@ -477,7 +491,7 @@
   });
   enemy('bookie', {
     name: 'Quoten-Otto', role: 'Buchmacher', kind: 'battle', ai: 'gamble', pool: ['zocken', 'addieren', 'opfer'], bg: '#4a3a14',
-    passive: 'odds', passiveText: 'Wettschein: Schlägst du ihn, zahlt er 3 Mark extra.',
+    passive: 'odds', passiveText: 'Wettschein: Schlägst du ihn, zahlt er 30 % mehr Prämie.',
     say: {
       start: ['Drei zu eins gegen dich! Wer setzt?! Niemand?!', 'Schnell-schnell, die Quoten laufen!'],
       attack: ['Ha! Fünf zu eins!', 'Hab ich es gesagt?! Ich hab es gesagt!'],
@@ -919,7 +933,7 @@
   /* --- Gäste, die in jedem Haus sitzen können: Leute mit Geld, Amt oder Ruf --- */
   enemy('politician', {
     name: 'Stadtrat Kröger', role: 'Stadtrat', kind: 'battle', ai: 'greedy', pool: ['schutzgeld', 'stillstand', 'hodl'], bg: '#2c3440',
-    passive: 'odds', passiveText: 'Spesenkonto: Schlägst du ihn, zahlt er 3 Mark extra.',
+    passive: 'odds', passiveText: 'Spesenkonto: Schlägst du ihn, zahlt er 30 % mehr Prämie.',
     say: {
       start: ['Ich bin dienstlich hier. Rein dienstlich!', 'Das bleibt unter uns, ja? Wählerauftrag.'],
       attack: ['Im Namen der Bürger!', 'Das habe ich so nie gesagt.'],

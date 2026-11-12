@@ -260,12 +260,14 @@ for (let n = 0; n < RUNS; n++) {
 
   // Asche fließt sofort nach jedem Sieg; die Nachglut bringt keine mehr.
   ZU.Profile._memory = null;
-  let live = ZU.Run.start('classic', 4242, ZU.Meta.runOptions()), paid = 0, safety = 0;
+  let live = ZU.Run.start('classic', 4242, ZU.Meta.runOptions()), paid = 0, safety = 0, burntAsh = 0;
   const rnd2 = new ZU.Rng(5);
   while (live.s.phase !== 'defeat' && !live.s.endless && ++safety < 80) {
     const before = ZU.Meta.get().ash, kind = live.encounter().kind, last = live.s.act === live.acts() && kind === 'boss';
     const result = live.finishDuel(Object.assign(playDuel(live, rnd2), { winner: 'player' }));
-    assert.strictEqual(result.ash, ZU.Meta.ASH[kind] + (last ? ZU.Meta.ASH.victory : 0), 'Asche direkt nach dem Sieg');
+    const glutAsh = result.burnt ? 1 + result.doublings : 0;
+    assert.strictEqual(result.ash, ZU.Meta.ASH[kind] + (last ? ZU.Meta.ASH.victory : 0) + glutAsh, 'Asche direkt nach dem Sieg');
+    burntAsh += glutAsh;
     assert.strictEqual(ZU.Meta.get().ash, before + result.ash);
     paid += result.ash;
     let phase = live.afterPayout();
@@ -274,7 +276,7 @@ for (let n = 0; n < RUNS; n++) {
     live.leaveShop();
   }
   assert.strictEqual(live.s.endless, true);
-  assert.strictEqual(paid, 3 * 8 + 8);
+  assert.strictEqual(paid, 3 * 8 + 8 + burntAsh);
   const after = ZU.Meta.get().ash;
   const extra = live.finishDuel(Object.assign(playDuel(live, rnd2), { winner: 'player' }));
   assert.strictEqual(extra.ash, 0, 'Nachglut: keine Asche mehr');
@@ -312,10 +314,10 @@ ZU.STARTERS.forEach(starter => {
   assert.strictEqual(run.s.shop.specials.length, specials + 1, 'Großes Regal legt gleich eine Karte aus');
   const before = run.cardPrice(0);
   run._gainTrinket('false-bottom');
-  assert.strictEqual(run.cardPrice(0), Math.max(1, before - 2), 'Doppelboden gilt schon in diesem Laden');
+  assert.strictEqual(run.cardPrice(0), Math.max(1, Math.round(before / 2)), 'Doppelboden gilt schon in diesem Laden');
   const price = run.trinketPrice(0);
   run._gainTrinket('loyalty');
-  assert.strictEqual(run.trinketPrice(0), Math.max(1, price + ZU.TRINKET_SURCHARGE - 4), 'Stempelkarte gilt sofort');
+  assert.ok(run.trinketPrice(0) < price * (1 + ZU.TRINKET_SURCHARGE), 'Stempelkarte gilt sofort');
 }
 
 // Upgrade „Flinke Finger": für 20 Asche beginnt jeder Run mit dem Privileg.
@@ -369,6 +371,34 @@ assert.strictEqual(ZU.Meta.clean({ stake: 2, maxStake: 3 }).stake, 3, 'Dampfer F
 assert.strictEqual(ZU.Meta.clean({ stake: 2, maxStake: 3 }).maxStake, 5, 'Grandhotel Imperial bleibt das höchste offene Haus');
 assert.strictEqual(ZU.Meta.clean({ stake: 2, maxStake: 3, cv: ZU.CASINO_VERSION }).maxStake, 3, 'neue Stände bleiben unverändert');
 for (let i = 1; i < ZU.CASINOS.length; i++) assert.ok(ZU.CASINOS[i].ash > ZU.CASINOS[i - 1].ash && ZU.CASINOS[i].acts >= ZU.CASINOS[i - 1].acts, 'Häuser werden härter und lohnender');
+
+// Glutziel: Wer es erreicht, gewinnt sofort; die Ziele steigen steil, und der Überschuss zahlt ohne Deckel.
+{
+  const run = ZU.Run.start('classic', 31337);
+  const t1 = run.glutTarget('battle'), tBoss = run.glutTarget('boss');
+  run.s.act = 3;
+  assert.ok(tBoss > t1 && run.glutTarget("battle") >= t1 * 4, 'Ziele wachsen mit Art und Akt');
+  run.s.act = 1;
+  const duel = run.newDuel();
+  duel.start();
+  assert.strictEqual(duel.target, t1);
+  duel.glut = t1 * 4 - 1; // der nächste eigene Zug überschreitet das Vierfache
+  duel.phase = 'action'; duel.active = 'player'; duel.pending = null;
+  const card = duel.hand.player.find(id => !duel.def(id).special);
+  duel.pile.push(duel._register(duel.cards[card].def, 'house', false));
+  const events = duel.play('player', [card]);
+  assert.ok(events.some(e => e.t === 'burnt'), 'der Tisch brennt');
+  assert.strictEqual(duel.winner, 'player');
+  assert.ok(duel.hand.player.length > 0, 'Sieg trotz voller Hand');
+  const result = run.finishDuel(duel);
+  assert.strictEqual(result.burnt, true);
+  assert.strictEqual(result.doublings, 2);
+  assert.ok(result.lines.some(l => /abgefackelt/.test(l.label)) && result.lines.some(l => /Überschuss/.test(l.label)));
+  // Prozente wachsen mit: Der Glückschip ist in Akt 5 mehr wert als in Akt 1.
+  const early = ZU.Run.start('classic', 5), late = ZU.Run.start('classic', 5);
+  late.s.act = 5;
+  assert.ok(late.baseReward('battle') > early.baseReward('battle') * 1.5 && late._price(20) > early._price(20));
+}
 
 // Die 7 lässt nur noch 1 Karte ziehen und niemanden aussetzen.
 assert.deepStrictEqual(ZU.CARDS['hearts-7'].effects, [{ type: 'draw', amount: 1, reflectable: true }]);

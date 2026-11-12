@@ -58,7 +58,10 @@
     this.rules = this.tableRules.concat(this.houseRules);
     this.bank = this.has('sparschwein') ? 2 : 0;
     this.bonusMult = 1;
+    this.target = opts.target || 0; // Glutziel: Wer es erreicht, fackelt den Tisch ab und gewinnt sofort
+    this.grow = opts.grow || {}; // Stand des Runs für wachsende Trinkets: burned, bosses, money, trinkets, lastChain
     this.chain = this.chainFloor();
+    if (this.has('glutspeicher')) this.chain = Math.max(this.chain, Math.ceil((this.grow.lastChain || 0) / 2));
     this.maxChain = this.chain;
     this.glut = 0;
     this.active = 'player';
@@ -557,7 +560,10 @@
       var base = def.base + (low && this.has('kleinvieh') ? 6 : 0) + (face && this.has('hofstaat') ? 5 : 0) +
         (this.has('zunder') ? 4 : 0) + (def.special && this.has('tintenfass') ? 15 : 0);
       if (flaw === 'matt') base = Math.max(1, base - 4);
-      var points = base * this.chain, doubled = false, trig = []; // trig: Trinkets, die bei dieser Karte gezündet haben (für die Anzeige)
+      // Kettenreaktion: Jenseits von ×10 zählt jede Stufe doppelt.
+      var effChain = this.chain + (this.has('kettenreaktion') ? Math.max(0, this.chain - 10) : 0);
+      var points = base * effChain, doubled = false, trig = [];
+      if (effChain > this.chain) trig.push('kettenreaktion'); // trig: Trinkets, die bei dieser Karte gezündet haben (für die Anzeige)
       if (low && this.has('kleinvieh')) trig.push('kleinvieh');
       if (face && this.has('hofstaat')) trig.push('hofstaat');
       if (def.special && this.has('tintenfass')) trig.push('tintenfass');
@@ -571,6 +577,14 @@
       if (this.status.blaze > 0) { this.status.blaze--; points *= 2; doubled = true; }
       if (this.has('teufelspakt')) { points *= 2; doubled = true; }
       if (seal === 'glut') { points *= 2; doubled = true; }
+      // Wachsende Trinkets: Ihre Prozente addieren sich und wachsen mit dem Run bzw. dem Duell.
+      var grow = this.grow, pct = 0;
+      if (this.has('brandstifter') && grow.burned) { pct += 0.10 * grow.burned; trig.push('brandstifter'); }
+      if (this.has('trophaeenschrank') && grow.bosses) { pct += 0.25 * grow.bosses; trig.push('trophaeenschrank'); }
+      if (this.has('schneeball') && this.stats.played) { pct += 0.02 * this.stats.played; trig.push('schneeball'); }
+      if (this.has('wucherer') && grow.money) { pct += Math.min(3, 0.01 * grow.money); trig.push('wucherer'); }
+      if (this.has('sippschaft') && grow.trinkets) { pct += 0.08 * grow.trinkets; trig.push('sippschaft'); }
+      if (pct > 0) points = Math.round(points * (1 + pct));
       this.glut += points;
       event.score = { base: base, chain: this.chain, points: points, glut: this.glut, doubled: doubled };
       var step = this.has('afterburner') ? 2 : 1;
@@ -613,6 +627,7 @@
         ev.push({ t: 'seal', seal: 'bumerang', card: id });
         ev.push({ t: 'boomerang', id: twin, from: id });
       }
+      if (this.has('perpetuum') && this.stats.played % 5 === 0) this.queue.push({ type: 'bonusdraw', src: actor });
       if (this.has('midas-hand') && (this.used.midas || 0) < 10) {
         this.used.midas = (this.used.midas || 0) + 1;
         this.bank += 1;
@@ -757,6 +772,11 @@
       case 'selfdraw':
         ev.push({ t: 'effect', type: 'draw', src: other(item.src), tgt: item.src, amount: item.amount });
         this._drawInto(item.src, item.amount, 'effect', ev, false);
+        break;
+      case 'bonusdraw':
+        // Perpetuum: eine Karte nachziehen, ohne dass die Kette abreißt
+        ev.push({ t: 'trinket', id: 'perpetuum' });
+        this._drawInto(item.src, 1, 'effect', ev, false);
         break;
       case 'again':
         this.retain = true;
@@ -982,6 +1002,12 @@
   /* ---------- Zugfolge ---------- */
   Duel.prototype._complete = function (ev) {
     var root = this.root;
+    if (this.target && this.glut >= this.target) {
+      // Glutziel erreicht: Der Tisch brennt, egal wie viele Karten noch auf der Hand sind.
+      ev.push({ t: 'burnt', glut: this.glut, target: this.target });
+      this.wonBy = 'glut';
+      return this._end('player', ev);
+    }
     if (!this.hand[root].length) return this._end(root, ev);
     if (!this.hand[other(root)].length) return this._end(other(root), ev);
     if (this.showdown) return this._showdown(ev);

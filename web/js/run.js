@@ -89,7 +89,15 @@
   };
   Run.prototype.specialFree = function () { return this.specialCount() < this.specialSlots(); };
   /* Hausregel „Teures Pflaster": 20 % Aufschlag im Laden. */
-  Run.prototype._price = function (price) { return this.rule('markup') ? Math.ceil(price * 1.2) : price; };
+  /* Mit jedem Akt wachsen Prämien und Preise – so behalten Prozent-Effekte über den ganzen Run ihren Wert. */
+  Run.prototype.scale = function () { return 1 + ZU.ACT_GROWTH * (this.s.act - 1); };
+  Run.prototype._price = function (price) { return Math.max(1, Math.round(price * this.scale() * (this.rule('markup') ? 1.2 : 1))); };
+  /* Glutziel eines Tisches: wächst steil mit dem Akt und mit dem Casino. */
+  Run.prototype.glutTarget = function (kind) {
+    var g = ZU.GLUT_TARGET, raw = g[kind] * Math.pow(g.perAct, this.s.act - 1) * (1 + g.perCasino * (this.meta().legacy ? 0 : this.meta().stake || 0));
+    var step = raw < 1000 ? 10 : raw < 10000 ? 50 : raw < 100000 ? 500 : 5000;
+    return Math.round(raw / step) * step;
+  };
   Run.prototype.encounter = function () { return this.s.encounters[this.s.table]; };
   Run.prototype.actName = function () {
     var acts = this.acts();
@@ -142,8 +150,10 @@
 
   Run.prototype.baseReward = function (kind) {
     var act = this.s.act;
-    var base = (kind === 'battle' ? 4 + act : kind === 'elite' ? 6 + act : 8 + 2 * act) + (this.has('regular') ? 2 : 0);
-    return this.rule('cover') ? Math.max(2, base - 2) : base; // Hausregel „Gedeck"
+    var base = (kind === 'battle' ? 4 + act : kind === 'elite' ? 6 + act : 8 + 2 * act) * this.scale();
+    if (this.has('regular')) base *= 1.25; // Privileg „Stammplatz"
+    if (this.rule('cover')) base *= 0.75; // Hausregel „Gedeck"
+    return Math.max(2, Math.round(base));
   };
 
   /* ---------- Duell ---------- */
@@ -154,6 +164,8 @@
       rng: this.rng, enemyId: e.enemy, kind: e.kind, act: this.s.act,
       rules: e.rules || [],
       house: this.houseRules(),
+      target: this.glutTarget(e.kind),
+      grow: { burned: this.s.burnCount || 0, bosses: this.s.bossesBeaten || 0, money: this.s.money, trinkets: this.s.trinkets.length, lastChain: this.s.lastChain || 0 },
       perks: this.s.perks || [],
       specialPool: this.meta().specials,
       trinkets: this.s.trinkets, collection: this.s.collection.map(function (c) { return { id: c.id, def: c.def, bind: c.bind, seal: c.seal, flaw: c.flaw }; }),
@@ -183,8 +195,9 @@
         s.lives--;
         s.hurt = true;
       }
-      if (this.has('dicke-brieftasche')) comfort += duel.bank;
-      if (this.has('police')) comfort += 6;
+      if (this.has('dicke-brieftasche')) comfort += Math.round(duel.bank * this.scale());
+      if (this.has('police')) comfort += Math.round(this.baseReward(e.kind) * 0.6);
+      s.lastChain = duel.maxChain;
       s.money += comfort;
       ZU.Meta.noteDuel(this, duel, false);
       s.phase = s.lives <= 0 ? 'defeat' : 'select';
@@ -206,23 +219,32 @@
       else self._add(card.def, card.bind);
     });
 
-    var lines = [], base = this.baseReward(e.kind);
+    // Auszahlung. Fast alles rechnet in Prozent der Tischprämie, damit es mit den Akten mitwächst.
+    var lines = [], base = this.baseReward(e.kind), scale = this.scale();
+    function share(pct) { return Math.max(1, Math.round(base * pct)); }
     lines.push({ label: ZU.KIND_LABEL[e.kind] + 'prämie', amount: base });
-    var bank = duel.enemy.passive === 'purser' || duel.enemy.passive === 'house-cut' ? Math.floor(duel.bank / 2) : duel.bank; // Zahlmeister Pfennig behält die Hälfte ein
-    if (bank > 0) lines.push({ label: bank < duel.bank ? 'Bank (halbiert)' : 'Bank', amount: bank });
+    var held = duel.enemy.passive === 'purser' || duel.enemy.passive === 'house-cut' ? Math.floor(duel.bank / 2) : duel.bank; // Zahlmeister Pfennig behält die Hälfte ein
+    var bank = Math.round(held * scale); // die Bank ist in späteren Akten mehr wert
+    if (bank > 0) lines.push({ label: 'Bank' + (held < duel.bank ? ' (halbiert)' : '') + (scale > 1 ? ' ×' + String(Math.round(scale * 100) / 100).replace('.', ',') : ''), amount: bank });
     if (duel.bonusMult > 1) lines.push({ label: 'Bonusgeld ×' + duel.bonusMult, amount: (base + bank) * (duel.bonusMult - 1) });
-    var left = Math.min(this.has('gold-tooth') ? 10 : 5, duel.hand.opp.length);
-    if (left > 0) lines.push({ label: 'Restkarten des Gegners (' + duel.hand.opp.length + ')', amount: left });
-    var heat = this.has('furnace') ? Math.min(20, Math.floor(duel.glut / 150)) : Math.min(8, Math.floor(duel.glut / 250));
-    if (heat > 0) lines.push({ label: 'Glut-Bonus (' + duel.glut + ')', amount: heat });
-    if (duel.enemy.passive === 'odds') lines.push({ label: 'Wettschein', amount: 3 });
-    if (this.has('lucky-chip')) lines.push({ label: 'Glückschip', amount: 2, trinket: 'lucky-chip' });
-    if (e.kind !== 'battle' && this.has('kopfgeld')) lines.push({ label: 'Kopfgeld', amount: 4, trinket: 'kopfgeld' });
-    if (duel.maxChain >= 8 && this.has('zylinder')) lines.push({ label: 'Zylinder (Kette ×' + duel.maxChain + ')', amount: 4, trinket: 'zylinder' });
-    if (duel.turns <= 16 && this.has('sturmfeuerzeug')) lines.push({ label: 'Sturmfeuerzeug (' + duel.turns + ' Züge)', amount: 4, trinket: 'sturmfeuerzeug' });
-    if (this.has('sammleralbum') && s.trinkets.length >= 3) lines.push({ label: 'Sammleralbum', amount: Math.floor(s.trinkets.length / 3), trinket: 'sammleralbum' });
-    if (e.kind === 'boss' && this.meta().bossTip) lines.push({ label: 'Trinkgeld', amount: this.meta().bossTip });
-    var cap = (this.has('ledger') ? 6 : 3) + (this.meta().interest || 0);
+    var counted = Math.min(this.has('gold-tooth') ? 10 : 5, duel.hand.opp.length), each = Math.max(1, Math.round(scale));
+    if (counted > 0) lines.push({ label: 'Restkarten des Gegners (' + duel.hand.opp.length + ')', amount: counted * each });
+    // Glut: bis zum Glutziel anteilig, darüber für jede Verdopplung noch einmal die halbe Prämie – ohne Deckel.
+    var target = duel.target || 0, ratio = target ? duel.glut / target : 0, burnt = target > 0 && duel.glut >= target;
+    var heat = Math.round(base * 0.5 * Math.min(1, ratio)) * (this.has('furnace') ? 2 : 1);
+    if (heat > 0) lines.push({ label: 'Glut-Bonus (' + Math.min(100, Math.floor(ratio * 100)) + ' % des Ziels)', amount: heat });
+    var doublings = burnt ? Math.floor(Math.log(ratio) / Math.LN2) : 0;
+    if (burnt) lines.push({ label: 'Tisch abgefackelt', amount: share(0.5) });
+    if (doublings > 0) lines.push({ label: 'Überschuss: Ziel ×' + Math.pow(2, doublings), amount: share(0.5) * doublings * (this.has('funkenregen') ? 2 : 1) });
+    if (duel.enemy.passive === 'odds') lines.push({ label: 'Wettschein', amount: share(0.3) });
+    if (this.has('lucky-chip')) lines.push({ label: 'Glückschip (+20 %)', amount: share(0.2), trinket: 'lucky-chip' });
+    if (e.kind !== 'battle' && this.has('kopfgeld')) lines.push({ label: 'Kopfgeld (+40 %)', amount: share(0.4), trinket: 'kopfgeld' });
+    if (duel.maxChain >= 8 && this.has('zylinder')) lines.push({ label: 'Zylinder (Kette ×' + duel.maxChain + ')', amount: share(0.4), trinket: 'zylinder' });
+    if (duel.turns <= 16 && this.has('sturmfeuerzeug')) lines.push({ label: 'Sturmfeuerzeug (' + duel.turns + ' Züge)', amount: share(0.4), trinket: 'sturmfeuerzeug' });
+    if (this.has('sammleralbum') && s.trinkets.length >= 3) lines.push({ label: 'Sammleralbum (+' + (Math.floor(s.trinkets.length / 3) * 10) + ' %)', amount: share(0.1 * Math.floor(s.trinkets.length / 3)), trinket: 'sammleralbum' });
+    if (e.kind === 'boss' && this.meta().bossTip) lines.push({ label: 'Trinkgeld', amount: share(this.meta().bossTip) });
+    // Zinsen: 1 Mark je 5 gesparte (mit Zinseszins je 4); die Obergrenze wächst mit dem Akt.
+    var cap = Math.round(3 * scale * (this.has('ledger') ? 2 : 1) * (1 + 0.25 * (this.meta().interest || 0)));
     var step = this.has('compound') ? 4 : 5;
     var interest = this.rule('no-credit') ? 0 : Math.min(cap, Math.floor(s.money / step));
     if (interest > 0) lines.push({ label: 'Zinsen (1 je ' + step + ' Mark, max. ' + cap + ')', amount: interest });
@@ -236,6 +258,8 @@
     s.money += total;
     s.stats.earned += total;
     s.score += duel.glut + 100 * s.act;
+    s.lastChain = duel.maxChain;
+    if (e.kind === 'boss') s.bossesBeaten = (s.bossesBeaten || 0) + 1;
 
     var healed = false;
     if (e.kind === 'boss' && s.lives < this.maxLives()) { s.lives++; healed = true; }
@@ -243,7 +267,8 @@
     // Asche gibt es sofort – aber nur bis das Casino ausgeräumt ist; die Nachglut bringt keine mehr.
     var ash = 0;
     if (!s.endless) {
-      s.ash = (s.ash || 0) + ZU.Meta.ASH[e.kind] + (e.kind === 'boss' && this.has('urne') ? 2 : 0);
+      // Asche: Grundwert, dazu 1 für einen abgefackelten Tisch und 1 je Verdopplung über dem Glutziel
+      s.ash = (s.ash || 0) + ZU.Meta.ASH[e.kind] + (e.kind === 'boss' && this.has('urne') ? 2 : 0) + (burnt ? 1 + doublings : 0);
       if (e.kind === 'boss' && s.act === this.acts()) {
         s.ash += ZU.Meta.ASH.victory;
         s.cleared = true;
@@ -267,7 +292,7 @@
     }
     s.phase = 'payout';
     this._sync();
-    return { won: true, lines: lines, total: total, healed: healed, glut: duel.glut, maxChain: duel.maxChain, ash: ash, lostCards: lostCards };
+    return { won: true, lines: lines, total: total, healed: healed, glut: duel.glut, maxChain: duel.maxChain, ash: ash, lostCards: lostCards, target: target, burnt: burnt, doublings: doublings };
   };
 
   Run.prototype._weighted = function (ids, weight, count) {
@@ -382,8 +407,8 @@
   Run.prototype._openShop = function () {
     this.s.shop = { cards: [], specials: [], trinkets: [], rerolls: 0, discount: this.has('false-bottom'), healed: false, burned: false, esme: { packs: [], rerolls: 0, pity: false } };
     this._stockEsme();
-    if (this.has('mitgift')) this.s.money += 3;
-    if (this.rule('cover-charge')) this.s.money = Math.max(0, this.s.money - 2); // Hausregel „Eintritt"
+    if (this.rule('cover-charge')) this.s.money = Math.max(0, this.s.money - Math.max(2, Math.round(this.s.money * 0.1))); // Hausregel „Eintritt"
+    if (this.has('mitgift')) this.s.money += Math.max(3, Math.round(this.s.money * 0.15));
     if (!this.s.perkOffer || this.s.perkOffer.act !== this.s.act) this._rollPerk();
     this._stockShop();
     this.s.phase = 'shop';
@@ -396,7 +421,7 @@
     var open = ZU.PERK_IDS.filter(function (id) { return s.perks.indexOf(id) < 0; });
     if (!open.length) { s.perkOffer = { id: null, price: 0, sold: true, act: s.act }; return; }
     var id = s.act === 1 && open.indexOf('nimble-fingers') >= 0 ? 'nimble-fingers' : this.rng.pick(open);
-    s.perkOffer = { id: id, price: Math.max(1, this._price(ZU.PERKS[id].price) - (this.meta().perkDiscount || 0)), sold: false, act: s.act };
+    s.perkOffer = { id: id, price: Math.max(1, Math.round(this._price(ZU.PERKS[id].price) * (1 - (this.meta().perkDiscount || 0)))), sold: false, act: s.act };
   };
 
   Run.prototype.buyPerk = function () {
@@ -539,8 +564,10 @@
   /* shelf: 'cards' oder 'specials'. Der Doppelboden-Rabatt gilt für den ersten Kartenkauf, egal aus welchem Regal. */
   Run.prototype.offerPrice = function (shelf, index) {
     var offer = this.s.shop[shelf][index];
-    var off = (this.s.shop.discount ? 2 : 0) + (shelf === 'specials' && this.has('counterfeit') ? 3 : 0);
-    return Math.max(1, offer.price - off);
+    var price = offer.price;
+    if (shelf === 'specials' && this.has('counterfeit')) price *= 0.75; // Falschgeld
+    if (this.s.shop.discount) price *= 0.5; // Doppelboden: der erste Kartenkauf zum halben Preis
+    return Math.max(1, Math.round(price));
   };
   Run.prototype.cardPrice = function (index) { return this.offerPrice('cards', index); };
   Run.prototype.rerollPrice = function () {
@@ -550,9 +577,9 @@
   };
   Run.prototype.burnPrice = function () {
     if (this.has('gratisfeuer') && this.s.shop && !this.s.shop.burned) return 0;
-    return Math.max(1, (this.has('ashbin') ? 2 : 3 + this.s.burnCount) - (this.meta().burnDiscount || 0));
+    return Math.max(1, Math.round((this.has('ashbin') ? 2 : 3 + this.s.burnCount) * (1 - (this.meta().burnDiscount || 0))));
   };
-  Run.prototype.healPrice = function () { return Math.max(1, 6 + 2 * Math.min(this.s.act - 1, 3) - (this.has('feuerversicherung') ? 3 : 0)); };
+  Run.prototype.healPrice = function () { return Math.max(1, Math.round(6 * this.scale() * (this.has('feuerversicherung') ? 0.6 : 1))); };
   Run.prototype.sellValue = function (id) { return this.has('pfandschein') ? ZU.TRINKETS[id].price : Math.floor(ZU.TRINKETS[id].price / 2); };
 
   Run.prototype._pay = function (amount) {
@@ -579,7 +606,7 @@
   /* Preis eines Trinket-Angebots: Grundpreis plus Aufschlag je getragenem Trinket, abzüglich Stempelkarte. */
   Run.prototype.trinketPrice = function (index) {
     var offer = this.s.shop.trinkets[index];
-    return Math.max(1, offer.price + ZU.TRINKET_SURCHARGE * this.s.trinkets.length - (this.has('loyalty') ? 4 : 0));
+    return Math.max(1, Math.round(offer.price * (1 + ZU.TRINKET_SURCHARGE * this.s.trinkets.length) * (this.has('loyalty') ? 0.8 : 1)));
   };
 
   Run.prototype.buyTrinket = function (index) {
