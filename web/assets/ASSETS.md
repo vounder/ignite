@@ -11,7 +11,6 @@ Quelle ist jeweils `godot/game/Assets/`; aufbereitet mit
 |---|---|---|
 | `special/*.png` | `Cards/Special/*_v2.png` | auf 128×128 verkleinert |
 | `logo.png` | `UI/logo.png` | zugeschnitten, 640 px breit |
-| `audio/*.mp3` | `Audio/*.wav` | als MP3 kodiert (112 kbit/s, Stereo) |
 
 Die App-Symbole unter `icons/` (192 und 512 Pixel, je normal und „maskable“,
 dazu `apple-touch-icon.png`) setzt `web/tools/make_icons.py` aus `logo.png`
@@ -157,3 +156,8 @@ gezeichneten Rahmen entsteht der Atlas (siehe unten).
   sowie der Hintergrund entstehen zur Laufzeit aus CSS, kleinen Bitmaps
   (`js/cards.js`) und einem WebGL-Shader (`js/bg.js`).
 - Alle Soundeffekte werden zur Laufzeit synthetisiert (`js/audio.js`).
+- Die Musik unter `audio/` (Menü, Spiel, Shop; MP3 mit 128 kbit/s) wird aus den
+  Partituren unter `tools/music/scores/` mit dem eigenen Synthesizer
+  (`tools/music/`) gerechnet. Die Melodien stammen aus den ursprünglichen
+  Projektstücken unter `godot/game/Assets/Audio/`; Harmonien, Tempo und Klang
+  sind neu. Es sind keine Samples oder fremden Klänge enthalten.

@@ -165,8 +165,8 @@ Herkunft und Aufbereitung stehen in [`assets/ASSETS.md`](assets/ASSETS.md).
 Die Werkzeuge liegen unter `tools/`:
 
 - `prepare_assets.py` – verkleinert Projektgrafiken aus `godot/`, stellt
-  generierte Greenscreen-Bilder frei, zerlegt die Ausdrucks-Sheets der Gegner
-  in Sprite-Streifen und rechnet die Musik herunter.
+  generierte Greenscreen-Bilder frei und zerlegt die Ausdrucks-Sheets der Gegner
+  in Sprite-Streifen.
 - `make_font.py` – erzeugt den Pixel-Font aus Bitmap-Definitionen (braucht
   `fontTools`).
 - `make_cards.py` – zeichnet den Karten-Atlas `assets/cards/faces.png`: die
@@ -178,8 +178,34 @@ Die Werkzeuge liegen unter `tools/`:
   (braucht Pillow).
 - `stamp_version.py` – setzt die Build-Kennung (siehe unten).
 
-Die Musik liegt als MP3 vor (zusammen rund 7,5 MB); zum Kodieren braucht
-`prepare_assets.py --audio` das Python-Paket `lameenc`.
+- `music/` – die Musik: Partituren und der Synthesizer, der sie zu MP3 rechnet
+  (siehe unten).
+
+### Musik
+
+Menü, Spiel und Shop haben je ein eigenes Stück unter `assets/audio/` (MP3,
+128 kbit/s, zusammen rund 6,5 MB). Die Stücke sind nahtlose Schleifen und
+entstehen vollständig aus dem Repo:
+
+- `tools/music/scores/*.js` – die Partituren: Akkordfolge, Melodie, Begleitung
+  und Mischung je Stück. Die Melodien stammen aus den ursprünglichen Stücken
+  (`godot/game/Assets/Audio/`), Tempo, Harmonien und Klang sind neu: weiche
+  Synthesizer, E-Piano, Vibraphon, ruhiges Schlagwerk.
+- `tools/music/engine.js` – der Synthesizer auf WebAudio (Flächen, E-Piano,
+  Melodiestimme, Bass, Zupfer, Vibraphon, Schlagzeug, Hall, Echo, Bandleiern).
+- `tools/music/render.mjs` – rechnet die Partituren in einem Chromium ohne
+  Fenster und kodiert sie mit ffmpeg auf −16 LUFS.
+- `tools/music/check.mjs` – prüft die Partituren ohne zu rechnen (Länge,
+  Tonumfang, Reibungen zwischen Melodie und Begleitung).
+
+```bash
+node web/tools/music/check.mjs
+node web/tools/music/render.mjs            # alle Stücke → assets/audio/*.mp3
+node web/tools/music/render.mjs --stems game   # dazu Einzelspuren als WAV nach tools/music/out/
+```
+
+Braucht Node, Playwright (mit Chromium) und ffmpeg. Danach
+`stamp_version.py` ausführen.
 
 ## Ladezeiten und Deployment
 
