@@ -76,6 +76,8 @@
       if (!run || ['select', 'duel', 'shop', 'esme', 'reward'].indexOf(name) < 0) return urls;
       urls.push(ZU.cardAtlas());
       run.s.trinkets.forEach(function (id) { add('trinkets/' + id + '.png'); });
+      (run.s.kniffe || []).forEach(function (k) { add('kniffe/' + k.id + '.png'); });
+      if (run.s.shop && run.s.shop.kniff) add('kniffe/' + run.s.shop.kniff.id + '.png');
       (run.s.perks || []).forEach(function (id) { add('perks/' + id + '.png'); });
       run.s.collection.forEach(function (card) {
         if (ZU.CARDS[card.def].special) add('special/' + card.def + '.png');

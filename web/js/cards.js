@@ -165,8 +165,9 @@
   ZU.kniffEl = function (id, level) {
     var spec = ZU.KNIFFE[id], pips = h('i', 'kn-pips');
     for (var i = 1; i <= 3; i++) pips.appendChild(h('b', i <= level ? 'on' : ''));
-    var red = spec.suit === 'hearts' || spec.suit === 'diamonds';
-    var el = h('div', 'trinket kniff' + (red ? ' red' : ''), [h('span', 'kn-glyph', spec.glyph), pips]);
+    var img = h('i', 'tk-img');
+    img.style.backgroundImage = 'url(' + ZU.asset('kniffe/' + id + '.png') + ')';
+    var el = h('div', 'trinket kniff', [img, pips]);
     el.dataset.id = id;
     ZU.tip.bind(el, '<b>' + spec.name + '</b><i class="rar rare">Kniff · Stufe ' + level + ' von 3</i><p>' + ZU.kniffText(id, level) + '</p>');
     return el;

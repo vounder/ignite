@@ -211,3 +211,8 @@ gezeichneten Rahmen entsteht der Atlas (siehe unten).
 
 `room.png` (1280×720, Hintergrund; Schaukasten-Fleck rechts oben, Regalwand links) und `veil.png` (96×96, verhülltes Stück).
 Quellen und Prompts: `/data/ignite/art/backroom/`.
+
+### Kniffe (`kniffe/`, 11 Stück)
+
+96×96, ein Bild je Kniff (`<id>.png`); die Stufe zeichnet das Spiel als drei Punkte darunter.
+Quellen und Prompts: `/data/ignite/art/kniffe/` (`build_kniffe.py`).
