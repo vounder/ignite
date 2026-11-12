@@ -320,17 +320,16 @@ ZU.STARTERS.forEach(starter => {
   assert.ok(run.trinketPrice(0) < price * (1 + ZU.TRINKET_SURCHARGE), 'Stempelkarte gilt sofort');
 }
 
-// Upgrade „Flinke Finger": für 20 Asche beginnt jeder Run mit dem Privileg.
+// Das Upgrade „Flinke Finger" wurde gestrichen: Wer es hatte, bekommt 20 Asche zurück und startet ohne das Privileg.
 {
   const meta = ZU.Meta.defaults();
-  assert.deepStrictEqual(ZU.Meta.UPGRADES.flinkefinger.costs, [20]);
-  assert.strictEqual(ZU.Meta.isFound(meta, 'upgrade', 'flinkefinger'), true, 'von Anfang an zu kaufen');
-  meta.upgrades.flinkefinger = 1;
-  const run = ZU.Run.start('classic', 12, ZU.Meta.runOptions(ZU.Meta.clean(meta)));
-  assert.ok(run.has('nimble-fingers'));
-  run._openShop();
-  assert.notStrictEqual(run.s.perkOffer.id, 'nimble-fingers', 'das Privileg wird nicht noch einmal angeboten');
-  assert.strictEqual(ZU.Run.start('igniter', 12, ZU.Meta.runOptions(ZU.Meta.clean(meta))).s.perks.filter(id => id === 'nimble-fingers').length, 1);
+  assert.strictEqual(ZU.Meta.UPGRADES.flinkefinger, undefined);
+  meta.ash = 3; meta.upgrades.flinkefinger = 1;
+  const cleaned = ZU.Meta.clean(meta);
+  assert.strictEqual(cleaned.ash, 23);
+  assert.strictEqual(cleaned.upgrades.flinkefinger, undefined);
+  assert.strictEqual(ZU.Meta.clean(cleaned).ash, 23, 'nur einmal erstattet');
+  assert.ok(!ZU.Run.start('classic', 12, ZU.Meta.runOptions(cleaned)).has('nimble-fingers'));
 }
 
 // Akten: jede Figur hat genau drei Einträge, und die Schwellen steigen.

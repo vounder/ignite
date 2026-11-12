@@ -188,7 +188,6 @@
     /* Dauerhafte Upgrades: bewusst klein gehalten, damit frühe Runs nicht trivial werden. */
     UPGRADES: {
       startgeld: { name: 'Startkapital', text: '+2 Mark Startgeld je Stufe.', costs: [6, 10, 15] },
-      flinkefinger: { name: 'Flinke Finger', text: 'Du beginnst jeden Run mit dem Privileg Flinke Finger: Karten mit gleichem Wert gehen in einem Zug raus.', costs: [20] },
       etui: { name: 'Kartenetui', text: 'Dein Deck fasst eine Spezialkarte mehr je Stufe (ohne Ausbau: ' + ZU.SPECIAL_SLOTS + ').', costs: [10, 18, 30] },
       stammkunde: { name: 'Stammkunde', text: 'Die erste Neue Auslage in jedem Laden ist gratis.', costs: [10] },
       spuernase: { name: 'Spürnase', text: 'Im Spezialkarten-Regal liegt öfter etwas (+10 % je Stufe).', costs: [8, 14] },
@@ -202,7 +201,7 @@
       tarot: { name: 'Viertes Blatt', text: 'Esme legt ein Paket mehr aus.', costs: [16] },
       gluecksbringer: { name: 'Glücksbringer', text: 'Du beginnst jeden Run mit einem zufälligen gewöhnlichen Trinket.', costs: [22] }
     },
-    UPGRADE_IDS: ['startgeld', 'flinkefinger', 'etui', 'stammkunde', 'spuernase', 'sparbuch', 'zuendelei', 'schaufenster', 'handschlag', 'trinkgeld', 'aschesieb', 'reserve', 'tarot', 'gluecksbringer'],
+    UPGRADE_IDS: ['startgeld', 'etui', 'stammkunde', 'spuernase', 'sparbuch', 'zuendelei', 'schaufenster', 'handschlag', 'trinkgeld', 'aschesieb', 'reserve', 'tarot', 'gluecksbringer'],
 
     /* Casinos als Stufen. Der Name STAKES und die Felder stake/maxStake stammen von den früheren „Einsätzen"
        und bleiben, damit gespeicherte Profile und Konten weiter passen. */
@@ -238,6 +237,8 @@
         });
       }
       if (raw.upgrades && typeof raw.upgrades === 'object') {
+        // „Flinke Finger“ als Upgrade wurde gestrichen: Wer es gekauft hatte, bekommt die 20 Asche zurück.
+        if (raw.upgrades.flinkefinger) meta.ash = Math.min(meta.ash + 20, 100000000);
         M.UPGRADE_IDS.forEach(function (id) {
           var level = count(raw.upgrades[id], M.UPGRADES[id].costs.length);
           if (level) meta.upgrades[id] = level;
@@ -409,7 +410,7 @@
     /* Vorschläge fürs Hinterzimmer, je Reiter ('unlock' oder 'upgrade'): die besten Stücke, die entdeckt, noch nicht
        gekauft und bezahlbar sind – das wertvollste zuerst. Reicht die Asche für weniger als drei, folgen die
        nächstgünstigen als Sparziel (afford: false, missing: fehlende Asche). */
-    UPGRADE_WORTH: { flinkefinger: 10, gluecksbringer: 9, reserve: 9, aschesieb: 8, etui: 7, startgeld: 6, schaufenster: 6, tarot: 5, stammkunde: 5 },
+    UPGRADE_WORTH: { gluecksbringer: 9, reserve: 9, aschesieb: 8, etui: 7, startgeld: 6, schaufenster: 6, tarot: 5, stammkunde: 5 },
     suggest: function (meta, tab, count) {
       var list = [];
       if (tab === 'upgrade') {
@@ -480,7 +481,7 @@
         bossTip: M.level(meta, 'trinkgeld') * 0.2,
         burnDiscount: M.level(meta, 'zuendelei') * 0.25,
         luckyTrinket: M.level(meta, 'gluecksbringer') > 0,
-        nimble: M.level(meta, 'flinkefinger') > 0,
+        nimble: false, // das Upgrade „Flinke Finger“ gibt es nicht mehr (zu stark für den Anfang)
         trinkets: open('trinket', ZU.TRINKET_IDS),
         specials: open('special', ZU.SPECIAL_IDS),
         seals: open('seal', ZU.SEAL_IDS),

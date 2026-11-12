@@ -919,6 +919,7 @@
     ZU.Profile.save(fresh);
     var ashEl = h('b', null, '0');
     var content = h('div', 'br-content');
+    var detail = h('div', 'br-detail');
     var tabs = {};
 
     function ashBtn(price, meta, onclick) {
@@ -941,106 +942,183 @@
       content.appendChild(h('div', 'br-section', [h('div', 'br-title', title), h('div', 'br-grid', tiles)]));
     }
 
-    /* Eine Kachel im Hinterzimmer hat drei Zustände: im Spiel, entdeckt (kaufbar) oder verborgen.
-       Verborgenes zeigt nur einen Schatten und „?????"; steht ein Hinweis da, verrät er die Bedingung. */
-    function tile(meta, kind, id, visual, name) {
-      var open = ZU.Meta.isUnlocked(meta, kind, id), found = open || ZU.Meta.isFound(meta, kind, id);
-      if (!found) {
-        var hint = ZU.Meta.hint(meta, kind, id);
-        visual._tip = null;
-        return h('div', 'br-tile hidden', [visual, h('div', 'br-name', '?????'), h('div', 'br-hint', hint || '?????')]);
-      }
-      var isNew = !open && seenBefore.indexOf(kind + ':' + id) < 0;
-      return h('div', 'br-tile' + (open ? ' open' : ' closed') + (isNew ? ' fresh' : ''), [
-        isNew ? h('i', 'newtag', 'Neu') : null,
-        visual,
-        h('div', 'br-name', name),
-        open ? h('div', 'br-open', 'Im Spiel') : ashBtn(ZU.Meta.cost(kind, id), meta, function () { return ZU.Meta.unlock(kind, id); })
-      ]);
+    /* ---------- Freischalten und Upgrades: Regal links, Schaukasten rechts ---------- */
+    var UNLOCK_KINDS = [['starter', 'Schachteln'], ['trinket', 'Trinkets'], ['special', 'Spezialkarten'], ['seal', 'Veredelungen']];
+    var KIND_NOTE = { starter: 'Schachtel · dein Startdeck', trinket: 'Trinket', special: 'Spezialkarte', seal: 'Veredelung für normale Karten', upgrade: 'Dauerhaftes Upgrade' };
+    function idsOf(kind) {
+      return kind === 'starter' ? ZU.STARTERS.map(function (s) { return s.id; }) : kind === 'trinket' ? ZU.TRINKET_IDS : kind === 'special' ? ZU.SPECIAL_IDS : ZU.SEAL_IDS;
     }
-
-    function counter(meta, kind, ids) {
-      var have = ids.filter(function (id) { return ZU.Meta.isUnlocked(meta, kind, id); }).length;
-      return ' · ' + have + ' von ' + ids.length;
+    function info(kind, id) {
+      if (kind === 'starter') { var st = ZU.STARTERS.filter(function (x) { return x.id === id; })[0]; return { name: st.name, text: st.text, color: st.color }; }
+      if (kind === 'trinket') return { name: ZU.TRINKETS[id].name, text: ZU.TRINKETS[id].text, rarity: ZU.TRINKETS[id].rarity };
+      if (kind === 'seal') return { name: ZU.SEALS[id].name, text: ZU.SEALS[id].text };
+      if (kind === 'upgrade') return { name: ZU.Meta.UPGRADES[id].name, text: ZU.Meta.UPGRADES[id].text };
+      return { name: ZU.CARDS[id].name, text: ZU.CARDS[id].text || '', rarity: ZU.CARDS[id].rarity };
     }
-
-    /* Vorschläge oben im Reiter: Rang 1–3 unter dem, was die Asche hergibt; sonst ein Sparziel. */
-    function badge(el, pick, rank) {
-      el.classList.add('pick');
-      el.appendChild(h('i', 'picktag' + (pick.afford ? '' : ' save'), pick.afford ? 'Platz ' + rank : 'Sparziel · fehlen ' + pick.missing));
+    /* Bild eines Stücks ohne eigenen Tooltip – was es tut, steht im Schaukasten. */
+    function visual(kind, id) {
+      var el;
+      if (kind === 'starter') { el = h('div', 'br-box'); el.style.background = info(kind, id).color; }
+      else if (kind === 'trinket') el = ZU.trinketEl(id);
+      else if (kind === 'seal') el = ZU.sealEl(id);
+      else if (kind === 'upgrade') el = ZU.upgradeEl(id);
+      else el = ZU.cardStatic(ZU.CARDS[id], { cls: 'mini', bind: 'none', noTip: true });
+      el._tip = null;
       return el;
     }
-    function visualFor(kind, id) {
-      if (kind === 'starter') {
-        var starter = ZU.STARTERS.filter(function (s) { return s.id === id; })[0], box = h('div', 'br-box');
-        box.style.background = starter.color;
-        ZU.tip.bind(box, '<b>' + starter.name + '</b><p>' + starter.text + '</p>');
-        return [box, starter.name];
-      }
-      if (kind === 'trinket') return [ZU.trinketEl(id), ZU.TRINKETS[id].name];
-      if (kind === 'seal') return [ZU.sealEl(id), ZU.SEALS[id].name];
-      return [ZU.cardStatic(ZU.CARDS[id], { cls: 'mini', bind: 'none' }), ZU.CARDS[id].name];
+    function veil() {
+      var el = h('i', 'br-veil');
+      el.style.backgroundImage = 'url(' + ZU.asset('backroom/veil.png') + ')';
+      return el;
     }
-    function suggestTitle(meta, picks) {
+    function stateOf(meta, kind, id) {
+      if (kind === 'upgrade') {
+        if (!ZU.Meta.isFound(meta, 'upgrade', id)) return 'hidden';
+        return ZU.Meta.upgradeCost(meta, id) == null ? 'open' : 'closed';
+      }
+      if (ZU.Meta.isUnlocked(meta, kind, id)) return 'open';
+      return ZU.Meta.isFound(meta, kind, id) ? 'closed' : 'hidden';
+    }
+    function priceOf(meta, kind, id) { return kind === 'upgrade' ? ZU.Meta.upgradeCost(meta, id) : ZU.Meta.cost(kind, id); }
+    function isFresh(meta, kind, id) {
+      if (kind === 'upgrade') return !ZU.Meta.level(meta, id) && ZU.Meta.req('upgrade', id) && seenBefore.indexOf('upgrade:' + id) < 0;
+      return seenBefore.indexOf(kind + ':' + id) < 0;
+    }
+    function buy(kind, id) { return kind === 'upgrade' ? ZU.Meta.upgrade(id) : ZU.Meta.unlock(kind, id); }
+    function pricetag(meta, price) {
+      return h('div', 'br-price' + (meta.ash < price ? ' poor' : ''), [ZU.iconEl('ash', 'ashico'), h('span', null, String(price))]);
+    }
+    function select(kind, id) {
+      game.backroomPick = kind + ':' + id;
+      ZU.audio.select(true);
+      render(true);
+    }
+    function picked(kind, id) { return game.backroomPick === kind + ':' + id; }
+
+    /* Eine Kachel im Regal: im Spiel, entdeckt (kaufbar) oder verhüllt. Antippen legt das Stück in den Schaukasten. */
+    function tile(meta, kind, id, pick, rank) {
+      var state = stateOf(meta, kind, id), fresh = state === 'closed' && isFresh(meta, kind, id);
+      var el = h('div', 'br-tile ' + state + (fresh ? ' fresh' : '') + (picked(kind, id) ? ' sel' : ''), [
+        fresh ? h('i', 'newtag', 'Neu') : null,
+        state === 'hidden' ? veil() : visual(kind, id),
+        h('div', 'br-name', state === 'hidden' ? '?????' : info(kind, id).name),
+        state === 'open' ? h('div', 'br-open', kind === 'upgrade' ? 'Ausgebaut' : 'Im Spiel')
+          : state === 'closed' ? pricetag(meta, priceOf(meta, kind, id))
+            : h('div', 'br-open dim', ZU.Meta.hint(meta, kind, id) ? 'Hinweis' : '')
+      ]);
+      if (pick && kind !== 'upgrade' && state !== 'hidden') { var note = h('p', 'br-ptext'); note.innerHTML = info(kind, id).text; el.insertBefore(note, el.lastChild); }
+      if (pick) el.appendChild(h('i', 'picktag' + (pick.afford ? '' : ' save'), pick.afford ? 'Platz ' + rank : 'Sparziel'));
+      el.addEventListener('click', function () { select(kind, id); });
+      return el;
+    }
+
+    /* Schaukasten rechts: das gewählte Stück groß, mit Wirkung, Preis und Kaufknopf. */
+    function renderDetail(meta, kind, id) {
+      detail.innerHTML = '';
+      if (!kind) { detail.appendChild(h('p', 'br-dhint', 'Wähle ein Stück aus dem Regal.')); return; }
+      var state = stateOf(meta, kind, id), data = state === 'hidden' ? null : info(kind, id);
+      var show = h('div', 'br-show k-' + kind + (state === 'hidden' ? ' hidden' : ''), [state === 'hidden' ? veil() : visual(kind, id)]);
+      var card = h('div', 'br-dcard');
+      if (state === 'hidden') {
+        var hint = ZU.Meta.hint(meta, kind, id);
+        card.appendChild(h('h2', null, '?????'));
+        card.appendChild(h('div', 'br-dkind', 'Noch nicht entdeckt'));
+        card.appendChild(h('p', 'br-dtext', hint ? 'So findest du es: ' + hint : 'Niemand weiß, was unter dem Tuch liegt. Spiel weiter – manches zeigt sich erst später.'));
+      } else {
+        var rarity = data.rarity != null ? ZU.RARITY[data.rarity] : null;
+        card.appendChild(h('h2', null, data.name));
+        card.appendChild(h('div', 'br-dkind', KIND_NOTE[kind] + (rarity ? ' · ' + (rarity.name || rarity.label || '') : '')));
+        var text = h('p', 'br-dtext'); text.innerHTML = data.text; card.appendChild(text);
+        if (kind === 'upgrade') {
+          var up = ZU.Meta.UPGRADES[id], level = ZU.Meta.level(meta, id), pips = h('div', 'br-pips');
+          up.costs.forEach(function (cost, index) { pips.appendChild(h('i', index < level ? 'on' : '')); });
+          card.appendChild(h('div', 'br-dlevel', ['Stufe ' + level + ' von ' + up.costs.length, pips]));
+        }
+        if (state === 'open') card.appendChild(h('div', 'br-dstate', kind === 'upgrade' ? 'Voll ausgebaut' : 'Schon im Spiel'));
+        else {
+          var price = priceOf(meta, kind, id), missing = price - meta.ash;
+          var b = btn([ZU.iconEl('ash', 'ashico'), h('span', null, (kind === 'upgrade' ? 'Ausbauen · ' : 'Freischalten · ') + price)], 'big ember br-buy' + (missing > 0 ? ' poor' : ''), function () {
+            var result = buy(kind, id);
+            if (result.ok) {
+              ZU.audio.win();
+              var p = ZU.stagePos(show);
+              fx.burst(p.x, p.y, { n: 40, speed: 360, life: 1.2 });
+              render(true);
+            } else { ZU.audio.error(); fx.punch(b, 'shake'); }
+          });
+          card.appendChild(b);
+          card.appendChild(h('div', 'br-dnote', missing > 0 ? 'Dir fehlen ' + missing + ' Asche.' : kind === 'upgrade' ? 'Gilt ab dem nächsten Run.' : 'Kann dir ab dem nächsten Run begegnen.'));
+        }
+      }
+      detail.appendChild(show);
+      detail.appendChild(card);
+    }
+
+    function subTabs(list, current, onPick) {
+      var row = h('div', 'br-subtabs');
+      list.forEach(function (item) {
+        row.appendChild(btn(item[1], 'small' + (item[0] === current ? ' on' : ''), function () { onPick(item[0]); }));
+      });
+      return row;
+    }
+    function pickTitle(meta, picks) {
       return picks.some(function (p) { return p.afford; }) ? 'Empfohlen für deine ' + meta.ash + ' Asche' : 'Empfohlen · dafür lohnt sich Sparen';
+    }
+    /* Legt fest, was im Schaukasten liegt: die Wahl des Spielers, sonst das erste Stück der Liste. */
+    function settle(meta, list) {
+      var cur = game.backroomPick, hit = list.filter(function (x) { return x[0] + ':' + x[1] === cur; })[0] || list[0];
+      game.backroomPick = hit ? hit[0] + ':' + hit[1] : null;
+      return hit;
     }
 
     function renderUnlock(meta) {
-      var picks = ZU.Meta.suggest(meta, 'unlock'), rank = 0;
-      if (picks.length) {
-        content.appendChild(h('div', 'br-section picks', [h('div', 'br-title', suggestTitle(meta, picks)), h('div', 'br-grid', picks.map(function (pick) {
-          var v = visualFor(pick.kind, pick.id);
-          return badge(tile(meta, pick.kind, pick.id, v[0], v[1]), pick, ++rank);
-        }))]));
+      var picks = ZU.Meta.suggest(meta, 'unlock');
+      var sub = game.backroomSub || (picks.length ? 'picks' : 'trinket');
+      if (sub === 'picks' && !picks.length) sub = 'trinket';
+      var only = !!game.backroomOnly;
+      var entries = (picks.length ? [['picks', 'Empfohlen']] : []).concat(UNLOCK_KINDS.map(function (pair) {
+        var ids = idsOf(pair[0]), have = ids.filter(function (id) { return ZU.Meta.isUnlocked(meta, pair[0], id); }).length;
+        return [pair[0], pair[1] + ' ' + have + '/' + ids.length];
+      }));
+      var bar = subTabs(entries, sub, function (key) { game.backroomSub = key; game.backroomPick = null; render(); });
+      if (sub !== 'picks') bar.appendChild(btn(only ? 'Nur Kaufbares ✓' : 'Nur Kaufbares', 'small br-only' + (only ? ' on' : ''), function () { game.backroomOnly = !only; game.backroomPick = null; render(); }));
+      content.appendChild(bar);
+      var list, tiles;
+      if (sub === 'picks') {
+        list = picks.map(function (p) { return [p.kind, p.id]; });
+        var hit = settle(meta, list), rank = 0;
+        tiles = picks.map(function (p) { return tile(meta, p.kind, p.id, p, ++rank); });
+        content.appendChild(h('div', 'br-section picks', [h('div', 'br-title', pickTitle(meta, picks)), h('div', 'br-grid big', tiles)]));
+        content.appendChild(h('p', 'br-dhint left', 'Platz 1 ist das Stärkste, das du dir gerade leisten kannst. Sparziele sind die nächsten Stücke, für die es noch nicht reicht.'));
+        renderDetail(meta, hit && hit[0], hit && hit[1]);
+        return;
       }
-      var starters = ZU.STARTERS.map(function (s) { return s.id; });
-      section('Schachteln' + counter(meta, 'starter', starters), ZU.STARTERS.map(function (starter) {
-        var box = h('div', 'br-box');
-        box.style.background = starter.color;
-        ZU.tip.bind(box, '<b>' + starter.name + '</b><p>' + starter.text + '</p>');
-        return tile(meta, 'starter', starter.id, box, starter.name);
-      }));
-      section('Trinkets' + counter(meta, 'trinket', ZU.TRINKET_IDS), ZU.TRINKET_IDS.map(function (id) {
-        return tile(meta, 'trinket', id, ZU.trinketEl(id), ZU.TRINKETS[id].name);
-      }));
-      section('Spezialkarten' + counter(meta, 'special', ZU.SPECIAL_IDS), ZU.SPECIAL_IDS.map(function (id) {
-        var found = ZU.Meta.isUnlocked(meta, 'special', id) || ZU.Meta.isFound(meta, 'special', id);
-        // Verborgene Karten zeigen ihre Rückseite, damit weder Bild noch Name etwas verraten.
-        var visual = found ? ZU.cardStatic(ZU.CARDS[id], { cls: 'mini', bind: 'none' }) : h('div', 'cardstatic mini', [ZU.cardBack()]);
-        return tile(meta, 'special', id, visual, ZU.CARDS[id].name);
-      }));
-      section('Veredelungen' + counter(meta, 'seal', ZU.SEAL_IDS), ZU.SEAL_IDS.map(function (id) {
-        return tile(meta, 'seal', id, ZU.sealEl(id), ZU.SEALS[id].name);
-      }));
+      var ids = idsOf(sub).filter(function (id) { return !only || stateOf(meta, sub, id) === 'closed'; });
+      // Kaufbares zuerst, dann was schon im Spiel ist, Verhülltes ans Ende.
+      var order = { closed: 0, open: 1, hidden: 2 };
+      ids = ids.map(function (id, i) { return [id, i]; }).sort(function (a, b) { return order[stateOf(meta, sub, a[0])] - order[stateOf(meta, sub, b[0])] || a[1] - b[1]; }).map(function (x) { return x[0]; });
+      list = ids.map(function (id) { return [sub, id]; });
+      var chosen = settle(meta, list);
+      if (!ids.length) content.appendChild(h('p', 'br-dhint left', 'Hier gibt es gerade nichts zu kaufen.'));
+      else content.appendChild(h('div', 'br-section', [h('div', 'br-grid big', ids.map(function (id) { return tile(meta, sub, id); }))]));
+      renderDetail(meta, chosen && chosen[0], chosen && chosen[1]);
     }
 
     function renderUpgrade(meta) {
-      function upRow(id) {
-        var up = ZU.Meta.UPGRADES[id], level = ZU.Meta.level(meta, id), price = ZU.Meta.upgradeCost(meta, id);
-        if (!ZU.Meta.isFound(meta, 'upgrade', id)) {
-          return h('div', 'br-row hidden', [
-            ZU.upgradeEl(id),
-            h('div', 'br-rowmain', [h('div', 'br-rowname', '?????'), h('p', null, ZU.Meta.hint(meta, 'upgrade', id) || '?????')])
-          ]);
-        }
-        var isNew = !level && ZU.Meta.req('upgrade', id) && seenBefore.indexOf('upgrade:' + id) < 0;
-        var pips = h('div', 'br-pips');
-        up.costs.forEach(function (cost, index) { pips.appendChild(h('i', index < level ? 'on' : '')); });
-        return h('div', 'br-row' + (price == null ? ' done' : '') + (isNew ? ' fresh' : ''), [
-          ZU.upgradeEl(id),
-          h('div', 'br-rowmain', [h('div', 'br-rowname', [up.name, isNew ? h('i', 'newtag inline', 'Neu') : null]), h('p', null, up.text)]),
-          pips,
-          price == null ? h('div', 'br-open', 'Ausgebaut') : ashBtn(price, meta, function () { return ZU.Meta.upgrade(id); })
-        ]);
-      }
-      var picks = ZU.Meta.suggest(meta, 'upgrade'), rank = 0;
-      if (picks.length) {
-        content.appendChild(h('div', 'br-section picks', [h('div', 'br-title', suggestTitle(meta, picks)), h('div', 'br-list', picks.map(function (pick) {
-          return badge(upRow(pick.id), pick, ++rank);
-        }))]));
-      }
-      var rows = ZU.Meta.UPGRADE_IDS.map(upRow);
-      content.appendChild(h('div', 'br-section', [h('div', 'br-title', 'Upgrades'), h('div', 'br-list', rows)]));
+      var picks = ZU.Meta.suggest(meta, 'upgrade'), byId = {}, rank = 0;
+      picks.forEach(function (p) { byId[p.id] = [p, ++rank]; });
+      var order = { closed: 0, open: 1, hidden: 2 };
+      // Empfohlenes vorn, dann der Rest in fester Reihenfolge.
+      var ids = ZU.Meta.UPGRADE_IDS.map(function (id, i) { return [id, i]; }).sort(function (a, b) {
+        var pa = byId[a[0]] ? byId[a[0]][1] : 9, pb = byId[b[0]] ? byId[b[0]][1] : 9;
+        return pa - pb || order[stateOf(meta, 'upgrade', a[0])] - order[stateOf(meta, 'upgrade', b[0])] || a[1] - b[1];
+      }).map(function (x) { return x[0]; });
+      var chosen = settle(meta, ids.map(function (id) { return ['upgrade', id]; }));
+      content.appendChild(h('div', 'br-section', [
+        h('div', 'br-title', picks.length ? pickTitle(meta, picks) + ' · Platz 1 bis ' + picks.length + ' stehen vorn' : 'Upgrades'),
+        h('div', 'br-grid big', ids.map(function (id) { return byId[id] ? tile(meta, 'upgrade', id, byId[id][0], byId[id][1]) : tile(meta, 'upgrade', id); }))
+      ]));
+      renderDetail(meta, chosen && chosen[0], chosen && chosen[1]);
     }
 
     /* Casinos: der Reihe nach zu öffnen. Von verschlossenen Häusern ist nur bekannt, dass es sie gibt. */
@@ -1153,33 +1231,39 @@
       section('Hinter dem Tresen', tiles);
     }
 
-    function render() {
-      var meta = ZU.Meta.get();
+    function render(keep) {
+      var meta = ZU.Meta.get(), top = content.scrollTop;
       fx.count(ashEl, meta.ash, 300);
       content.innerHTML = '';
       Object.keys(tabs).forEach(function (key) { tabs[key].classList.toggle('on', key === tab); });
+      var shelf = tab === 'unlock' || tab === 'upgrade';
+      screenEl.classList.toggle('shelf', shelf);
       if (tab === 'unlock') renderUnlock(meta);
       else if (tab === 'upgrade') renderUpgrade(meta);
       else if (tab === 'stake') renderStake(meta);
       else { renderFile(meta); renderShopFile(meta); }
-      content.scrollTop = 0;
+      content.scrollTop = keep === true ? top : 0;
     }
 
     var tabRow = h('div', 'br-tabs');
     [['unlock', 'Freischalten'], ['upgrade', 'Upgrades'], ['stake', 'Casinos'], ['file', 'Kartei']].forEach(function (pair) {
-      tabs[pair[0]] = btn(pair[1], 'small', function () { tab = game.backroomTab = pair[0]; render(); });
+      tabs[pair[0]] = btn(pair[1], 'small', function () { tab = game.backroomTab = pair[0]; game.backroomPick = null; render(); });
       tabRow.appendChild(tabs[pair[0]]);
     });
 
-    root.appendChild(h('div', 'screen backroom', [
+    var room = h('div', 'br-room');
+    room.style.backgroundImage = 'url(' + ZU.asset('backroom/room.png') + ')';
+    var screenEl = h('div', 'screen backroom', [
+      room,
       h('div', 'br-head', [
         btn('Zurück', 'felt', function () { game.toMenu(); }),
         h('h1', null, 'Hinterzimmer'),
         h('div', 'br-ash', [ZU.iconEl('ash', 'ashico'), ashEl, h('span', 'unit', 'Asche')])
       ]),
       tabRow,
-      content
-    ]));
+      h('div', 'br-body', [content, detail])
+    ]);
+    root.appendChild(screenEl);
     ashEl._value = ZU.Meta.get().ash;
     render();
   };
