@@ -131,6 +131,11 @@
         });
         return;
       }
+      if (result.spared) {
+        ZU.fx.banner('Phönixfeder!', 'win', 1500).then(function () { self.go('select'); });
+        ZU.audio.match();
+        return;
+      }
       if (result.saved) {
         ZU.fx.banner('Goldenes Streichholz!', 'win', 1500).then(function () { self.go('select'); });
         ZU.audio.match();

@@ -151,6 +151,15 @@
 
   /* Füllt eine Leiste mit allem, was der Spieler trägt: erst Privilegien, dann Trinkets.
      Je mehr es sind, desto kleiner werden die Symbole. Liefert die Elemente nach Kennung. */
+  /* Schild „Hausordnung": fasst die festen Regeln eines Casinos zusammen; Antippen oder Überfahren zeigt sie alle. */
+  ZU.houseChip = function (rules) {
+    var chip = h('div', 'rulechip house', 'Hausordnung · ' + rules.length);
+    ZU.tip.bind(chip, '<b>Hausordnung</b>' + rules.map(function (id) {
+      return '<p><b>' + ZU.RULES[id].name + ':</b> ' + ZU.RULES[id].text + '</p>';
+    }).join(''));
+    return chip;
+  };
+
   ZU.fillOwned = function (container, run, onTrinket) {
     var map = {}, perks = run.s.perks || [], trinkets = run.s.trinkets, total = perks.length + trinkets.length;
     container.innerHTML = '';

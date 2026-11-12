@@ -27,16 +27,19 @@ zugehörigen Elemente blenden sich selbst aus.
   und aussetzen.
 - **Ziehen:** Wer nicht legen kann oder will, zieht eine Karte. Passt sie, darf
   sie sofort gelegt werden; sonst endet der Zug.
-- **Trinkets:** 35 Stück mit Synergie-Familien (Zieh-Druck und Flüche,
-  Aussetzen, Kette und Glut, Mehrfachwahl, Spezialkarten, Kasse). Es gibt keine
-  Obergrenze mehr; dafür kostet jedes weitere Trinket im Laden 3 Mark mehr.
-  Elf Trinkets sind von Anfang an im Spiel, der Rest wird im Hinterzimmer
-  freigeschaltet.
+- **Trinkets:** 83 Stück mit Synergie-Familien (Zieh-Druck und Flüche,
+  Aussetzen, Kette und Glut, Mehrfachwahl, Spezialkarten, Kasse, Schutz). Es
+  gibt keine Obergrenze; dafür kostet jedes weitere Trinket im Laden 3 Mark
+  mehr. Elf Trinkets sind von Anfang an im Spiel, der Rest wird im Hinterzimmer
+  entdeckt und gekauft.
 - **Privilegien:** Upgrades, die den ganzen Run gelten und keinen Trinket-Platz
   belegen. Manfred bietet je Akt genau eines an; die Neue Auslage ändert daran
   nichts. In Akt 1 ist es immer „Flinke Finger" – die Mehrfachwahl, mit der man
   mehrere Karten gleichen Werts in einem Zug legt (Schalter rechts am Tisch).
-- **Spezialkarten** (elf Stück, von Stillstand bis Zytokinese II) haben einen
+- **Spezialkarten** (22 Stück, von Stillstand bis Inferno) sind begrenzt: Ein
+  Deck fasst drei, das Upgrade „Kartenetui“ und das gleichnamige Trinket
+  erweitern das. Ist das Deck voll, ersetzt eine Boss-Karte eine alte, und der
+  Laden verkauft keine weitere. Sie haben einen
   Effekt und eine Bindung: an ein Symbol, an Rot oder Schwarz – oder gar nicht
   (Joker). Sie passen nur auf ihre Symbole und geben sie danach vor. Früh im
   Run tauchen fast nur symbolgebundene Karten auf, später farbgebundene, am
@@ -52,21 +55,32 @@ zugehörigen Elemente blenden sich selbst aus.
   Akt). Fast alle haben eine Eigenheit (z. B. „Ass im Ärmel" oder „Schwere
   Hand"), dazu eigene Dialoge und animierte Porträts, die auf den Spielverlauf
   reagieren.
-- **Run:** Drei Akte mit je drei Tischen (Gegner, Elite, Boss), dazwischen
+- **Casinos:** Sechs Häuser, der Reihe nach zu öffnen (ein Sieg im bisher
+  schwersten öffnet das nächste): Zum Goldenen Hahn (3 Akte), Tanzpalast Rialto
+  (4), Dampfer Fortuna (4), Grandhotel Imperial (5), Spielbank Monopol (5), Das
+  Inferno (6). Jedes hat eine feste Hausordnung, die an allen Tischen gilt und
+  von Haus zu Haus wächst, und einen Asche-Faktor von ×1 bis ×5
+  (`ZU.CASINOS` und `ZU.RULES` in `js/data.js`).
+- **Run:** Je Akt drei Tische (Gegner, Elite, Boss), dazwischen
   Manfreds Laden mit einem Regal für normale Karten, einem für (seltene,
   teure) Spezialkarten, Trinkets, dem Privileg des Akts, Verbrennen,
-  Streichholz und neuer Auslage. Drei Streichhölzer sind die Leben. Nach dem dritten Boss geht es
-  optional endlos in der Nachglut weiter.
+  Streichholz und neuer Auslage. Drei Streichhölzer sind die Leben. Nach dem
+  letzten Boss des Casinos geht es optional endlos in der Nachglut weiter –
+  dort gibt es keine Asche mehr.
 - **Deck:** Zu Duellbeginn zieht man 7 Karten aus dem eigenen Deck; der Rest
   wandert in den gemeinsamen Nachziehstapel.
 - **Sperrstunde:** Nach 50 Zügen gewinnt, wer weniger Karten hält.
-- **Meta-Progression:** Jeder Run bringt Asche (1 je Tisch, 2 je Elite, 5 je
-  Boss, 8 für den Sieg). Im Hinterzimmer (Hauptmenü) schaltet man damit
-  Schachteln, Trinkets und Spezialkarten frei und kauft vier kleine Upgrades.
-  Anfangs gibt es eine Schachtel, 11 Trinkets und 6 Spezialkarten. Jeder Sieg
-  auf dem höchsten freien Einsatz schaltet den nächsten von fünf
-  Schwierigkeitsstufen frei; jede bringt 25 % mehr Asche. Die Kartei zeigt
-  alle besiegten Gegner.
+- **Meta-Progression:** Asche gibt es sofort nach jedem Sieg (1 je Tisch, 2 je
+  Elite, 5 je Boss, 8 für das ausgeräumte Casino, mal Asche-Faktor). Im
+  Hinterzimmer (Hauptmenü) kauft man damit Schachteln, Trinkets, Spezialkarten
+  und zwölf Upgrades. Anfangs gibt es eine Schachtel, 11 Trinkets und 6
+  Spezialkarten. Alles Weitere ist zunächst **verborgen** („?????“) und taucht
+  erst auf, wenn eine Bedingung am Tisch erfüllt ist – etwa „Spiele 10
+  Siebenen“ oder „Schlage Madame Rauch“. Manche Stücke zeigen diesen Hinweis
+  sofort, manche erst nach einer bestimmten Zahl ausgeräumter Casinos, manche
+  nie; dem Spieler wird das nicht verraten. Bedingungen, Hinweise und Zählwerke
+  stehen in `js/meta.js` (`REQ`, `FEATS`). Die Kartei zeigt alle besiegten
+  Gegner.
 - **Konto (freiwillig):** Anmeldung oben rechts im Hauptmenü. Ein Konto sichert
   Runs, Siege, Bestwert und den Meta-Fortschritt auf dem Server. Geworben wird dafür nur am Ende
   eines Runs.

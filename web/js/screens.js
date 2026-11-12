@@ -73,12 +73,22 @@
   }
 
   /* Deck-Übersicht; im Verbrennen-Modus wählt ein Klick die Karte aus. */
+  /* Deck-Übersicht. burn = true: ein Klick verbrennt die Karte; burn = 'swap': nur Spezialkarten, eine weicht einer neuen.
+     Alle Karten sind ohne Rollen zu sehen: Je mehr es sind, desto kleiner werden sie gezeichnet. */
   function deckModal(game, burn) {
     return new Promise(function (resolve) {
-      var run = game.run, done = false, entry;
+      var run = game.run, done = false, entry, swap = burn === 'swap';
       function finish(value) { if (done) return; done = true; ZU.modal.close(entry); resolve(value); }
       var grid = h('div', 'deckgrid');
-      sortedCollection(run).forEach(function (card) {
+      var cards = sortedCollection(run).filter(function (card) { return !swap || ZU.CARDS[card.def].special; });
+      // Größte Kartengröße, bei der alle Reihen in den Dialog passen (Fläche 920 × 350, Karte 104 × 146).
+      var zoom = 1;
+      for (; zoom > 0.42; zoom -= 0.04) {
+        var perRow = Math.max(1, Math.floor((920 + 12 * zoom) / ((104 + 12) * zoom)));
+        if (Math.ceil(cards.length / perRow) * (146 + 14) * zoom <= 350) break;
+      }
+      grid.style.zoom = zoom.toFixed(2);
+      cards.forEach(function (card) {
         var el = ZU.cardStatic(ZU.CARDS[card.def], { cls: burn ? 'clickable burnable' : '', bind: card.bind });
         if (burn) el.addEventListener('click', function () {
           ZU.audio.burn();
@@ -91,10 +101,13 @@
         grid.appendChild(el);
       });
       entry = ZU.modal.open([
-        h('h2', null, burn ? 'Welche Karte soll brennen?' : 'Dein Deck · ' + run.s.collection.length + ' Karten'),
-        h('p', 'modal-text', burn
-          ? 'Die Karte wird dauerhaft aus deinem Deck entfernt. Ein schlankes Deck bringt deine besten Karten sicher auf die Starthand.'
-          : 'Zu Duellbeginn ziehst du ' + ZU.HAND_SIZE + ' Karten aus deinem Deck. Der Rest wird in den gemeinsamen Nachziehstapel gemischt.'),
+        h('h2', null, swap ? 'Welche Spezialkarte soll weichen?' : burn ? 'Welche Karte soll brennen?' : 'Dein Deck · ' + run.s.collection.length + ' Karten'),
+        h('p', 'modal-text', swap
+          ? 'Dein Deck fasst ' + run.specialSlots() + ' Spezialkarten. Die gewählte Karte verschwindet, die neue nimmt ihren Platz ein.'
+          : burn
+            ? 'Die Karte wird dauerhaft aus deinem Deck entfernt. Ein schlankes Deck bringt deine besten Karten sicher auf die Starthand.'
+            : 'Zu Duellbeginn ziehst du ' + ZU.HAND_SIZE + ' Karten aus deinem Deck. Der Rest wird in den gemeinsamen Nachziehstapel gemischt. Spezialkarten: ' +
+              run.specialCount() + (run.specialSlots() < 90 ? ' von ' + run.specialSlots() : '') + '.'),
         grid,
         h('div', 'btnrow', [btn(burn ? 'Doch nicht' : 'Schließen', 'felt', function () { finish(null); })])
       ], { cls: 'wide', onClose: function () { finish(null); } });
@@ -121,11 +134,11 @@
           '<p>Jede gespielte Karte bringt <b>Glut</b>: Kartenwert × Kette. Die Kette wächst mit jeder Karte und fällt zurück, wenn du ziehst.</p>' +
           '<p>Siege zahlen <b>Mark</b>: Tischprämie, Restkarten des Gegners, Glut-Bonus, Bank und Zinsen (1 Mark je 5 gesparte Mark).</p>' +
           '<h3>Der Run</h3>' +
-          '<p>Drei Akte mit je drei Tischen: Gegner, Elite, Boss. Dazwischen wartet <b>Manfreds Laden</b> mit Karten, Trinkets und Diensten.</p>' +
+          '<p>Jeder Akt hat drei Tische: Gegner, Elite, Boss. Dazwischen wartet <b>Manfreds Laden</b> mit Karten, Trinkets und Diensten. Das erste <b>Casino</b> hat drei Akte; wer es ausräumt, öffnet das nächste – größer, härter, mit eigener Hausordnung und mehr Asche.</p>' +
           '<p><b>Trinkets</b> sind unbegrenzt, werden aber mit jedem weiteren teurer. <b>Privilegien</b> gelten den ganzen Run; Manfred bietet je Akt genau eines an.</p>' +
           '<p>Dein <b>Deck</b> bestimmt deine Starthand: Du ziehst zu Beginn 7 Karten daraus.</p>' +
           '<p>Eine Niederlage kostet ein <b>Streichholz</b>. Sind alle abgebrannt, endet der Run.</p>' +
-          '<p>Jeder Run bringt <b>Asche</b>. Im <b>Hinterzimmer</b> schaltest du damit neue Schachteln, Trinkets, Spezialkarten und Upgrades frei.</p>' +
+          '<p>Jeder Sieg bringt sofort <b>Asche</b>. Im <b>Hinterzimmer</b> kaufst du damit Schachteln, Trinkets, Spezialkarten und Upgrades – aber erst, wenn du sie durch Taten am Tisch entdeckt hast. Dein Deck fasst nur wenige <b>Spezialkarten</b>.</p>' +
           (touch ? '<p class="dim">Was tut das? Trinkets und Anzeigen antippen. Karten, Knöpfe und Angebote dafür gedrückt halten.</p></div>'
             : '<p class="dim">Tasten: 1–9 spielt Karten · Leertaste zieht · Enter legt die Auswahl · Esc Menü</p></div>')
       }),
@@ -523,7 +536,7 @@
       });
     }));
     buttons.appendChild(h('div', 'menu-row', [
-      btn('Hinterzimmer', 'felt', function () { game.go('backroom'); }),
+      backroomBtn(game),
       btn('Einstellungen', 'felt', function () { settingsModal(game, false); })
     ]));
     buttons.appendChild(btn('So wird gezündet', 'felt', function () { helpModal(); }));
@@ -569,19 +582,35 @@
     return function () { slot._off(); logo.destroy(); };
   };
 
-  /* ---------- Startschachtel ---------- */
-  /* Schild für den gewählten Einsatz (leer bei „Kleingeld"). */
-  function stakeChip(stake) {
-    if (!stake) return null;
-    var chip = h('div', 'stakechip', 'Einsatz ' + ZU.roman(stake) + ' · ' + ZU.Meta.STAKES[stake].name);
-    ZU.tip.bind(chip, '<b>' + ZU.Meta.STAKES[stake].name + '</b>' + ZU.Meta.STAKES.slice(1, stake + 1).map(function (st) { return '<p>' + st.text + '</p>'; }).join('') +
-      '<p class="dim">+' + (stake * 25) + ' % Asche</p>');
-    return chip;
+  /* Knopf ins Hinterzimmer; ein Punkt zeigt an, dass dort etwas Neues zu kaufen steht. */
+  function backroomBtn(game) {
+    var b = btn('Hinterzimmer', 'felt', function () { game.go('backroom'); });
+    var seen = game.profile.brSeen || [];
+    var fresh = ZU.Meta.openOffers(ZU.Meta.get()).filter(function (key) { return seen.indexOf(key) < 0; });
+    if (fresh.length) b.appendChild(h('i', 'newdot', String(fresh.length)));
+    return b;
   }
 
+  /* ---------- Startschachtel ---------- */
+  /* Wie viel Asche ein Casino gegenüber dem ersten bringt, als Text. */
+  function ashFactor(casino) { return '×' + String(casino.ash).replace('.', ','); }
+  function casinoFacts(casino) {
+    return casino.acts + ' Akte · Asche ' + ashFactor(casino) + (casino.rules.length ? ' · ' + casino.rules.length + ' Hausregeln' : ' · keine Hausregeln');
+  }
+
+  /* Schilder für das Casino des Runs: Name und – wenn es welche gibt – die Hausordnung. */
+  function casinoChips(run) {
+    if (run.meta().legacy) return null;
+    var casino = run.casino(), rules = run.houseRules();
+    var name = h('div', 'stakechip', casino.name);
+    ZU.tip.bind(name, '<b>' + casino.name + '</b><p>' + casino.sub + '.</p><p class="dim">' + casinoFacts(casino) + '</p>');
+    return h('div', 'casinochips', [name, rules.length ? ZU.houseChip(rules) : null]);
+  }
+
+  /* Asche gibt es sofort nach jedem Sieg; hier steht, was der Run insgesamt eingebracht hat. */
   function ashLine(run) {
-    var el = h('div', 'ashline', [ZU.iconEl('ash', 'ashico'), h('b', null, '+' + ZU.fmt(run.s.ashPaid || 0)), h('span', null, 'Asche')]);
-    if (run.s.newStake) el.appendChild(h('span', 'newstake', 'Neuer Einsatz: ' + ZU.Meta.STAKES[run.s.newStake].name));
+    var el = h('div', 'ashline', [ZU.iconEl('ash', 'ashico'), h('b', null, ZU.fmt(run.s.ashPaid || 0)), h('span', null, 'Asche in diesem Run')]);
+    if (run.s.newStake) el.appendChild(h('span', 'newstake', 'Neues Casino: ' + ZU.CASINOS[run.s.newStake].name));
     return el;
   }
 
@@ -613,28 +642,29 @@
       row.appendChild(box);
     });
 
-    // Einsatzwahl erscheint erst, wenn mindestens ein höherer Einsatz freigeschaltet ist.
-    var stakeRow = null;
-    if (meta.maxStake > 0) {
-      var label = h('div', 'stake-name', '');
-      var text = h('div', 'stake-text', '');
-      var down = btn('◄', 'small', function () { change(-1); });
-      var up = btn('►', 'small', function () { change(1); });
-      var show = function () {
-        var stake = ZU.Meta.get().stake;
-        label.textContent = (stake ? 'Einsatz ' + ZU.roman(stake) + ' · ' : 'Einsatz · ') + ZU.Meta.STAKES[stake].name;
-        text.textContent = ZU.Meta.STAKES[stake].text + (stake ? ' (+' + (stake * 25) + ' % Asche, alle niedrigeren Einsätze gelten mit)' : '');
-        down.disabled = stake <= 0;
-        up.disabled = stake >= meta.maxStake;
-      };
-      var change = function (delta) { ZU.Meta.setStake(ZU.Meta.get().stake + delta); show(); };
-      stakeRow = h('div', 'stakerow', [down, h('div', 'stake-mid', [label, text]), up]);
-      show();
-    }
+    // Casino-Wahl: Pfeile erscheinen, sobald mehr als ein Haus offen ist.
+    var label = h('div', 'stake-name', '');
+    var text = h('div', 'stake-text', '');
+    var down = btn('◄', 'small', function () { change(-1); });
+    var up = btn('►', 'small', function () { change(1); });
+    var rulesSlot = h('div', 'stake-rules');
+    var show = function () {
+      var stake = ZU.Meta.get().stake, casino = ZU.CASINOS[stake];
+      label.textContent = 'Casino ' + ZU.roman(stake + 1) + ' · ' + casino.name;
+      text.textContent = casino.sub + ' · ' + casinoFacts(casino);
+      rulesSlot.innerHTML = '';
+      if (casino.rules.length) rulesSlot.appendChild(ZU.houseChip(casino.rules));
+      down.disabled = stake <= 0;
+      up.disabled = stake >= meta.maxStake;
+      down.style.visibility = up.style.visibility = meta.maxStake > 0 ? '' : 'hidden';
+    };
+    var change = function (delta) { ZU.Meta.setStake(ZU.Meta.get().stake + delta); show(); };
+    var stakeRow = h('div', 'stakerow', [down, h('div', 'stake-mid', [label, text]), rulesSlot, up]);
+    show();
 
     root.appendChild(h('div', 'screen starter', [
       h('h1', null, 'Wähle deine Schachtel'),
-      stakeRow || h('p', 'sub', 'Jede Schachtel bestimmt dein Startdeck.'),
+      stakeRow,
       row,
       btn('Zurück', 'felt back', function () { game.toMenu(); })
     ]));
@@ -645,6 +675,12 @@
     ZU.bg.set('shop');
     ZU.audio.music('shop');
     var tab = game.backroomTab || 'unlock';
+    // Was beim letzten Besuch schon zum Kauf stand; alles Weitere trägt heute ein „Neu".
+    var seenBefore = (game.profile.brSeen || []).slice();
+    game.profile.brSeen = ZU.Meta.openOffers(ZU.Meta.get());
+    var fresh = ZU.Profile.load();
+    fresh.brSeen = game.profile.brSeen;
+    ZU.Profile.save(fresh);
     var ashEl = h('b', null, '0');
     var content = h('div', 'br-content');
     var tabs = {};
@@ -669,37 +705,61 @@
       content.appendChild(h('div', 'br-section', [h('div', 'br-title', title), h('div', 'br-grid', tiles)]));
     }
 
+    /* Eine Kachel im Hinterzimmer hat drei Zustände: im Spiel, entdeckt (kaufbar) oder verborgen.
+       Verborgenes zeigt nur einen Schatten und „?????"; steht ein Hinweis da, verrät er die Bedingung. */
     function tile(meta, kind, id, visual, name) {
-      var open = ZU.Meta.isUnlocked(meta, kind, id);
-      return h('div', 'br-tile' + (open ? ' open' : ' closed'), [
+      var open = ZU.Meta.isUnlocked(meta, kind, id), found = open || ZU.Meta.isFound(meta, kind, id);
+      if (!found) {
+        var hint = ZU.Meta.hint(meta, kind, id);
+        visual._tip = null;
+        return h('div', 'br-tile hidden', [visual, h('div', 'br-name', '?????'), h('div', 'br-hint', hint || '?????')]);
+      }
+      var isNew = !open && seenBefore.indexOf(kind + ':' + id) < 0;
+      return h('div', 'br-tile' + (open ? ' open' : ' closed') + (isNew ? ' fresh' : ''), [
+        isNew ? h('i', 'newtag', 'Neu') : null,
         visual,
         h('div', 'br-name', name),
         open ? h('div', 'br-open', 'Im Spiel') : ashBtn(ZU.Meta.cost(kind, id), meta, function () { return ZU.Meta.unlock(kind, id); })
       ]);
     }
 
+    function counter(meta, kind, ids) {
+      var have = ids.filter(function (id) { return ZU.Meta.isUnlocked(meta, kind, id); }).length;
+      return ' · ' + have + ' von ' + ids.length;
+    }
+
     function renderUnlock(meta) {
-      section('Schachteln', ZU.STARTERS.map(function (starter) {
+      var starters = ZU.STARTERS.map(function (s) { return s.id; });
+      section('Schachteln' + counter(meta, 'starter', starters), ZU.STARTERS.map(function (starter) {
         var box = h('div', 'br-box');
         box.style.background = starter.color;
         ZU.tip.bind(box, '<b>' + starter.name + '</b><p>' + starter.text + '</p>');
         return tile(meta, 'starter', starter.id, box, starter.name);
       }));
-      section('Trinkets', ZU.TRINKET_IDS.map(function (id) {
+      section('Trinkets' + counter(meta, 'trinket', ZU.TRINKET_IDS), ZU.TRINKET_IDS.map(function (id) {
         return tile(meta, 'trinket', id, ZU.trinketEl(id), ZU.TRINKETS[id].name);
       }));
-      section('Spezialkarten', ZU.SPECIAL_IDS.map(function (id) {
-        return tile(meta, 'special', id, ZU.cardStatic(ZU.CARDS[id], { cls: 'mini', bind: 'none' }), ZU.CARDS[id].name);
+      section('Spezialkarten' + counter(meta, 'special', ZU.SPECIAL_IDS), ZU.SPECIAL_IDS.map(function (id) {
+        var found = ZU.Meta.isUnlocked(meta, 'special', id) || ZU.Meta.isFound(meta, 'special', id);
+        // Verborgene Karten zeigen ihre Rückseite, damit weder Bild noch Name etwas verraten.
+        var visual = found ? ZU.cardStatic(ZU.CARDS[id], { cls: 'mini', bind: 'none' }) : h('div', 'cardstatic mini', [ZU.cardBack()]);
+        return tile(meta, 'special', id, visual, ZU.CARDS[id].name);
       }));
     }
 
     function renderUpgrade(meta) {
       var rows = ZU.Meta.UPGRADE_IDS.map(function (id) {
         var up = ZU.Meta.UPGRADES[id], level = ZU.Meta.level(meta, id), price = ZU.Meta.upgradeCost(meta, id);
+        if (!ZU.Meta.isFound(meta, 'upgrade', id)) {
+          return h('div', 'br-row hidden', [
+            h('div', 'br-rowmain', [h('div', 'br-rowname', '?????'), h('p', null, ZU.Meta.hint(meta, 'upgrade', id) || '?????')])
+          ]);
+        }
+        var isNew = !level && ZU.Meta.req('upgrade', id) && seenBefore.indexOf('upgrade:' + id) < 0;
         var pips = h('div', 'br-pips');
         up.costs.forEach(function (cost, index) { pips.appendChild(h('i', index < level ? 'on' : '')); });
-        return h('div', 'br-row' + (price == null ? ' done' : ''), [
-          h('div', 'br-rowmain', [h('div', 'br-rowname', up.name), h('p', null, up.text)]),
+        return h('div', 'br-row' + (price == null ? ' done' : '') + (isNew ? ' fresh' : ''), [
+          h('div', 'br-rowmain', [h('div', 'br-rowname', [up.name, isNew ? h('i', 'newtag inline', 'Neu') : null]), h('p', null, up.text)]),
           pips,
           price == null ? h('div', 'br-open', 'Ausgebaut') : ashBtn(price, meta, function () { return ZU.Meta.upgrade(id); })
         ]);
@@ -707,18 +767,26 @@
       content.appendChild(h('div', 'br-section', [h('div', 'br-title', 'Upgrades'), h('div', 'br-list', rows)]));
     }
 
+    /* Casinos: der Reihe nach zu öffnen. Von verschlossenen Häusern ist nur bekannt, dass es sie gibt. */
     function renderStake(meta) {
-      var rows = ZU.Meta.STAKES.map(function (stake, index) {
-        var open = index <= meta.maxStake, active = index === meta.stake;
-        var row = h('div', 'br-row stake' + (open ? '' : ' closed') + (active ? ' active' : ''), [
-          h('div', 'br-stakeno', index ? ZU.roman(index) : '–'),
-          h('div', 'br-rowmain', [h('div', 'br-rowname', stake.name), h('p', null, open ? stake.text : 'Gewinne einen Run auf dem höchsten freien Einsatz.')]),
-          h('div', 'br-open', active ? 'Gewählt' : open ? '+' + (index * 25) + ' % Asche' : ''),
+      var rows = ZU.CASINOS.map(function (casino, index) {
+        var open = index <= meta.maxStake, active = index === meta.stake, next = index === meta.maxStake + 1;
+        return h('div', 'br-row stake' + (open ? '' : ' closed') + (active ? ' active' : ''), [
+          h('div', 'br-stakeno', ZU.roman(index + 1)),
+          h('div', 'br-rowmain', [
+            h('div', 'br-rowname', open ? casino.name : '?????'),
+            h('p', null, open ? casino.sub + '. ' + casinoFacts(casino) + '.' : next ? 'Räume „' + ZU.CASINOS[index - 1].name + '“ aus, um die Tür zu öffnen.' : '?????'),
+            open && casino.rules.length ? h('div', 'br-rules', casino.rules.map(function (id) {
+              var chip = h('span', 'rulechip', ZU.RULES[id].name);
+              ZU.tip.bind(chip, '<b>' + ZU.RULES[id].name + '</b><p>' + ZU.RULES[id].text + '</p>');
+              return chip;
+            })) : null
+          ]),
+          h('div', 'br-open', active ? 'Gewählt' : open ? 'Asche ' + ashFactor(casino) : ''),
           open && !active ? btn('Wählen', 'small felt', function () { ZU.Meta.setStake(index); render(); }) : null
         ]);
-        return row;
       });
-      content.appendChild(h('div', 'br-section', [h('div', 'br-title', 'Einsätze'), h('div', 'br-list', rows)]));
+      content.appendChild(h('div', 'br-section', [h('div', 'br-title', 'Casinos'), h('div', 'br-list', rows)]));
     }
 
     function renderFile(meta) {
@@ -751,7 +819,7 @@
     }
 
     var tabRow = h('div', 'br-tabs');
-    [['unlock', 'Freischalten'], ['upgrade', 'Upgrades'], ['stake', 'Einsätze'], ['file', 'Kartei']].forEach(function (pair) {
+    [['unlock', 'Freischalten'], ['upgrade', 'Upgrades'], ['stake', 'Casinos'], ['file', 'Kartei']].forEach(function (pair) {
       tabs[pair[0]] = btn(pair[1], 'small', function () { tab = game.backroomTab = pair[0]; render(); });
       tabRow.appendChild(tabs[pair[0]]);
     });
@@ -825,10 +893,11 @@
     root.appendChild(h('div', 'screen select', [
       bar.el,
       h('h1', null, 'Akt ' + ZU.roman(s.act) + ' · ' + run.actName()),
-      stakeChip(run.meta().stake),
+      casinoChips(run),
       h('p', 'sub', s.lives < run.maxLives()
         ? 'Noch ' + s.lives + (s.lives === 1 ? ' Streichholz' : ' Streichhölzer') + '. Verlierst du das letzte, endet der Run.'
-        : 'Drei Tische, ein Boss. Wer zuerst keine Karten mehr hat, gewinnt.'),
+        : s.endless ? 'Nachglut: Es geht endlos weiter. Asche gibt es hier keine mehr.'
+          : 'Akt ' + s.act + ' von ' + run.acts() + '. Drei Tische, ein Boss.'),
       row
     ]));
     ZU.audio.shuffle();
@@ -854,6 +923,8 @@
         list,
         h('div', 'paytotal', [h('span', null, 'Summe'), ZU.iconEl('coin', 'coin'), totalEl, h('span', 'unit', 'Mark')]),
         h('div', 'paywallet', ['Kasse: ', walletEl, ' Mark']),
+        result.ash ? h('div', 'payash', [ZU.iconEl('ash', 'ashico'), h('b', null, '+' + result.ash), h('span', null, 'Asche fürs Hinterzimmer')]) : null,
+        result.lostCards ? h('div', 'paynote', result.lostCards + (result.lostCards === 1 ? ' erzeugte Spezialkarte fand' : ' erzeugte Spezialkarten fanden') + ' keinen Platz mehr im Deck.') : null,
         h('div', 'btnrow', [go])
       ], { cls: 'small payout', locked: true });
       var sum = 0, chain = wait(350);
@@ -901,14 +972,16 @@
         text = def.text;
       }
       var take = btn('Nehmen', 'ember', function () {
-        var done = function () {
-          run.chooseReward(index);
+        var done = function (replaceId) {
+          run.chooseReward(index, replaceId);
           ZU.audio.win();
           var p = ZU.stagePos(item);
           fx.burst(p.x, p.y, { n: 36, speed: 360, life: 1.2 });
           fx.flyTo(item, reward.type === 'trinket' ? bar.slots : bar.deckBtn, 520).then(leave);
         };
-        done();
+        // Volles Deck: Eine vorhandene Spezialkarte muss weichen.
+        if (reward.type !== 'trinket' && !run.specialFree()) deckModal(game, 'swap').then(function (cardId) { if (cardId != null) done(cardId); });
+        else done();
       });
       var box = h('div', 'reward-item', [item, h('div', 'ename', name), h('p', null, text), take]);
       box.style.animationDelay = (index * 110) + 'ms';
@@ -917,7 +990,8 @@
     root.appendChild(h('div', 'screen reward', [
       bar.el,
       h('h1', null, reward.type === 'trinket' ? 'Elite besiegt · Wähle ein Trinket' : 'Boss besiegt · Wähle eine Spezialkarte'),
-      h('p', 'sub', reward.type === 'trinket' ? 'Trinkets wirken für den Rest des Runs.' : 'Die Karte wandert dauerhaft in dein Deck.'),
+      h('p', 'sub', reward.type === 'trinket' ? 'Trinkets wirken für den Rest des Runs.'
+        : run.specialFree() ? 'Die Karte wandert dauerhaft in dein Deck.' : 'Dein Deck ist voll (' + run.specialSlots() + ' Spezialkarten): Die neue Karte ersetzt eine alte.'),
       row,
       btn('Lieber ' + reward.skip + ' Mark nehmen', 'felt', function () {
         run.chooseReward(null);
@@ -1046,6 +1120,8 @@
 
     var cardsRow = h('div', 'shelf-row'), specialsRow = h('div', 'shelf-row'), trinketRow = h('div', 'shelf-row'), services = h('div', 'services');
     var rerollBox = h('div', 'rerollbox'), perkBox = h('div', 'perkbox'), trinketNote = h('div', 'shelf-note', '');
+    var specialLabel = h('div', 'shelf-label', 'Spezialkarten');
+    ZU.tip.bind(specialLabel, '<b>Spezialkarten sind begrenzt</b><p>Dein Deck fasst nur eine feste Zahl davon. Verbrennen schafft Platz; das Upgrade „Kartenetui“ im Hinterzimmer erweitert ihn dauerhaft.</p>');
 
     /* Preisschild; "kind" färbt es je nach Art des Angebots. */
     function priceBtn(price, kind, onclick, disabled) {
@@ -1073,8 +1149,10 @@
             slot.appendChild(h('div', 'soldout', 'Verkauft'));
           } else {
             var card = ZU.cardStatic(def, { bind: offer.bind });
+            var full = shelf === 'specials' && !run.specialFree();
             slot.appendChild(card);
             if (price < offer.price) slot.appendChild(h('div', 'discount', '−' + (offer.price - price)));
+            if (full) slot.appendChild(h('div', 'offer-full', 'Deck voll'));
             slot.appendChild(priceBtn(price, shelf === 'specials' ? 'gold' : 'tag', function () {
               run.buyOffer(shelf, index);
               ZU.audio.coin(shelf === 'specials' ? 4 : 2);
@@ -1084,7 +1162,7 @@
               fx.coins(p.x, p.y, 12);
               fx.flyTo(card, bar.deckBtn, 480);
               render();
-            }));
+            }, full));
           }
           row.appendChild(slot);
         });
@@ -1092,6 +1170,7 @@
       fillShelf(cardsRow, 'cards');
       fillShelf(specialsRow, 'specials');
       if (!s.shop.specials.length) specialsRow.appendChild(h('div', 'shelf-empty', 'Heute nichts Besonderes.'));
+      specialLabel.textContent = 'Spezialkarten' + (run.specialSlots() < 90 ? ' · ' + run.specialCount() + '/' + run.specialSlots() : '');
 
       // Neue Auslage: eigene runde Glocke am Kartenregal
       var rerollPrice = run.rerollPrice();
@@ -1216,7 +1295,7 @@
       h('div', 'shop-main', [
         h('div', 'shelf-top', [
           h('div', 'shelf cards-shelf', [h('div', 'shelf-label', 'Karten'), cardsRow]),
-          h('div', 'shelf special-shelf', [h('div', 'shelf-label', 'Spezialkarten'), specialsRow]),
+          h('div', 'shelf special-shelf', [specialLabel, specialsRow]),
           rerollBox
         ]),
         h('div', 'shelf-pair', [
@@ -1257,9 +1336,10 @@
     ZU.audio.win();
     root.appendChild(h('div', 'screen endscreen win', [
       h('h1', 'huge', 'Das Haus brennt!'),
-      h('p', 'sub', 'Du hast den Hausherrn an seinem eigenen Tisch geschlagen.'),
+      h('p', 'sub', run.casino().name + ' ist ausgeräumt.' + (run.s.newStake ? ' Die Tür zum nächsten Casino steht offen.' : '')),
       statsBlock(run),
       ashLine(run),
+      h('p', 'endnote', 'In der Nachglut gibt es keine Asche mehr – nur noch Ruhm und Bestwert.'),
       accountCta(),
       h('div', 'btnrow', [
         btn('Hauptmenü', 'felt', function () { game.toMenu(); }),

@@ -24,7 +24,7 @@ const DAY = 24 * 60 * 60 * 1000;
 const SESSION_DAYS = 30;
 const RESET_MINUTES = 60;
 const COOKIE = 'zs';
-const MAX_BODY = 8 * 1024;
+const MAX_BODY = 24 * 1024;
 const MAX_SCORE = 100000000;
 
 const MIME = {
@@ -329,7 +329,7 @@ function createApp(overrides) {
       if (limited('meta:' + user.id, 600, 60 * 60 * 1000)) return fail(res, 429, 'rate');
       if (!body.meta || typeof body.meta !== 'object' || Array.isArray(body.meta)) return fail(res, 400, 'bad_request');
       const text = JSON.stringify(body.meta);
-      if (text.length > 6000) return fail(res, 413, 'bad_request');
+      if (text.length > 16000) return fail(res, 413, 'bad_request'); // rund 100 Freischaltungen, Zählwerke und Kartei passen bequem
       q.setMeta.run(text, user.id);
       send(res, 200, { ok: true });
     },

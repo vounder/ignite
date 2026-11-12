@@ -2,10 +2,10 @@
 (function (ZU) {
   'use strict';
 
-  ZU.VERSION = '1.0.0'; // im Hauptmenü unten rechts angezeigt
+  ZU.VERSION = '1.1.0'; // im Hauptmenü unten rechts angezeigt
   /* Build-Kennung: wird an alle Asset-Adressen gehängt, damit Browser und CDN nach einem Update frische
      Dateien holen. Nicht von Hand ändern: web/tools/stamp_version.py setzt den Wert. */
-  ZU.BUILD = '95b7f58941';
+  ZU.BUILD = '653813c253';
   ZU.asset = function (path) { return 'assets/' + path + '?v=' + ZU.BUILD; };
 
   ZU.HAND_SIZE = 7;
@@ -88,8 +88,31 @@
     [{ type: 'sacrifice', amount: 2 }]);
   special('zocken', 'Zocken', 17, 2, 'Aufdecken', 'Decke 3 Karten vom Stapel auf und spiele eine davon sofort – egal ob sie passt.',
     [{ type: 'gamble', amount: 3 }]);
-  special('zytokinese_2', 'Zytokinese II', 28, 3, '2 Specials', 'Erzeugt 2 zufällige Spezialkarten dauerhaft in deinem Deck. Wird dabei verbraucht.',
+  special('zytokinese_2', 'Zytokinese II', 28, 3, '2 Specials', 'Erzeugt 2 zufällige Spezialkarten dauerhaft in deinem Deck, soweit Platz ist. Wird dabei verbraucht.',
     [{ type: 'createSpecial', amount: 2 }]);
+  // --- zweite Serie ---
+  special('nachschlag', 'Nachschlag', 10, 0, 'Noch mal', 'Der Gegner zieht 1 Karte. Du bist noch einmal dran.',
+    [{ type: 'draw', amount: 1, reflectable: true }, { type: 'again' }]);
+  special('glutnest', 'Glutnest', 9, 0, 'Kette +3', 'Deine Kette steigt sofort um 3.',
+    [{ type: 'stoke', amount: 3 }]);
+  special('bannbrecher', 'Bannbrecher', 8, 0, 'Reinigung', 'Hebt alle Flüche und Aussetzer gegen dich auf.',
+    [{ type: 'cleanse' }]);
+  special('nebelkerze', 'Nebelkerze', 14, 1, 'Aus +1', 'Der Gegner setzt aus und zieht 1 Karte.',
+    [{ type: 'draw', amount: 1, reflectable: true }, { type: 'skip', reflectable: true }]);
+  special('schutzgeld', 'Schutzgeld', 12, 1, '+4 Mark', '4 Mark wandern sofort in die Bank.',
+    [{ type: 'bank', amount: 4 }]);
+  special('stichflamme', 'Stichflamme', 13, 1, 'Glut ×2', 'Deine nächsten 3 Karten bringen doppelte Glut.',
+    [{ type: 'blaze', amount: 3 }]);
+  special('brandsatz', 'Brandsatz', 18, 2, '+4 Karten', 'Der Gegner zieht 4 Karten.',
+    [{ type: 'draw', amount: 4, reflectable: true }]);
+  special('ausgleich', 'Ausgleich', 17, 2, 'Gleichstand', 'Der Gegner zieht, bis er so viele Karten hält wie du (höchstens 4).',
+    [{ type: 'equalize', amount: 4, reflectable: true }]);
+  special('mischmasch', 'Mischmasch', 16, 2, 'Neu geben', 'Der Gegner wirft seine Hand ab und zieht eine Karte mehr, als er hatte.',
+    [{ type: 'redeal', reflectable: true }]);
+  special('inferno', 'Inferno', 30, 3, 'Feuersturm', 'Der Gegner zieht 3 Karten und setzt aus. Deine Kette verdoppelt sich.',
+    [{ type: 'draw', amount: 3, reflectable: true }, { type: 'skip', reflectable: true }, { type: 'double' }]);
+  special('reservefunke', 'Reservefunke', 26, 3, '+1 Holz', 'Gewinnst du das Duell, erhältst du ein Streichholz zurück. Wird dabei verbraucht.',
+    [{ type: 'life' }]);
 
   /* ---------- Bindung von Spezialkarten ----------
      Eine Spezialkarte ist an ein Symbol, an eine Farbe (rot/schwarz) oder gar nicht gebunden (Joker).
@@ -132,9 +155,39 @@
     'one-pass': {
       name: 'Letzter Stapel',
       text: 'Der Stapel wird nicht neu gemischt. Ist er leer und muss jemand ziehen, gewinnt, wer weniger Karten hält.'
-    }
+    },
+    // Regeln der Casinos: gelten dort an jedem Tisch (siehe ZU.CASINOS)
+    'last-call': { name: 'Knapper Stapel', text: '„Letzter Stapel“ gilt deutlich häufiger.' },
+    sober: { name: 'Nüchterne Runde', text: 'Gegner verschenken nur noch halb so oft einen Zug.' },
+    markup: { name: 'Teures Pflaster', text: 'Alles in Manfreds Laden kostet 20 % mehr.' },
+    'short-night': { name: 'Frühe Sperrstunde', text: 'Sperrstunde schon nach 36 Zügen.' },
+    cover: { name: 'Gedeck', text: 'Jede Tischprämie fällt 2 Mark niedriger aus.' },
+    'sharp-sevens': { name: 'Scharfe Siebenen', text: 'Jede 7 lässt 3 statt 2 Karten ziehen – auf beiden Seiten.' },
+    'house-edge': { name: 'Hausvorteil', text: 'Gegner beginnen mit einer Karte weniger.' },
+    'no-credit': { name: 'Kein Kredit', text: 'Es gibt keine Zinsen.' },
+    marked: { name: 'Böses Omen', text: 'Du beginnst jedes Duell verflucht (×1).' },
+    'wide-awake': { name: 'Hellwach', text: 'Gegner verschenken keinen Zug mehr.' },
+    damp: { name: 'Feuchte Luft', text: 'Deine Kette steigt nie über ×8.' }
   };
   ZU.RULE_CHANCE = { 'one-pass': [0.1, 0.3, 0.5, 0.7] };
+
+  /* ---------- Casinos ----------
+     Sechs Häuser, die der Reihe nach freigeschaltet werden: Ein Sieg im bisher schwersten öffnet das nächste.
+     Jedes hat seine Zahl an Akten, eigene Räume, feste Hausregeln für alle Tische und einen Asche-Faktor. */
+  ZU.CASINOS = [
+    { id: 'hahn', name: 'Zum Goldenen Hahn', sub: 'Eckkneipe mit Hinterzimmer', acts: 3, ash: 1,
+      rooms: ['Hinterzimmer', 'Rauchsalon', 'Das Haus'], rules: [] },
+    { id: 'rialto', name: 'Tanzpalast Rialto', sub: 'Wo die halbe Stadt ihr Geld vertanzt', acts: 4, ash: 1.5,
+      rooms: ['Garderobe', 'Parkett', 'Separee', 'Direktion'], rules: ['last-call', 'sober'] },
+    { id: 'fortuna', name: 'Dampfer Fortuna', sub: 'Schwimmt außerhalb jeder Zuständigkeit', acts: 4, ash: 2,
+      rooms: ['Unterdeck', 'Salon', 'Kapitänstisch', 'Brücke'], rules: ['last-call', 'sober', 'markup', 'short-night'] },
+    { id: 'imperial', name: 'Grandhotel Imperial', sub: 'Gespielt wird nur mit Krawatte', acts: 5, ash: 2.75,
+      rooms: ['Foyer', 'Hotelbar', 'Bel Etage', 'Fürstensuite', 'Penthouse'], rules: ['last-call', 'sober', 'markup', 'short-night', 'cover', 'sharp-sevens'] },
+    { id: 'monopol', name: 'Spielbank Monopol', sub: 'Die Bank gewinnt. Steht so im Namen', acts: 5, ash: 3.5,
+      rooms: ['Automatensaal', 'Roulettesaal', 'Baccara-Zimmer', 'Tresorraum', 'Direktorium'], rules: ['last-call', 'sober', 'markup', 'short-night', 'cover', 'sharp-sevens', 'house-edge', 'no-credit'] },
+    { id: 'inferno', name: 'Das Inferno', sub: 'Hier hat noch keiner das Licht ausgemacht', acts: 6, ash: 5,
+      rooms: ['Vorhof', 'Glutkammer', 'Aschegrube', 'Schwefelsaal', 'Thronsaal', 'Der Abgrund'], rules: ['last-call', 'wide-awake', 'markup', 'short-night', 'cover', 'sharp-sevens', 'house-edge', 'no-credit', 'marked', 'damp'] }
+  ];
 
   ZU.CARDS = cards;
   ZU.STANDARD_IDS = Object.keys(cards).filter(function (id) { return !cards[id].special; });
@@ -191,6 +244,64 @@
   // --- Regeln ---
   trinket('cellar-key', 'Kellerschlüssel', 0, 'Bei Sperrstunde und „Letzter Stapel“ gewinnst du auch bei Gleichstand.');
   trinket('short-fuse', 'Kurze Lunte', 0, 'Der Gegner setzt zu Beginn jedes Duells einmal aus.');
+  /* ----- zweite Serie ----- */
+  // --- Glut ---
+  trinket('karoglanz', 'Karoglanz', 0, 'Karo-Karten bringen doppelte Glut.');
+  trinket('hofstaat', 'Hofstaat', 1, 'Bube, Dame und König zählen 15 statt 10 Glut.');
+  trinket('trumpf-ass', 'Trumpf-Ass', 1, 'Asse bringen dreifache Glut.');
+  trinket('kleinvieh', 'Kleinvieh', 0, '7, 8 und 9 zählen 6 Glut mehr.');
+  trinket('zunder', 'Zunder', 0, 'Jede Karte zählt 4 Glut mehr.');
+  trinket('tintenfass', 'Tintenfass', 1, 'Spezialkarten zählen 30 statt 15 Glut.');
+  trinket('zwillinge', 'Zwillinge', 1, 'Legst du denselben Wert wie die oberste Karte, bringt die Karte doppelte Glut.');
+  trinket('letzte-glut', 'Letzte Glut', 1, 'Deine letzte Handkarte bringt fünffache Glut.');
+  trinket('dampfkessel', 'Dampfkessel', 2, 'Ab Kette ×6 bringen deine Karten doppelte Glut.');
+  // --- Kette ---
+  trinket('blasebalg', 'Blasebalg', 1, 'Jede gespielte Spezialkarte erhöht deine Kette um 2 zusätzlich.');
+  trinket('roter-teppich', 'Roter Teppich', 1, 'Legst du Rot auf Rot, steigt deine Kette um 1 zusätzlich.');
+  trinket('kettenbrief', 'Kettenbrief', 1, 'Legst du mehrere Karten auf einmal, steigt deine Kette je weiterer Karte um 1 zusätzlich.');
+  trinket('lauffeuer', 'Lauffeuer', 3, 'Ziehen setzt deine Kette nicht mehr zurück.');
+  // --- Zieh-Druck und Aussetzen ---
+  trinket('neunmalklug', 'Neunmalklug', 1, 'Deine 9en lassen den Gegner 1 Karte ziehen.');
+  trinket('daumenschraube', 'Daumenschraube', 2, 'Jeder deiner Zieheffekte lässt den Gegner 1 Karte mehr ziehen.');
+  trinket('farbenlehre', 'Farbenlehre', 1, 'Spielst du 3 Karten desselben Symbols in Folge, zieht der Gegner 1 Karte.');
+  trinket('klebefinger', 'Klebefinger', 1, 'Der Gegner beginnt jedes Duell mit einer Karte mehr.');
+  trinket('sandmann', 'Sandmann', 2, 'Setzt der Gegner aus, zieht er dabei 1 Karte.');
+  trinket('doppelschloss', 'Doppelschloss', 2, 'Dein erstes Aussetzen je Duell lässt den Gegner zwei Runden aussetzen.');
+  trinket('fluchmuenze', 'Fluchmünze', 1, 'Jedes Mal, wenn ein Fluch den Gegner mehr ziehen lässt, wandert 1 Mark in die Bank.');
+  // --- Besondere Karten ---
+  trinket('bubenstueck', 'Bubenstück', 1, 'Deine Buben passen auf jede Karte.');
+  trinket('damenwahl', 'Damenwahl', 2, 'Nach einer Dame bist du noch einmal dran.');
+  trinket('loesegeld', 'Lösegeld', 1, 'Jeder gespielte König bringt 2 Mark in die Bank (höchstens 6 je Duell).');
+  // --- Schutz ---
+  trinket('regenschirm', 'Regenschirm', 1, 'Zwingt dich ein Effekt zum Ziehen, ziehst du 1 Karte weniger (mindestens 1).');
+  trinket('asbesthandschuh', 'Asbesthandschuh', 2, 'Die 7en des Gegners lassen dich nicht mehr aussetzen.');
+  trinket('pestmaske', 'Pestmaske', 1, 'Flüche gegen dich halten nur halb so lange (aufgerundet).');
+  trinket('dicke-brieftasche', 'Dicke Brieftasche', 0, 'Verlierst du ein Duell, behältst du trotzdem dessen Bank.');
+  trinket('police', 'Police', 1, 'Verlierst du ein Duell, zahlt die Versicherung 6 Mark.');
+  trinket('phoenixfeder', 'Phönixfeder', 3, 'Die erste Niederlage in jedem Akt kostet kein Streichholz.');
+  // --- Kasse ---
+  trinket('sparschwein', 'Sparschwein', 0, 'Die Bank beginnt jedes Duell mit 2 Mark.');
+  trinket('zylinder', 'Zylinder', 1, 'Erreichst du im Duell Kette ×8, gibt es beim Sieg 4 Mark extra.');
+  trinket('sturmfeuerzeug', 'Sturmfeuerzeug', 1, 'Gewinnst du in höchstens 16 Zügen, gibt es 4 Mark extra.');
+  trinket('kopfgeld', 'Kopfgeld', 1, 'Elite und Bosse zahlen 4 Mark mehr.');
+  trinket('sammleralbum', 'Sammleralbum', 2, 'Nach jedem Sieg 1 Mark je 3 Trinkets, die du trägst.');
+  trinket('mitgift', 'Mitgift', 2, 'Jeder Laden schenkt dir beim Betreten 3 Mark.');
+  trinket('midas-hand', 'Midas-Hand', 3, 'Jede gespielte Karte bringt 1 Mark in die Bank (höchstens 10 je Duell).');
+  trinket('urne', 'Urne', 1, 'Jeder besiegte Boss bringt 2 Asche zusätzlich.');
+  // --- Laden ---
+  trinket('pfandschein', 'Pfandschein', 0, 'Manfred kauft Trinkets zum vollen Preis zurück.');
+  trinket('gratisfeuer', 'Gratisfeuer', 0, 'Das erste Verbrennen in jedem Laden ist gratis.');
+  trinket('feuerversicherung', 'Feuerversicherung', 0, 'Streichhölzer kosten im Laden 3 Mark weniger.');
+  trinket('kartenetui', 'Kartenetui', 1, 'Dein Deck fasst eine Spezialkarte mehr.');
+  // --- Spezialkarten ---
+  trinket('echo', 'Echo', 2, 'Deine erste Spezialkarte je Duell wirkt zweimal (außer Zytokinese und Reservefunke).');
+  trinket('opernglas', 'Opernglas', 0, 'Spion wirkt 6 statt 3 Züge.');
+  trinket('gezinktes-blatt', 'Gezinktes Blatt', 2, 'Deine Spezialkarten sind immer auf der Starthand.');
+  // --- Tischlage ---
+  trinket('schmale-hand', 'Schmale Hand', 2, 'Du beginnst jedes Duell mit 6 statt 7 Karten.');
+  trinket('freibier', 'Freibier', 1, 'Gegner verschenken öfter einen Zug.');
+  trinket('nachtlaterne', 'Nachtlaterne', 0, 'Die Sperrstunde kommt 10 Züge später.');
+  trinket('teufelspakt', 'Teufelspakt', 3, 'Alle deine Karten bringen doppelte Glut. Du beginnst jedes Duell verflucht (×2).');
   ZU.TRINKETS = trinkets;
   ZU.TRINKET_IDS = Object.keys(trinkets);
 
@@ -497,6 +608,7 @@
   ZU.BOSS_ACTS = [['boss-shark', 'boss-dolores'], ['boss-smoke', 'boss-consigliere'], ['boss-house', 'boss-donna']];
   ZU.KIND_LABEL = { battle: 'Tisch', elite: 'Elite', boss: 'Boss' };
   ZU.ACT_NAMES = ['Hinterzimmer', 'Rauchsalon', 'Das Haus'];
+  ZU.SPECIAL_SLOTS = 3; // so viele Spezialkarten fasst ein Deck; Upgrades und Trinkets erweitern das
 
   /* ---------- Startschachteln ---------- */
   ZU.STARTERS = [

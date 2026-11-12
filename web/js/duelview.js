@@ -27,7 +27,7 @@
     this.busy = true;
     this.mode = 'wait';
     this.sortMode = game.sortMode || 'rank';
-    this.status = { skip: { player: 0, opp: 0 }, curse: { player: 0, opp: 0 }, spy: 0, hodl: [], bank: 0, bonusMult: 1 };
+    this.status = { skip: { player: 0, opp: 0 }, curse: { player: 0, opp: 0 }, spy: 0, blaze: 0, hodl: [], bank: 0, bonusMult: 1 };
     this.stockCount = 0;
     this.pileZ = 300;
     this.chain = duel.chain;
@@ -53,11 +53,12 @@
     var sortSuit = h('button', 'btn small', 'Farbe', { onclick: function () { self.setSort('suit'); } });
     this.sortButtons = { rank: sortRank, suit: sortSuit };
     var rulesEl = h('div', 'rulerow');
-    this.duel.rules.forEach(function (rule) {
+    this.duel.tableRules.forEach(function (rule) {
       var chip = h('div', 'rulechip', ZU.RULES[rule].name);
       ZU.tip.bind(chip, '<b>Hausregel: ' + ZU.RULES[rule].name + '</b><p>' + ZU.RULES[rule].text + '</p>');
       rulesEl.appendChild(chip);
     });
+    if (this.duel.houseRules.length) rulesEl.appendChild(ZU.houseChip(this.duel.houseRules));
     var left = h('div', 'panel p-left', [
       h('div', 'kindtag k-' + e.kind, ZU.KIND_LABEL[e.kind]),
       this.portrait,
@@ -505,6 +506,36 @@
         if (ev.amount) this.popBank('+' + ev.amount + ' Bank');
         ZU.audio.burn();
         return wait(420);
+      case 'redeal':
+        fx.pop(a.x, a.y, 'Neu geben: ' + ev.amount + ' Karten', bad ? 'bad' : 'good');
+        ZU.audio.shuffle();
+        this.react(bad ? 'smug' : 'shocked');
+        return wait(450);
+      case 'again':
+        fx.pop(PILE.x, PILE.y - 100, ev.src === 'player' ? 'Noch einmal!' : 'Er ist noch einmal dran!', ev.src === 'player' ? 'good' : 'bad');
+        ZU.audio.chip();
+        return wait(380);
+      case 'stoke':
+        fx.pop(PILE.x, PILE.y - 100, 'Kette ×' + ev.amount, 'gold');
+        ZU.audio.ignite();
+        ZU.bg.flash(0.4);
+        return wait(420);
+      case 'blaze':
+        fx.pop(ANCHOR.player.x, ANCHOR.player.y, 'Stichflamme: ' + ev.amount + ' Karten doppelt', 'gold');
+        ZU.audio.ignite();
+        return wait(420);
+      case 'bank':
+        this.popBank('+' + ev.amount + ' Bank');
+        ZU.audio.coin(3);
+        return wait(400);
+      case 'cleanse':
+        fx.pop(a.x, a.y, 'Bann gebrochen!', ev.src === 'player' ? 'good' : 'bad');
+        ZU.audio.reflect();
+        return wait(420);
+      case 'life':
+        fx.pop(ANCHOR.player.x, ANCHOR.player.y, '+1 Streichholz beim Sieg', 'gold');
+        ZU.audio.match();
+        return wait(450);
       case 'swap-fizzle':
         fx.pop(PILE.x, PILE.y - 100, 'Tausch verpufft', 'small');
         return wait(350);
@@ -573,6 +604,12 @@
     return wait(330);
   };
 
+  /* Eine Hausregel greift sichtbar ein (etwa „Böses Omen" zu Beginn). */
+  DuelView.prototype.on_rule = function (ev) {
+    fx.pop(PILE.x, PILE.y - 110, ZU.RULES[ev.id].name + '!', 'bad small');
+    ZU.audio.curse();
+    return wait(380);
+  };
   DuelView.prototype.on_passive = function () {
     var text = this.duel.enemy.passiveText, colon = text.indexOf(':');
     this.react('smug');
@@ -676,6 +713,7 @@
     if (st.spy) this.oppStatus.appendChild(chip('Durchschaut ' + st.spy, 'good', 'Du siehst die Gegnerhand noch ' + st.spy + ' Züge.'));
     if (st.skip.player) this.meStatus.appendChild(chip('Aussetzen', 'bad', 'Du überspringst deinen nächsten Zug.'));
     if (st.curse.player) this.meStatus.appendChild(chip('Fluch ×' + st.curse.player, 'bad', 'Die nächsten ' + st.curse.player + ' Male, die du ziehst, ziehst du 1 Karte mehr.'));
+    if (st.blaze) this.meStatus.appendChild(chip('Stichflamme ' + st.blaze, 'gold', 'Deine nächsten ' + st.blaze + ' Karten bringen doppelte Glut.'));
     st.hodl.forEach(function (hodl) {
       this.meStatus.appendChild(chip('HODL ' + hodl.turns, 'gold', '+' + hodl.amount + ' Mark in die Bank in ' + hodl.turns + ' Zügen.'));
     }, this);
