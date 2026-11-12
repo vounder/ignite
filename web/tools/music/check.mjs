@@ -16,11 +16,11 @@ const box = { window: {} };
 box.globalThis = box.window;
 vm.createContext(box);
 vm.runInContext(readFileSync(join(here, 'engine.js'), 'utf8'), box);
-const all = readdirSync(join(here, 'scores')).filter((f) => f.endsWith('.js')).map((f) => f.slice(0, -3));
-const wanted = process.argv.slice(2).length ? process.argv.slice(2) : all;
+for (const f of readdirSync(join(here, 'scores')).filter((f) => f.endsWith('.js'))) vm.runInContext(readFileSync(join(here, 'scores', f), 'utf8'), box);
+const all = Object.keys(box.window.MU.scores), asked = process.argv.slice(2);
+const wanted = asked.length ? all.filter((n) => asked.some((a) => n === a || n.startsWith(a + '-'))) : all;
 let problems = 0;
 for (const piece of wanted) {
-  vm.runInContext(readFileSync(join(here, 'scores', piece + '.js'), 'utf8'), box);
   const score = box.window.MU.scores[piece]();
   const beats = score.bars * (score.beatsPerBar || 4);
   console.log(`${piece}: ${score.bars} Takte, ${score.bpm} BPM, ${(beats * 60 / score.bpm).toFixed(1)} s`);

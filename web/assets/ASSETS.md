@@ -200,7 +200,8 @@ gezeichneten Rahmen entsteht der Atlas (siehe unten).
   sowie der Hintergrund entstehen zur Laufzeit aus CSS, kleinen Bitmaps
   (`js/cards.js`) und einem WebGL-Shader (`js/bg.js`).
 - Alle Soundeffekte werden zur Laufzeit synthetisiert (`js/audio.js`).
-- Die Musik unter `audio/` (Menü, Spiel, Shop; MP3 mit 128 kbit/s) wird aus den
+- Die Musik unter `audio/` (Menü, Shop und je Casino ein Spielstück mit Boss-Stufe;
+  MP3 mit 128 kbit/s) wird aus den
   Partituren unter `tools/music/scores/` mit dem eigenen Synthesizer
   (`tools/music/`) gerechnet. Die Melodien stammen aus den ursprünglichen
   Projektstücken unter `godot/game/Assets/Audio/`; Harmonien, Tempo und Klang

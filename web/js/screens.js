@@ -1162,7 +1162,8 @@
   screens.select = function (game, root) {
     var run = game.run, s = run.s;
     ZU.bg.set('select');
-    ZU.audio.music('game');
+    ZU.audio.music(run.music(false));
+    ZU.audio.prepare(run.music(true)); // die Boss-Stufe wartet am Ende jedes Akts
     var bar = hud(game);
     var row = h('div', 'invites');
     s.encounters.forEach(function (enc, i) {

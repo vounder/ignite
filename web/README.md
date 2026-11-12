@@ -228,9 +228,19 @@ Die Werkzeuge liegen unter `tools/`:
 
 ### Musik
 
-Menü, Spiel und Shop haben je ein eigenes Stück unter `assets/audio/` (MP3,
-128 kbit/s, zusammen rund 6,5 MB). Die Stücke sind nahtlose Schleifen und
-entstehen vollständig aus dem Repo:
+Menü und Shop haben je ein eigenes Stück, das Spiel eines je Casino – unter
+`assets/audio/` (MP3, 128 kbit/s; geladen wird nur, was gerade spielt). Alle
+sind nahtlose Schleifen und entstehen vollständig aus dem Repo.
+
+Die Spielmusik ist ein einziges Stück in acht Gewändern (`game-<casino>.mp3`):
+gleiche Melodien und Harmonien, aber je Haus eigene Tonart, eigenes Tempo,
+Schlagwerk und Klangfarben – Tanzkapelle im Rialto, Boom-Bap in Block 9,
+Uhrwerk in der Spielbank und so weiter (siehe `CASINOS` in
+`tools/music/scores/game.js`). Zu jedem Haus gibt es die Boss-Stufe
+(`game-<casino>-boss.mp3`): gleich lang, gleiches Tempo, aber dichter und
+etwas lauter. Beim Boss wechselt `js/audio.js` an Ort und Stelle dorthin: Die
+neue Spur steigt stumm an der Stelle ein, an der die alte gerade spielt, und
+beide blenden kurz über.
 
 - `tools/music/scores/*.js` – die Partituren: Akkordfolge, Melodie, Begleitung
   und Mischung je Stück. Die Melodien stammen aus den ursprünglichen Stücken
@@ -239,14 +249,15 @@ entstehen vollständig aus dem Repo:
 - `tools/music/engine.js` – der Synthesizer auf WebAudio (Flächen, E-Piano,
   Melodiestimme, Bass, Zupfer, Vibraphon, Schlagzeug, Hall, Echo, Bandleiern).
 - `tools/music/render.mjs` – rechnet die Partituren in einem Chromium ohne
-  Fenster und kodiert sie mit ffmpeg auf −16 LUFS.
+  Fenster und kodiert sie mit ffmpeg auf −16 LUFS (Boss-Stufen −15).
 - `tools/music/check.mjs` – prüft die Partituren ohne zu rechnen (Länge,
   Tonumfang, Reibungen zwischen Melodie und Begleitung).
 
 ```bash
 node web/tools/music/check.mjs
 node web/tools/music/render.mjs            # alle Stücke → assets/audio/*.mp3
-node web/tools/music/render.mjs --stems game   # dazu Einzelspuren als WAV nach tools/music/out/
+node web/tools/music/render.mjs game-rialto  # ein Haus samt Boss-Stufe
+node web/tools/music/render.mjs --stems --exact game-hahn   # dazu Einzelspuren als WAV nach tools/music/out/
 ```
 
 Braucht Node, Playwright (mit Chromium) und ffmpeg. Danach

@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 /* Zündung – rechnet die Musik aus den Partituren unter scores/ und kodiert sie als MP3.
 
-   node web/tools/music/render.mjs [--out <Ordner>] [--stems] [--no-mp3] [Stück ...]
+   node web/tools/music/render.mjs [--out <Ordner>] [--stems] [--no-mp3] [--exact] [Stück ...]
 
-   Ohne Stücknamen werden alle Partituren gerechnet. Die WAV-Dateien (und mit --stems die Einzelspuren)
+   Ohne Stücknamen werden alle Partituren gerechnet. Ein Name wählt auch alle Stücke, die so beginnen:
+   "game-rialto" rechnet die ruhige Fassung und die Boss-Stufe, "game" alle Häuser (--exact schaltet das ab). Die WAV-Dateien (und mit --stems die Einzelspuren)
    landen im Ausgabeordner (Standard: web/tools/music/out, nicht eingecheckt), die fertigen MP3 unter
    web/assets/audio/. Braucht Playwright mit Chromium sowie ffmpeg. */
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -14,7 +15,7 @@ import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const web = resolve(here, '..', '..');
-const LUFS = -16;          // Ziel-Lautheit, wie die bisherigen Stücke
+const LUFS = -16;          // Ziel-Lautheit, wenn die Partitur keine eigene nennt (lufs)
 const PEAK = 0.84;         // Spitzenbegrenzung (rund −1,5 dB)
 const MP3_KBPS = 128;
 
@@ -22,9 +23,8 @@ const args = process.argv.slice(2);
 function flag(name) { const i = args.indexOf(name); if (i < 0) return false; args.splice(i, 1); return true; }
 function option(name, fallback) { const i = args.indexOf(name); if (i < 0) return fallback; return args.splice(i, 2)[1]; }
 const outDir = resolve(option('--out', join(here, 'out')));
-const stems = flag('--stems'), noMp3 = flag('--no-mp3');
-const all = readdirSync(join(here, 'scores')).filter((f) => f.endsWith('.js')).map((f) => f.slice(0, -3));
-const names = args.length ? args : all;
+const stems = flag('--stems'), noMp3 = flag('--no-mp3'), exact = flag('--exact');
+const files = readdirSync(join(here, 'scores')).filter((f) => f.endsWith('.js'));
 mkdirSync(outDir, { recursive: true });
 
 function wav(file, left, right, sampleRate) {
@@ -53,15 +53,18 @@ try { ({ chromium } = require('playwright')); } catch (e) {
 
 const browser = await chromium.launch();
 try {
+  const page = await browser.newPage();
+  page.on('console', (msg) => console.log('  [seite]', msg.text()));
+  page.on('pageerror', (err) => console.error('  [fehler]', err.message));
+  await page.addScriptTag({ content: readFileSync(join(here, 'engine.js'), 'utf8') });
+  for (const f of files) await page.addScriptTag({ content: readFileSync(join(here, 'scores', f), 'utf8') });
+  const all = await page.evaluate(() => Object.keys(window.MU.scores));
+  const names = args.length ? all.filter((n) => args.some((a) => n === a || (!exact && n.startsWith(a + '-')))) : all;
+  if (!names.length) { console.error('Kein Stück gefunden. Es gibt: ' + all.join(', ')); process.exitCode = 1; }
   for (const name of names) {
-    const page = await browser.newPage();
-    page.on('console', (msg) => console.log('  [seite]', msg.text()));
-    page.on('pageerror', (err) => console.error('  [fehler]', err.message));
-    await page.addScriptTag({ content: readFileSync(join(here, 'engine.js'), 'utf8') });
-    await page.addScriptTag({ content: readFileSync(join(here, 'scores', name + '.js'), 'utf8') });
     const info = await page.evaluate((n) => {
       const s = window.MU.scores[n]();
-      return { bars: s.bars, bpm: s.bpm, tracks: s.tracks.map((t) => t.name) };
+      return { bars: s.bars, bpm: s.bpm, lufs: s.lufs, tracks: s.tracks.map((t) => t.name) };
     }, name);
     const jobs = [{ label: name, only: null }];
     if (stems) info.tracks.forEach((t) => jobs.push({ label: name + '.' + t, only: [t] }));
@@ -92,7 +95,7 @@ try {
       const lufs = measure(file);
       console.log(`${job.label}: ${meta.seconds.toFixed(2)} s, ${info.bars} Takte bei ${info.bpm} BPM, ${lufs} LUFS (${((Date.now() - started) / 1000).toFixed(1)} s Rechenzeit)`);
       if (!job.only && !noMp3) {
-        const gain = LUFS - lufs;
+        const gain = (info.lufs == null ? LUFS : info.lufs) - lufs;
         const target = join(web, 'assets', 'audio', name + '.mp3');
         execFileSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-i', file,
           '-af', `volume=${gain.toFixed(2)}dB,alimiter=limit=${PEAK}:level=false:attack=3:release=60`,
@@ -100,8 +103,8 @@ try {
         console.log(`  → ${target} (${gain >= 0 ? '+' : ''}${gain.toFixed(1)} dB, ${measure(target)} LUFS)`);
       }
     }
-    await page.close();
   }
+  await page.close();
 } finally {
   await browser.close();
 }
