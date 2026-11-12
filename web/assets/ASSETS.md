@@ -219,11 +219,12 @@ Quellen und Prompts: `/data/ignite/art/kniffe/` (`build_kniffe.py`).
 
 ### Stimmen (`voices/voices.mp3`)
 
-Ein Stück mit 260 kurzen Rufen (52 je Grundstimme: Mann, lallend, flüsternd, Frau, Frau hell; die Frauenstimmen sind
-Kerstin um 2,5 bzw. 5 Halbtöne angehoben), erzeugt mit Piper aus Stimmen,
-deren Datensätze gemeinfrei sind (Thorsten, Thorsten emotional, Kerstin; CC0). Skript: `tools/make_voices.py`
-(Arbeitsordner `/data/ignite/voice/`), es schreibt auch die Zeitmarken für `ZU.VOICE_CLIPS` in `js/data.js`.
-Tonhöhe je Figur (`ZU.VOICES`) und die Funkgerät-Verzerrung entstehen erst beim Abspielen (`js/audio.js`).
+Ein Stück mit 215 kurzen, gespielten Lauten (43 je Sprecher: drei Männer, zwei Frauen) aus dem
+„Super Dialogue Audio Pack v1" von Dillon Becker (dillonbecker.com), **CC BY 4.0 – Namensnennung nötig**; sie steht in
+den Einstellungen und unter „Lizenzen". Ausgewählt sind nur wortlose und sprachneutrale Aufnahmen (Lachen, Stöhnen,
+„Hey", „Hm?", Keuchen). Skript: `tools/make_voices.py` (Paket entpackt unter `/data/ignite/voice/packs/sdap/`), es
+schneidet, pegelt und schreibt die Zeitmarken für `ZU.VOICE_CLIPS` in `js/data.js`. Tonhöhe je Figur (`ZU.VOICES`) und
+die Funkgerät-Verzerrung entstehen erst beim Abspielen (`js/audio.js`).
 
 ### Eigene Figur (`avatar/`)
 
