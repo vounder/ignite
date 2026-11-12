@@ -48,6 +48,7 @@
       ZU.audio.setSfx(s.sfx);
       ZU.audio.setMusic(s.music);
       document.getElementById('crt').classList.toggle('off', !s.crt);
+      ZU.bg.setEnabled(s.bg);
     },
     /* Speichert Einstellungen, ohne zwischenzeitlich geänderte Statistik oder Meta-Fortschritt zu überschreiben. */
     saveProfile: function () {

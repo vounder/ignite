@@ -103,13 +103,14 @@
   ZU.deckModal = deckModal;
 
   function helpModal() {
+    var touch = ZU.app.isTouch();
     var entry = ZU.modal.open([
       h('h2', null, 'So wird gezündet'),
       h('div', 'help', null, {
         html:
           '<div><h3>Das Duell</h3>' +
           '<p>Mau-Mau gegen den Dealer: Lege eine Karte mit <b>gleicher Farbe</b> oder <b>gleichem Wert</b> auf den Stapel. Wer zuerst keine Karten mehr hat, gewinnt.</p>' +
-          '<p>Ein <b>Klick</b> auf eine passende Handkarte spielt sie sofort.</p>' +
+          '<p>Ein <b>' + (touch ? 'Tipp' : 'Klick') + '</b> auf eine passende Handkarte spielt sie sofort.</p>' +
           '<p><b>Mehrfachwahl:</b> Mit dem Privileg „Flinke Finger“ legst du mehrere Karten mit gleichem Wert in einem Zug. Der Schalter dafür erscheint rechts am Tisch.</p>' +
           '<p><b>Die 7:</b> Der Gegner zieht 2 Karten und setzt aus.</p>' +
           '<p><b>Spezialkarten</b> sind gebunden: an ein Symbol, an Rot oder Schwarz – oder gar nicht (Joker). Sie passen nur auf ihre Symbole und geben sie danach vor. Je weiter der Run, desto freier die Karten.</p>' +
@@ -125,7 +126,8 @@
           '<p>Dein <b>Deck</b> bestimmt deine Starthand: Du ziehst zu Beginn 7 Karten daraus.</p>' +
           '<p>Eine Niederlage kostet ein <b>Streichholz</b>. Sind alle abgebrannt, endet der Run.</p>' +
           '<p>Jeder Run bringt <b>Asche</b>. Im <b>Hinterzimmer</b> schaltest du damit neue Schachteln, Trinkets, Spezialkarten und Upgrades frei.</p>' +
-          '<p class="dim">Tasten: 1–9 spielt Karten · Leertaste zieht · Enter legt die Auswahl · Esc Menü</p></div>'
+          (touch ? '<p class="dim">Was tut das? Trinkets und Anzeigen antippen. Karten, Knöpfe und Angebote dafür gedrückt halten.</p></div>'
+            : '<p class="dim">Tasten: 1–9 spielt Karten · Leertaste zieht · Enter legt die Auswahl · Esc Menü</p></div>')
       }),
       h('div', 'btnrow', [btn('Alles klar', 'ember', function () { ZU.modal.close(entry); })])
     ], { cls: 'wide' });
@@ -156,19 +158,24 @@
       });
       speeds.appendChild(b);
     });
-    var crt = btn(settings.crt ? 'An' : 'Aus', 'small' + (settings.crt ? ' on' : ''), function () {
-      settings.crt = !settings.crt;
-      crt.textContent = settings.crt ? 'An' : 'Aus';
-      crt.classList.toggle('on', settings.crt);
-      game.applySettings();
-      game.saveProfile();
-    });
+    /* Schalter An/Aus für eine Einstellung mit Wahrheitswert. */
+    function onOff(key) {
+      var b = btn(settings[key] ? 'An' : 'Aus', 'small' + (settings[key] ? ' on' : ''), function () {
+        settings[key] = !settings[key];
+        b.textContent = settings[key] ? 'An' : 'Aus';
+        b.classList.toggle('on', settings[key]);
+        game.applySettings();
+        game.saveProfile();
+      });
+      return b;
+    }
     var rows = [
       h('h2', null, inRun ? 'Pause' : 'Einstellungen'),
       slider('Musik', 'music', function (v) { ZU.audio.setMusic(v); }),
       slider('Effekte', 'sfx', function (v) { ZU.audio.setSfx(v); }),
       h('div', 'setrow', [h('span', null, 'Tempo'), speeds]),
-      h('div', 'setrow', [h('span', null, 'Röhren-Filter'), crt]),
+      h('div', 'setrow', [h('span', null, 'Röhren-Filter'), onOff('crt')]),
+      h('div', 'setrow', [h('span', null, 'Hintergrund'), onOff('bg')]),
       app.canFullscreen() ? h('div', 'setrow', [h('span', null, 'Vollbild'), btn('Umschalten', 'small', function () { app.toggleFullscreen(); })]) : null
     ];
     // Auf Handy und Tablet: ob beim Start nach dem Vollbild gefragt wird (im Browser, nicht in der installierten App).
@@ -216,7 +223,7 @@
     }
     rows.push(h('div', 'btnrow', buttons));
     rows.push(h('div', 'legalrow', [linkBtn('Rechtliches', legalMenu)]));
-    entry = ZU.modal.open(rows, { cls: 'small settings' });
+    entry = ZU.modal.open(rows, { cls: 'small settings' + (inRun ? ' pause' : '') });
     return entry;
   }
   ZU.settingsModal = settingsModal;
@@ -460,8 +467,20 @@
         lives.innerHTML = '';
         for (var l = 0; l < run.maxLives(); l++) lives.appendChild(ZU.iconEl(l < s.lives ? 'match' : 'matchOut', 'match'));
         ZU.fillOwned(slots, run, opts.onTrinket || null);
+        requestAnimationFrame(edges);
       }
     };
+    /* Blendet die Ränder der Trinket-Leiste aus, solange dort noch etwas verborgen ist. */
+    function edges() {
+      slots.classList.toggle('more-l', slots.scrollLeft > 2);
+      slots.classList.toggle('more-r', slots.scrollLeft + slots.clientWidth < slots.scrollWidth - 2);
+    }
+    slots.addEventListener('scroll', edges);
+    slots.addEventListener('wheel', function (ev) {
+      if (slots.scrollWidth <= slots.clientWidth) return;
+      slots.scrollLeft += ev.deltaY || ev.deltaX;
+      ev.preventDefault();
+    }, { passive: false });
     api.update();
     return api;
   }
