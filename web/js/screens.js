@@ -815,7 +815,7 @@
     var parts = key.split(':'), kind = parts[0], id = parts[1];
     if (kind === 'trinket') return { visual: ZU.trinketEl(id), name: ZU.TRINKETS[id].name, kind: 'Trinket', text: ZU.TRINKETS[id].text };
     if (kind === 'special') return { visual: ZU.cardStatic(ZU.CARDS[id], { cls: 'mini', bind: 'none', noTip: true }), name: ZU.CARDS[id].name, kind: 'Spezialkarte', text: ZU.CARDS[id].text };
-    if (kind === 'upgrade') return { visual: h('div', 'un-badge', '▲'), name: ZU.Meta.UPGRADES[id].name, kind: 'Upgrade', text: ZU.Meta.UPGRADES[id].text };
+    if (kind === 'upgrade') return { visual: ZU.upgradeEl(id), name: ZU.Meta.UPGRADES[id].name, kind: 'Upgrade', text: ZU.Meta.UPGRADES[id].text };
     if (kind === 'casino') return { visual: h('div', 'un-badge', ZU.roman(Number(id) + 1)), name: ZU.CASINOS[id].name, kind: 'Casino', text: ZU.CASINOS[id].sub + '. ' + casinoFacts(ZU.CASINOS[id]) + '.', open: true };
     var starter = ZU.STARTERS.filter(function (s) { return s.id === id; })[0];
     var box = h('div', 'br-box');
@@ -946,6 +946,7 @@
         var up = ZU.Meta.UPGRADES[id], level = ZU.Meta.level(meta, id), price = ZU.Meta.upgradeCost(meta, id);
         if (!ZU.Meta.isFound(meta, 'upgrade', id)) {
           return h('div', 'br-row hidden', [
+            ZU.upgradeEl(id),
             h('div', 'br-rowmain', [h('div', 'br-rowname', '?????'), h('p', null, ZU.Meta.hint(meta, 'upgrade', id) || '?????')])
           ]);
         }
@@ -953,6 +954,7 @@
         var pips = h('div', 'br-pips');
         up.costs.forEach(function (cost, index) { pips.appendChild(h('i', index < level ? 'on' : '')); });
         return h('div', 'br-row' + (price == null ? ' done' : '') + (isNew ? ' fresh' : ''), [
+          ZU.upgradeEl(id),
           h('div', 'br-rowmain', [h('div', 'br-rowname', [up.name, isNew ? h('i', 'newtag inline', 'Neu') : null]), h('p', null, up.text)]),
           pips,
           price == null ? h('div', 'br-open', 'Ausgebaut') : ashBtn(price, meta, function () { return ZU.Meta.upgrade(id); })
