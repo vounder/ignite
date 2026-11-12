@@ -2,6 +2,7 @@
    prüft dabei Invarianten (Kartenerhaltung, keine Endlosschleifen, gültige Zustände).
    Aufruf: node web/tests/sim.js [Anzahl Runs] */
 require('../js/data.js');
+require('../js/lore.js');
 require('../js/engine.js');
 require('../js/run.js');
 require('../js/meta.js');
@@ -315,6 +316,13 @@ ZU.STARTERS.forEach(starter => {
   assert.notStrictEqual(run.s.perkOffer.id, 'nimble-fingers', 'das Privileg wird nicht noch einmal angeboten');
   assert.strictEqual(ZU.Run.start('igniter', 12, ZU.Meta.runOptions(ZU.Meta.clean(meta))).s.perks.filter(id => id === 'nimble-fingers').length, 1);
 }
+
+// Akten: jede Figur hat genau drei Einträge, und die Schwellen steigen.
+Object.keys(ZU.ENEMIES).forEach(id => {
+  assert.ok(Array.isArray(ZU.LORE[id]) && ZU.LORE[id].length === 3 && ZU.LORE[id].every(text => typeof text === 'string' && text.length > 60), 'Akte fehlt oder ist zu kurz: ' + id);
+});
+assert.deepStrictEqual(Object.keys(ZU.LORE).sort(), Object.keys(ZU.ENEMIES).sort(), 'Akte ohne Figur');
+Object.values(ZU.LORE_STEPS).forEach(steps => assert.ok(steps.length === 3 && steps[0] === 1 && steps[0] < steps[1] && steps[1] < steps[2]));
 
 // Die 7 lässt nur noch 1 Karte ziehen und niemanden aussetzen.
 assert.deepStrictEqual(ZU.CARDS['hearts-7'].effects, [{ type: 'draw', amount: 1, reflectable: true }]);

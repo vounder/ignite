@@ -151,6 +151,13 @@
 
   /* Füllt eine Leiste mit allem, was der Spieler trägt: erst Privilegien, dann Trinkets.
      Je mehr es sind, desto kleiner werden die Symbole. Liefert die Elemente nach Kennung. */
+  /* Symbol eines dauerhaften Upgrades (assets/upgrades/<id>.png), im Rahmen der Privilegien. */
+  ZU.upgradeEl = function (id) {
+    var img = h('i', 'tk-img');
+    img.style.backgroundImage = 'url(' + ZU.asset('upgrades/' + id + '.png') + ')';
+    return h('div', 'trinket upgrade', [img]);
+  };
+
   /* Schild „Hausordnung": fasst die festen Regeln eines Casinos zusammen; Antippen oder Überfahren zeigt sie alle. */
   ZU.houseChip = function (rules) {
     var chip = h('div', 'rulechip house', 'Hausordnung · ' + rules.length);
@@ -252,6 +259,7 @@
     ZU.PERK_IDS.forEach(function (id) { urls.push(ZU.asset('perks/' + id + '.png')); });
     ZU.SPECIAL_IDS.forEach(function (id) { urls.push(ZU.asset('special/' + id + '.png')); });
     (ZU.CASINO_ART || []).forEach(function (path) { urls.push(ZU.asset(path)); });
+    ZU.Meta.UPGRADE_IDS.forEach(function (id) { urls.push(ZU.asset('upgrades/' + id + '.png')); });
     ZU.BOSS_ACTS.forEach(function (act, index) {
       if (index === 0) ZU.BATTLE_POOL.concat(ZU.ELITE_POOL).forEach(function (id) { urls.push(ZU.asset('enemies/' + id + '.png')); });
       act.forEach(function (id) { urls.push(ZU.asset('enemies/' + id + '.png')); });

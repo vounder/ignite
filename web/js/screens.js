@@ -815,7 +815,7 @@
     var parts = key.split(':'), kind = parts[0], id = parts[1];
     if (kind === 'trinket') return { visual: ZU.trinketEl(id), name: ZU.TRINKETS[id].name, kind: 'Trinket', text: ZU.TRINKETS[id].text };
     if (kind === 'special') return { visual: ZU.cardStatic(ZU.CARDS[id], { cls: 'mini', bind: 'none', noTip: true }), name: ZU.CARDS[id].name, kind: 'Spezialkarte', text: ZU.CARDS[id].text };
-    if (kind === 'upgrade') return { visual: h('div', 'un-badge', '▲'), name: ZU.Meta.UPGRADES[id].name, kind: 'Upgrade', text: ZU.Meta.UPGRADES[id].text };
+    if (kind === 'upgrade') return { visual: ZU.upgradeEl(id), name: ZU.Meta.UPGRADES[id].name, kind: 'Upgrade', text: ZU.Meta.UPGRADES[id].text };
     if (kind === 'casino') return { visual: h('div', 'un-badge', ZU.roman(Number(id) + 1)), name: ZU.CASINOS[id].name, kind: 'Casino', text: ZU.CASINOS[id].sub + '. ' + casinoFacts(ZU.CASINOS[id]) + '.', open: true };
     var starter = ZU.STARTERS.filter(function (s) { return s.id === id; })[0];
     var box = h('div', 'br-box');
@@ -946,6 +946,7 @@
         var up = ZU.Meta.UPGRADES[id], level = ZU.Meta.level(meta, id), price = ZU.Meta.upgradeCost(meta, id);
         if (!ZU.Meta.isFound(meta, 'upgrade', id)) {
           return h('div', 'br-row hidden', [
+            ZU.upgradeEl(id),
             h('div', 'br-rowmain', [h('div', 'br-rowname', '?????'), h('p', null, ZU.Meta.hint(meta, 'upgrade', id) || '?????')])
           ]);
         }
@@ -953,6 +954,7 @@
         var pips = h('div', 'br-pips');
         up.costs.forEach(function (cost, index) { pips.appendChild(h('i', index < level ? 'on' : '')); });
         return h('div', 'br-row' + (price == null ? ' done' : '') + (isNew ? ' fresh' : ''), [
+          ZU.upgradeEl(id),
           h('div', 'br-rowmain', [h('div', 'br-rowname', [up.name, isNew ? h('i', 'newtag inline', 'Neu') : null]), h('p', null, up.text)]),
           pips,
           price == null ? h('div', 'br-open', 'Ausgebaut') : ashBtn(price, meta, function () { return ZU.Meta.upgrade(id); })
@@ -983,6 +985,37 @@
       content.appendChild(h('div', 'br-section', [h('div', 'br-title', 'Casinos'), h('div', 'br-list', rows)]));
     }
 
+    /* Wie viele der drei Akteneinträge einer Figur bei so vielen Siegen zu lesen sind. */
+    function loreOpen(id, count) {
+      return ZU.LORE_STEPS[ZU.ENEMIES[id].kind].filter(function (need) { return count >= need; }).length;
+    }
+    /* Akte einer Figur: Porträt, Eigenheit und ihre Geschichte – so weit, wie man sie schon geschlagen hat. */
+    function dossier(id, count) {
+      var enemy = ZU.ENEMIES[id], steps = ZU.LORE_STEPS[enemy.kind], entry;
+      var home = enemy.casino ? ZU.CASINOS[enemy.casino].name : 'in jedem Haus';
+      var pages = ZU.LORE[id].map(function (text, index) {
+        var open = count >= steps[index], missing = steps[index] - count;
+        return h('div', 'lore-page' + (open ? '' : ' locked'), [
+          h('div', 'lore-no', ZU.roman(index + 1)),
+          h('p', null, open ? text : '?????'),
+          open ? null : h('div', 'lore-need', 'Noch ' + missing + (missing === 1 ? ' Sieg' : ' Siege') + ' über ' + enemy.name)
+        ]);
+      });
+      entry = ZU.modal.open([
+        h('div', 'lore-head', [
+          ZU.portraitEl(id, 'big'),
+          h('div', 'lore-who', [
+            h('h2', null, enemy.name),
+            h('div', 'lore-role', enemy.role + ' · ' + ZU.KIND_LABEL[enemy.kind] + ' · ' + home),
+            h('p', 'lore-passive', enemy.passiveText),
+            h('div', 'lore-count', count + '× besiegt')
+          ])
+        ]),
+        h('div', 'lore-pages', pages),
+        h('div', 'btnrow', [btn('Akte schließen', 'felt', function () { ZU.modal.close(entry); })])
+      ], { cls: 'wide dossier' });
+    }
+
     function renderFile(meta) {
       var kinds = [['battle', 'Tische'], ['elite', 'Elite'], ['boss', 'Bosse']];
       kinds.forEach(function (kind) {
@@ -990,11 +1023,15 @@
           var enemy = ZU.ENEMIES[id], count = meta.defeated[id] || 0;
           var portrait = ZU.portraitEl(id, 'small');
           if (!count) portrait.classList.add('unknown');
-          return h('div', 'br-tile file' + (count ? ' open' : ' closed'), [
+          var pages = loreOpen(id, count);
+          var el = h('div', 'br-tile file' + (count ? ' open known' : ' closed'), [
             portrait,
             h('div', 'br-name', count ? enemy.name : '???'),
-            h('div', 'br-open', count ? count + '× besiegt' : enemy.role)
+            h('div', 'br-open', count ? count + '× besiegt' : enemy.role),
+            count ? h('div', 'br-lore', 'Akte ' + pages + '/3') : null
           ]);
+          if (count) el.addEventListener('click', function () { ZU.audio.click(); dossier(id, count); });
+          return el;
         });
         section(kind[1], tiles);
       });

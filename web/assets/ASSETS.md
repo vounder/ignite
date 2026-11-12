@@ -107,6 +107,9 @@ Hexenbrett, Kartenhai, Paschkönig, Dietrich, Generalschlüssel, Schwarze Serie,
 Karoschliff, Nachbrenner, Glutofen, Goldzahn, Zinseszins, Kellerschlüssel,
 Kurze Lunte, Falschgeld, Stempelkarte.
 
+Upgrades (`upgrades/`, 13 Stück, 12.11.2026): je ein Symbol für die dauerhaften Upgrades im Hinterzimmer,
+erzeugt wie die Trinkets (Bögen auf Chroma-Grün, Skripte unter `/data/ignite/art/upgrades/`).
+
 Privilegien: Flinke Finger (behandschuhte Hand mit Kartenfächer), Großes Regal,
 Vitrine, Stammplatz, Schleifer, Glockenrecht, Aschekasten, Zündholzbrief.
 
