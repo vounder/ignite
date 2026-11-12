@@ -198,9 +198,9 @@
     var source = h('a', null, 'dillonbecker.com', { href: 'https://dillonbecker.com', target: '_blank', rel: 'noopener' });
     return [
       h('div', 'cred-studio', 'Ein Spiel von Vounder Studios'),
-      block('Idee, Spieldesign und Leitung', 'Vounder'),
+      block('Idee, Spieldesign und Leitung', 'Finn Jauns'),
       block('Programmierung, Regelwerk und Balance', 'Klaudia Antrup'),
-      block('Texte, Figuren und Geschichten', 'Klaudia Antrup', 'nach Ideen von Vounder'),
+      block('Texte, Figuren und Geschichten', 'Klaudia Antrup', 'nach Ideen von Finn Jauns'),
       block('Musik und Klangeffekte', 'Klaudia Antrup'),
       block('Illustration: Figuren, Karten, Räume und Symbole', 'Codelius Schatt'),
       block('Bildregie und Aufbereitung', 'Klaudia Antrup'),
