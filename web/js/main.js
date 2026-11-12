@@ -135,7 +135,7 @@
       if (name === 'duel') {
         var enc = this.run.encounter();
         ZU.bg.set(enc.kind);
-        ZU.audio.music('game');
+        ZU.audio.music(this.run.music(enc.kind === 'boss'));
         if (enc.kind === 'boss') ZU.audio.boss();
         var duel = this.run.newDuel();
         this.view = new ZU.DuelView(this, this.run, duel);

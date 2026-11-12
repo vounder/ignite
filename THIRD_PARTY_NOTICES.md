@@ -28,8 +28,12 @@
 
 - Keine Laufzeit-Abhängigkeiten: reines HTML, CSS und JavaScript. Auch der
   Server unter `server/` nutzt nur Bordmittel von Node.js.
-- Spezialkarten-Illustrationen, Logo und Musik stammen aus den
-  oben genannten Projekt-Assets und wurden nur verkleinert bzw. heruntergerechnet.
+- Spezialkarten-Illustrationen und Logo stammen aus den
+  oben genannten Projekt-Assets und wurden nur verkleinert.
+- Die Musik unter `web/assets/audio/` wird mit dem eigenen Synthesizer unter
+  `web/tools/music/` aus Partituren im Repo gerechnet. Ihre Melodien stammen
+  aus den oben genannten Musikstücken des Projekts; fremde Samples,
+  Soundfonts oder Aufnahmen sind nicht enthalten.
 - Die Gegner-Sprites unter `web/assets/enemies/`, Manfreds Posen unter
   `web/assets/manfred/` und die Trinket-Icons unter
   `web/assets/trinkets/` wurden mit OpenAI Image Generation (über die Codex-CLI)

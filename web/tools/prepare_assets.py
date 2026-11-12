@@ -1,7 +1,7 @@
 """Bereitet die Assets der Browser-Version aus den Godot-Quellen auf.
 
 Aufruf (aus dem Repo-Wurzelverzeichnis):
-    python web/tools/prepare_assets.py [--audio] [--generated <Ordner>] [--sheets <Ordner>] [--manfred <Ordner>] [--optimize] [--icons <Ordner> <Zielordner>] [--title <Bild>]
+    python web/tools/prepare_assets.py [--generated <Ordner>] [--sheets <Ordner>] [--manfred <Ordner>] [--optimize] [--icons <Ordner> <Zielordner>] [--title <Bild>]
 
 - Spezialkarten und Logo werden verkleinert nach web/assets kopiert.
   (Der Pixel-Font entsteht separat mit web/tools/make_font.py.)
@@ -11,17 +11,14 @@ Aufruf (aus dem Repo-Wurzelverzeichnis):
   wuetend, geschockt, geschlagen) in deckungsgleiche Sprite-Streifen zerlegt.
 - Mit --manfred <Ordner> werden Manfreds zwei Posen-Sheets (manfred-a.png, manfred-b.png) zu
   einem Streifen aus zwoelf Posen zusammengesetzt.
-- Mit --audio wird die Musik als MP3 kodiert (braucht das Paket lameenc).
 - Mit --optimize werden alle PNGs unter web/assets auf Farbpalette umgerechnet.
 """
 import sys
-import wave
 from pathlib import Path
 
 from PIL import Image, ImageChops, ImageStat
 
 ROOT = Path(__file__).resolve().parents[2]
-MP3_KBPS = 112
 SRC = ROOT / "godot" / "game" / "Assets"
 DST = ROOT / "web" / "assets"
 
@@ -254,30 +251,6 @@ def title(source):
     print("  title", target.stat().st_size // 1024, "KB")
 
 
-def audio():
-    """Wandelt die Musik in MP3 um (braucht das Paket "lameenc": pip install lameenc)."""
-    import lameenc
-
-    (DST / "audio").mkdir(parents=True, exist_ok=True)
-    for name in ("menu", "game", "shop"):
-        with wave.open(str(SRC / "Audio" / f"{name}.wav")) as source:
-            channels, rate, width = source.getnchannels(), source.getframerate(), source.getsampwidth()
-            if width != 2:
-                raise SystemExit(f"{name}.wav: nur 16 Bit wird unterstuetzt")
-            pcm = source.readframes(source.getnframes())
-        encoder = lameenc.Encoder()
-        encoder.set_bit_rate(MP3_KBPS)
-        encoder.set_in_sample_rate(rate)
-        encoder.set_channels(channels)
-        encoder.set_quality(2)
-        data = encoder.encode(pcm) + encoder.flush()
-        (DST / "audio" / f"{name}.mp3").write_bytes(bytes(data))
-        old = DST / "audio" / f"{name}.wav"
-        if old.exists():
-            old.unlink()
-        print("  audio", name, len(data) // 1024, "KB")
-
-
 if __name__ == "__main__":
     if "--title" in sys.argv:  # nur die Kulisse des Titelbildschirms
         title(sys.argv[sys.argv.index("--title") + 1])
@@ -296,7 +269,5 @@ if __name__ == "__main__":
     if "--sheets" in sys.argv:
         sheets(sys.argv[sys.argv.index("--sheets") + 1])
         print("sheets ok")
-    if "--audio" in sys.argv:
-        audio()
     if "--optimize" in sys.argv:
         optimize()

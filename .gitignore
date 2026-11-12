@@ -30,3 +30,6 @@ output.md
 # Browser-Version: Serverdaten und lokale Konfiguration
 server/data/
 server/.env
+
+# Musikwerkzeug: gerechnete WAV-Dateien und Einzelspuren
+web/tools/music/out/

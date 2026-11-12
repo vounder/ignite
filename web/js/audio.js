@@ -121,27 +121,83 @@
     },
     boss: function () { tone(73, 0.9, 'sawtooth', 0.16, 0, 55); tone(110, 0.9, 'square', 0.07, 0.05, 82); },
 
-    /* Musik: eine Schleife je Szene, weich überblendet. */
+    /* Musik: eine Schleife je Szene, weich überblendet. Jedes Casino hat sein Stück in zwei Stufen
+       ("game-<casino>" und "game-<casino>-boss"), der Laden eine Fassung für Esmes Nebenzimmer ("shop-esme");
+       innerhalb eines solchen Paars wird an Ort und Stelle gewechselt. */
     music: function (name) {
       wanted = name;
       if (!unlocked) return;
       if (current === name) return;
       var previous = current;
       current = name;
-      if (previous && tracks[previous]) fade(tracks[previous], 0);
-      if (!name) return;
-      var track = tracks[name];
-      if (!track) {
-        var el = new Audio(ZU.asset('audio/' + name + '.mp3'));
-        el.loop = true;
-        el.preload = 'auto';
-        el.volume = 0;
-        track = tracks[name] = { el: el, fade: 0, timer: null };
+      if (handover) { // ein Wechsel lief noch: abbrechen, beide Spuren werden unten neu einsortiert
+        var open = handover;
+        stopHandover();
+        [open.track, open.from].forEach(function (t) { if (t !== tracks[name]) fade(t, 0); });
       }
+      var old = previous && tracks[previous];
+      var stay = old && name && family(previous) === family(name) && !hidden && !old.el.paused && old.fade > 0.5;
+      if (old && !stay) fade(old, 0);
+      if (!name) return;
+      var track = load(name);
       if (hidden) return; // spielt los, sobald die Seite wieder zu sehen ist
-      start(track);
-    }
+      if (stay) handOver(name, previous); else start(track);
+    },
+    /* Lädt ein Stück schon einmal, damit der Wechsel dorthin nicht warten muss. */
+    prepare: function (name) { if (unlocked && name) load(name); }
   };
+
+  function load(name) {
+    var track = tracks[name];
+    if (!track) {
+      var el = new Audio(ZU.asset('audio/' + name + '.mp3'));
+      el.loop = true;
+      el.preload = 'auto';
+      el.volume = 0;
+      track = tracks[name] = { el: el, fade: 0, timer: null };
+    }
+    return track;
+  }
+
+  function family(name) { return name.replace(/-(boss|esme)$/, ''); }
+
+  /* Wechsel zwischen den Stufen eines Stücks (beide sind gleich lang und laufen im selben Tempo): Die neue
+     Spur steigt stumm an der Stelle ein, an der die alte gerade spielt, und wird nachgeführt, bis beide
+     gleichauf sind. Erst dann blenden sie kurz über – die Musik läuft dabei einfach weiter. */
+  var handover = null;
+  function stopHandover() {
+    if (!handover) return;
+    clearInterval(handover.timer);
+    handover = null;
+  }
+  function handOver(name, fromName) {
+    var track = tracks[name], from = tracks[fromName], el = track.el, src = from.el, lead = 0.08, tries = 0;
+    function length() { return isFinite(src.duration) && src.duration > 0 ? src.duration : 0; }
+    function place() {
+      var at = src.currentTime + lead, len = length();
+      try { el.currentTime = len ? ((at % len) + len) % len : Math.max(0, at); } catch (e) { /* noch nicht bereit */ }
+    }
+    clearInterval(track.timer);
+    track.fade = 0;
+    el.volume = 0;
+    place();
+    var started = el.play();
+    if (started && started.catch) started.catch(function () { /* Datei fehlt oder gesperrt: stumm weiter */ });
+    handover = { track: track, from: from, timer: setInterval(function () {
+      tries++;
+      var ready = !el.paused && !el.seeking && el.readyState >= 3;
+      var len = length(), off = el.currentTime - src.currentTime;
+      if (len) off = ((off + len / 2) % len + len) % len - len / 2; // auch über das Schleifenende hinweg
+      var close = ready && Math.abs(off) < 0.03;
+      if (!close && tries < 14 && !src.paused) {
+        if (ready) { lead -= off; place(); } // Vorhalt nachstellen und noch einmal ansetzen
+        return;
+      }
+      stopHandover();
+      if (ready) { fade(track, 1, 0.2); fade(from, 0, 0.2); }
+      else { fade(from, 0); start(track); } // noch nicht geladen: gewöhnlich überblenden, die neue beginnt vorn
+    }, 240) };
+  }
 
   function start(track) {
     var started = track.el.play();
@@ -155,6 +211,7 @@
     if (hidden === now) return;
     hidden = now;
     if (hidden) {
+      stopHandover();
       Object.keys(tracks).forEach(function (name) {
         var track = tracks[name];
         clearInterval(track.timer);
@@ -174,10 +231,10 @@
     window.addEventListener('pageshow', function () { setHidden(!!document.hidden); });
   }
 
-  function fade(track, to) {
+  function fade(track, to, speed) {
     clearInterval(track.timer);
     track.timer = setInterval(function () {
-      var step = 0.06;
+      var step = speed || 0.06;
       track.fade = to > track.fade ? Math.min(to, track.fade + step) : Math.max(to, track.fade - step);
       track.el.volume = ZU.clamp(musicVolume * track.fade, 0, 1);
       if (track.fade === to) {

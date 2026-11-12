@@ -75,6 +75,8 @@
   };
   /* Casino dieses Runs: Zahl der Akte, Hausordnung (gilt an jedem Tisch) und Räume. */
   Run.prototype.casino = function () { return ZU.CASINOS[this.meta().stake || 0] || ZU.CASINOS[0]; };
+  /* Musik des Hauses: jedes Casino hat sein Stück, gegen den Boss in der dichteren Stufe. */
+  Run.prototype.music = function (boss) { return 'game-' + this.casino().id + (boss ? '-boss' : ''); };
   Run.prototype.acts = function () { return this.meta().acts || 3; };
   Run.prototype.houseRules = function () { return this.meta().rules || []; };
   Run.prototype.rule = function (id) { return this.houseRules().indexOf(id) >= 0; };
