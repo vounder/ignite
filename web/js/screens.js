@@ -165,11 +165,12 @@
           '<p><b>Mehrfachwahl:</b> Mit dem Privileg „Flinke Finger“ legst du mehrere Karten mit gleichem Wert in einem Zug. Der Schalter dafür erscheint rechts am Tisch.</p>' +
           '<p><b>Die 7:</b> Der Gegner zieht 1 Karte.</p>' +
           '<p><b>Spezialkarten</b> sind gebunden: an ein Symbol, an Rot oder Schwarz – oder gar nicht (Joker). Sie passen nur auf ihre Symbole und geben sie danach vor. Je weiter der Run, desto freier die Karten.</p>' +
+          '<p><b>Löschmittel</b> sind die Antwort der Gegner auf deine Glut: Löschsand und Löschwasser drücken die Kette, Sprinkler und Löschdecke kosten Glut. Welche gelten, steht blau am Tisch.</p>' +
           '<p><b>Hausregeln</b> gelten für einzelne Tische, etwa „Letzter Stapel“: Dann wird nicht neu gemischt.</p>' +
           '<p>Kannst oder willst du nicht legen, <b>ziehst</b> du eine Karte. Passt sie, darfst du sie sofort legen – sonst endet der Zug.</p>' +
           '<p><b>Sperrstunde:</b> Nach ' + ZU.TURN_LIMIT + ' Zügen gewinnt, wer weniger Karten hält.</p></div>' +
           '<div><h3>Glut und Mark</h3>' +
-          '<p>Jede gespielte Karte bringt <b>Glut</b>: Kartenwert × Kette. Die Kette wächst mit jeder Karte und fällt zurück, wenn du ziehst.</p>' +
+          '<p>Jede gespielte Karte bringt <b>Glut</b>: Kartenwert × Kette. Die Kette wächst mit jeder Karte und fällt zurück, wenn du ziehst. Passt die gezogene Karte sofort, bleibt die halbe Kette stehen.</p>' +
           '<p>Jeder Tisch hat ein <b>Glutziel</b>. Erreichst du es, brennt der Tisch: Du gewinnst sofort, auch mit voller Hand. Wer das Ziel vervielfacht, kassiert für jede Verdopplung extra Mark und Asche – ohne Obergrenze.</p>' +
           '<p>Siege zahlen <b>Mark</b>: Tischprämie, Restkarten des Gegners, Glut-Bonus, Bank und Zinsen (1 Mark je 5 gesparte Mark).</p>' +
           '<h3>Der Run</h3>' +
@@ -1150,11 +1151,16 @@
 
   /* ---------- Tischwahl ---------- */
   /* Hausregeln eines Tisches als kleine Schilder (leer, wenn keine gilt). */
-  function ruleRow(enc) {
+  function ruleRow(enc, run) {
     var row = h('div', 'rulerow');
     (enc.rules || []).forEach(function (rule) {
-      var chip = h('div', 'rulechip', 'Hausregel: ' + ZU.RULES[rule].name);
-      ZU.tip.bind(chip, '<b>' + ZU.RULES[rule].name + '</b><p>' + ZU.RULES[rule].text + '</p>');
+      var chip = h('div', 'rulechip', ZU.RULES[rule].name);
+      ZU.tip.bind(chip, '<b>Hausregel: ' + ZU.RULES[rule].name + '</b><p>' + ZU.RULES[rule].text + '</p>');
+      row.appendChild(chip);
+    });
+    (run ? run.douse(enc) : []).forEach(function (id) {
+      var chip = h('div', 'rulechip douse', ZU.DOUSE[id].name);
+      ZU.tip.bind(chip, '<b>Löschmittel: ' + ZU.DOUSE[id].name + '</b><p>' + ZU.DOUSE[id].text + '</p>');
       row.appendChild(chip);
     });
     return row;
@@ -1169,11 +1175,10 @@
     var row = h('div', 'invites');
     s.encounters.forEach(function (enc, i) {
       var enemy = ZU.ENEMIES[enc.enemy], state = i < s.table ? 'done' : i === s.table ? 'current' : 'locked';
-      var rewards = [h('li', null, [ZU.iconEl('coin', 'coin'), 'Prämie ' + run.baseReward(enc.kind) + ' Mark'])];
+      var rewards = [];
       if (enc.kind === 'elite') rewards.push(h('li', null, 'Wahl aus 3 Trinkets'));
       if (enc.kind === 'boss') {
-        rewards.push(h('li', null, 'Wahl aus 3 Spezialkarten'));
-        rewards.push(h('li', null, [ZU.iconEl('match', 'match'), '+1 Streichholz']));
+        rewards.push(h('li', null, ['Wahl aus 3 Spezialkarten · ', ZU.iconEl('match', 'match'), '+1 Streichholz']));
       }
       var foot;
       if (state === 'current') {
@@ -1191,8 +1196,8 @@
         h('div', 'ename', enemy.name),
         h('div', 'erole', enemy.role),
         h('p', 'epassive', enemy.passiveText),
-        h('div', 'etarget', [ZU.iconEl('flame', 'flame'), 'Glutziel ' + ZU.fmt(run.glutTarget(enc.kind))]),
-        ruleRow(enc),
+        h('div', 'etarget', [ZU.iconEl('flame', 'flame'), 'Ziel ' + ZU.fmt(run.glutTarget(enc.kind)), h('span', 'eprize', [ZU.iconEl('coin', 'coin'), run.baseReward(enc.kind) + ' Mark'])]),
+        ruleRow(enc, run),
         h('ul', 'rewards', rewards),
         foot
       ]);

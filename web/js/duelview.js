@@ -60,6 +60,11 @@
       ZU.tip.bind(chip, '<b>Hausregel: ' + ZU.RULES[rule].name + '</b><p>' + ZU.RULES[rule].text + '</p>');
       rulesEl.appendChild(chip);
     });
+    this.duel.douse.forEach(function (id) {
+      var chip = h('div', 'rulechip douse', ZU.DOUSE[id].name);
+      ZU.tip.bind(chip, '<b>Löschmittel: ' + ZU.DOUSE[id].name + '</b><p>' + ZU.DOUSE[id].text + '</p>');
+      rulesEl.appendChild(chip);
+    });
     if (this.duel.houseRules.length) rulesEl.appendChild(ZU.houseChip(this.duel.houseRules));
     var left = h('div', 'panel p-left', [
       h('div', 'kindtag k-' + e.kind, ZU.KIND_LABEL[e.kind]),
@@ -139,7 +144,7 @@
       h('div', 'label', 'Glut'), this.glutEl,
       this.duel.target ? this.targetEl : null
     ]);
-    ZU.tip.bind(this.board, '<b>Glut</b> = Kartenwert × Kette. Jede gespielte Karte erhöht die Kette um 1, Ziehen setzt sie zurück.' +
+    ZU.tip.bind(this.board, '<b>Glut</b> = Kartenwert × Kette. Jede gespielte Karte erhöht die Kette um 1, Ziehen setzt sie zurück (passt die gezogene Karte, bleibt die Hälfte).' +
       (this.duel.target ? '<p><b>Glutziel ' + ZU.fmt(this.duel.target) + ':</b> Erreichst du es, brennt der Tisch und du gewinnst sofort – egal, wie viele Karten du noch hältst. Jede Verdopplung darüber zahlt extra Mark und Asche.</p>' : ''));
 
     this.promptEl = h('div', 'prompt');
@@ -473,6 +478,21 @@
     this.targetFill.style.width = (part * 100).toFixed(1) + '%';
     this.targetEl.classList.toggle('near', part >= 0.75 && part < 1);
     this.targetEl.classList.toggle('done', part >= 1);
+  };
+  /* Löschmittel des Gegners: Kette und Glut sinken sichtbar, Dampf steigt auf. */
+  DuelView.prototype.on_douse = function (ev) {
+    var p = ZU.stagePos(this.chainEl), g = ZU.stagePos(this.glutEl), deep = ev.id === 'blanket';
+    this.react('smug', 1200);
+    ZU.audio.curse();
+    fx.pop(p.x, p.y - 46, ZU.DOUSE[ev.id].name + '!', 'bad small');
+    fx.smoke(p.x, p.y, deep ? 18 : 10);
+    fx.burst(g.x, g.y, { n: deep ? 26 : 12, speed: 220, grav: -260, life: .9, size: 6, colors: ['#e8f4ff', '#9fd0f0', '#5aa0d0'] });
+    if (deep) fx.shake(8);
+    this.setChain(ev.chain, false);
+    fx.punch(this.chainEl, 'fizzle');
+    fx.count(this.glutEl, ev.glut, 320);
+    this.setTarget(ev.glut);
+    return wait(deep ? 620 : 380);
   };
   /* Glutziel erreicht: Der Tisch geht in Flammen auf. */
   DuelView.prototype.on_burnt = function (ev) {

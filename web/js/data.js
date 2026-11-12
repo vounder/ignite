@@ -2,13 +2,13 @@
 (function (ZU) {
   'use strict';
 
-  ZU.VERSION = '2.0.0';
+  ZU.VERSION = '2.1.0';
   /* Stand der Casino-Liste. Ändert sich die Reihenfolge, rechnen js/meta.js und js/run.js gespeicherte Stände um. */
   ZU.CASINO_VERSION = 2;
   ZU.CASINO_REMAP = [0, 1, 3, 5, 6, 7]; // alter Index (sechs Häuser) → neuer Index (acht Häuser) // im Hauptmenü unten rechts angezeigt
   /* Build-Kennung: wird an alle Asset-Adressen gehängt, damit Browser und CDN nach einem Update frische
      Dateien holen. Nicht von Hand ändern: web/tools/stamp_version.py setzt den Wert. */
-  ZU.BUILD = '1af23aacf5';
+  ZU.BUILD = '93b18c07d6';
   ZU.asset = function (path) { return 'assets/' + path + '?v=' + ZU.BUILD; };
 
   ZU.HAND_SIZE = 7;
@@ -154,6 +154,14 @@
   };
 
   /* ---------- Hausregeln: gelten für einen einzelnen Tisch, tauchen mit dem Run häufiger auf ---------- */
+  /* Löschmittel: womit ein Tisch gegen deine Glut arbeitet (vergibt run.js nach Art und Akt). */
+  ZU.DOUSE = {
+    sand: { name: 'Löschsand', text: 'Jede 8 des Gegners senkt deine Kette um 2.' },
+    water: { name: 'Löschwasser', text: 'Jedes Ass des Gegners halbiert deine Kette.' },
+    sprinkler: { name: 'Sprinkler', text: 'Nach jedem vierten Zug des Gegners verlierst du Glut in Höhe von 5 % des Glutziels.' },
+    blanket: { name: 'Löschdecke', text: 'Einmal je Duell: Erreichst du das halbe Glutziel, erstickt ein Viertel deiner Glut und die Kette fällt zurück.' }
+  };
+
   ZU.RULES = {
     'one-pass': {
       name: 'Letzter Stapel',
@@ -251,7 +259,7 @@
   trinket('velvet-glove', 'Samthandschuh', 1, 'Opfer bringt 3 Mark zusätzlich in die Bank.');
   trinket('heartblood', 'Herzblut', 0, 'Herz-Karten bringen doppelte Glut.');
   trinket('rollercoaster', 'Achterbahn', 1, 'Deine 8en lassen den Gegner aussetzen.');
-  trinket('slow-burner', 'Dauerbrenner', 0, 'Beim Ziehen wird deine Kette halbiert statt zurückgesetzt.');
+  trinket('slow-burner', 'Dauerbrenner', 0, 'Beim Ziehen wird deine Kette halbiert statt zurückgesetzt. Passt die gezogene Karte, bleibt sie ganz.');
   trinket('black-book', 'Schwarzes Notizbuch', 2, 'Zu Duellbeginn siehst du die Gegnerhand für 3 Züge.');
   trinket('smoke-mirror', 'Rauchspiegel', 2, 'Der erste Zieh-, Aussetz- oder Fluch-Effekt gegen dich je Duell prallt zurück.');
   trinket('hot-wire', 'Heißer Draht', 1, 'Deine erste Spezialkarte je Duell beendet deinen Zug nicht.');

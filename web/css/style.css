@@ -954,3 +954,14 @@ body.nobg { background: radial-gradient(ellipse at 50% 85%, var(--bg-mid, #34170
 .etarget { display: flex; align-items: center; justify-content: center; gap: 6px; font-family: var(--px); font-size: 12px; letter-spacing: 1px; color: var(--ember-hot); }
 .etarget .ico { width: 16px; height: 18px; }
 .payburnt { text-align: center; font-family: var(--px); font-size: 14px; letter-spacing: 1px; color: #2a1202; background: linear-gradient(180deg, #ffd75e, #f08a24); border-radius: 8px; padding: 5px 10px 3px; }
+
+/* Löschmittel und kompakte Tischkarte */
+.rulechip.douse { background: #2f6f9a; color: #e6f5ff; }
+.invite { gap: 7px; }
+.invite .epassive { min-height: 34px; }
+.invite .rulerow { flex: none; }
+.invite .rewards { justify-content: center; min-height: 0; }
+.etarget { flex: none; white-space: nowrap; }
+.etarget .eprize { display: inline-flex; align-items: center; gap: 5px; margin-left: 10px; color: #e6dabd; }
+.etarget .eprize .ico { width: 15px; height: 15px; }
+.p-left .rulerow { margin-top: 4px; }
