@@ -94,7 +94,9 @@ zugehörigen Elemente blenden sich selbst aus.
   sofort, manche erst nach einer bestimmten Zahl ausgeräumter Casinos, manche
   nie; dem Spieler wird das nicht verraten. Bedingungen, Hinweise und Zählwerke
   stehen in `js/meta.js` (`REQ`, `FEATS`). Die Kartei zeigt alle besiegten
-  Gegner.
+  Gegner. Ein Klick öffnet ihre **Akte**: drei Einträge je Figur, die sich mit
+  der Zahl der Siege über sie öffnen (Tische 1/3/6, Elite 1/3/5, Bosse 1/2/4).
+  Die Geschichten greifen ineinander.
 - **Konto (freiwillig):** Anmeldung oben rechts im Hauptmenü. Ein Konto sichert
   Runs, Siege, Bestwert und den Meta-Fortschritt auf dem Server. Geworben wird dafür nur am Ende
   eines Runs.
@@ -107,6 +109,7 @@ Tasten: `1`–`9` spielt Handkarten, `Leertaste` zieht, `Enter` legt die Auswahl
 | Datei | Inhalt |
 |---|---|
 | `js/data.js` | Karten, Trinkets, Gegner, Startschachteln (reine Daten) |
+| `js/lore.js` | Akten: drei Texte je Figur, in der Kartei nach Zahl der Siege zu lesen |
 | `js/engine.js` | Duell-Regeln und Gegner-KI; jede Aktion liefert eine Ereignisliste |
 | `js/run.js` | Akte, Auszahlung, Belohnungen, Laden, Speichern |
 | `js/meta.js` | Meta-Progression: Asche, Freischaltungen, Upgrades, Einsätze |
