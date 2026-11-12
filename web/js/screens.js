@@ -964,7 +964,35 @@
       return ' · ' + have + ' von ' + ids.length;
     }
 
+    /* Vorschläge oben im Reiter: Rang 1–3 unter dem, was die Asche hergibt; sonst ein Sparziel. */
+    function badge(el, pick, rank) {
+      el.classList.add('pick');
+      el.appendChild(h('i', 'picktag' + (pick.afford ? '' : ' save'), pick.afford ? 'Platz ' + rank : 'Sparziel · fehlen ' + pick.missing));
+      return el;
+    }
+    function visualFor(kind, id) {
+      if (kind === 'starter') {
+        var starter = ZU.STARTERS.filter(function (s) { return s.id === id; })[0], box = h('div', 'br-box');
+        box.style.background = starter.color;
+        ZU.tip.bind(box, '<b>' + starter.name + '</b><p>' + starter.text + '</p>');
+        return [box, starter.name];
+      }
+      if (kind === 'trinket') return [ZU.trinketEl(id), ZU.TRINKETS[id].name];
+      if (kind === 'seal') return [ZU.sealEl(id), ZU.SEALS[id].name];
+      return [ZU.cardStatic(ZU.CARDS[id], { cls: 'mini', bind: 'none' }), ZU.CARDS[id].name];
+    }
+    function suggestTitle(meta, picks) {
+      return picks.some(function (p) { return p.afford; }) ? 'Empfohlen für deine ' + meta.ash + ' Asche' : 'Empfohlen · dafür lohnt sich Sparen';
+    }
+
     function renderUnlock(meta) {
+      var picks = ZU.Meta.suggest(meta, 'unlock'), rank = 0;
+      if (picks.length) {
+        content.appendChild(h('div', 'br-section picks', [h('div', 'br-title', suggestTitle(meta, picks)), h('div', 'br-grid', picks.map(function (pick) {
+          var v = visualFor(pick.kind, pick.id);
+          return badge(tile(meta, pick.kind, pick.id, v[0], v[1]), pick, ++rank);
+        }))]));
+      }
       var starters = ZU.STARTERS.map(function (s) { return s.id; });
       section('Schachteln' + counter(meta, 'starter', starters), ZU.STARTERS.map(function (starter) {
         var box = h('div', 'br-box');
@@ -987,7 +1015,7 @@
     }
 
     function renderUpgrade(meta) {
-      var rows = ZU.Meta.UPGRADE_IDS.map(function (id) {
+      function upRow(id) {
         var up = ZU.Meta.UPGRADES[id], level = ZU.Meta.level(meta, id), price = ZU.Meta.upgradeCost(meta, id);
         if (!ZU.Meta.isFound(meta, 'upgrade', id)) {
           return h('div', 'br-row hidden', [
@@ -1004,7 +1032,14 @@
           pips,
           price == null ? h('div', 'br-open', 'Ausgebaut') : ashBtn(price, meta, function () { return ZU.Meta.upgrade(id); })
         ]);
-      });
+      }
+      var picks = ZU.Meta.suggest(meta, 'upgrade'), rank = 0;
+      if (picks.length) {
+        content.appendChild(h('div', 'br-section picks', [h('div', 'br-title', suggestTitle(meta, picks)), h('div', 'br-list', picks.map(function (pick) {
+          return badge(upRow(pick.id), pick, ++rank);
+        }))]));
+      }
+      var rows = ZU.Meta.UPGRADE_IDS.map(upRow);
       content.appendChild(h('div', 'br-section', [h('div', 'br-title', 'Upgrades'), h('div', 'br-list', rows)]));
     }
 

@@ -2,13 +2,13 @@
 (function (ZU) {
   'use strict';
 
-  ZU.VERSION = '2.1.0';
+  ZU.VERSION = '2.2.0';
   /* Stand der Casino-Liste. Ändert sich die Reihenfolge, rechnen js/meta.js und js/run.js gespeicherte Stände um. */
   ZU.CASINO_VERSION = 2;
   ZU.CASINO_REMAP = [0, 1, 3, 5, 6, 7]; // alter Index (sechs Häuser) → neuer Index (acht Häuser) // im Hauptmenü unten rechts angezeigt
   /* Build-Kennung: wird an alle Asset-Adressen gehängt, damit Browser und CDN nach einem Update frische
      Dateien holen. Nicht von Hand ändern: web/tools/stamp_version.py setzt den Wert. */
-  ZU.BUILD = '93b18c07d6';
+  ZU.BUILD = '84aced2c2e';
   ZU.asset = function (path) { return 'assets/' + path + '?v=' + ZU.BUILD; };
 
   ZU.HAND_SIZE = 7;
@@ -357,6 +357,48 @@
   trinket('kettenreaktion', 'Kettenreaktion', 3, 'Über Kette ×10 zählt jede weitere Stufe doppelt.');
   trinket('perpetuum', 'Perpetuum', 2, 'Nach jeder fünften Karte, die du im Duell spielst, ziehst du eine nach – die Kette bleibt.');
   trinket('funkenregen', 'Funkenregen', 1, 'Fackelst du einen Tisch ab, zählt der Überschuss doppelt.');
+  // --- Glut: Kartenwerte ---
+  trinket('kreuzfeuer', 'Kreuzfeuer', 0, 'Kreuz-Karten zählen 8 Glut mehr.');
+  trinket('bauernopfer', 'Bauernopfer', 0, 'Buben zählen 10 Glut mehr.');
+  trinket('rotlicht', 'Rotlicht', 0, 'Rote Karten zählen 3 Glut mehr.');
+  trinket('feuerzeug', 'Benzinfeuerzeug', 1, 'Ab Kette ×4 zählt jede Karte 6 Glut mehr.');
+  // --- Glut: Vervielfacher ---
+  trinket('volle-zehn', 'Volle Zehn', 0, '10en bringen doppelte Glut.');
+  trinket('erster-funke', 'Erster Funke', 0, 'Deine ersten 3 Karten je Duell bringen doppelte Glut.');
+  trinket('volles-haus', 'Volles Haus', 0, 'Hältst du nach dem Legen noch 6 oder mehr Karten, bringt die Karte 50 % mehr Glut.');
+  trinket('heisse-ware', 'Heiße Ware', 0, 'Spezialkarten bringen doppelte Glut.');
+  trinket('endspurt', 'Endspurt', 0, 'Deine letzten beiden Handkarten bringen dreifache Glut.');
+  trinket('vollmond', 'Vollmond', 1, 'Jede dritte Karte, die du im Duell spielst, bringt doppelte Glut.');
+  trinket('leere-taschen', 'Leere Taschen', 1, 'Hast du höchstens 5 Mark in der Kasse, bringen deine Karten 60 % mehr Glut.');
+  trinket('farbwechsel', 'Farbwechsel', 1, 'Wechselst du das Symbol, bringt die Karte doppelte Glut.');
+  trinket('gluecksrad', 'Glücksrad', 1, 'Jede gespielte Karte bringt mit 15 % Chance dreifache Glut.');
+  // --- Glut: Kette ---
+  trinket('schwarzer-peter', 'Schwarzer Peter', 0, 'Pik-Karten erhöhen deine Kette um 1 zusätzlich.');
+  trinket('schadenfreude', 'Schadenfreude', 0, 'Setzt der Gegner aus, steigt deine Kette um 1.');
+  trinket('bierdeckel', 'Bierdeckel', 0, 'Nach einer Niederlage startet deine Kette im nächsten Duell bei ×4.');
+  trinket('koenigsmacher', 'Königsmacher', 1, 'Könige erhöhen deine Kette um 2 zusätzlich.');
+  trinket('siebenmeilen', 'Siebenmeilenstiefel', 1, 'Deine 7en erhöhen die Kette um 3 zusätzlich.');
+  trinket('strasse', 'Straße', 2, 'Legst du den nächsthöheren oder -niedrigeren Wert auf die oberste Karte, steigt deine Kette um 2 zusätzlich.');
+  trinket('zweite-luft', 'Zweite Luft', 1, 'Einmal je Duell: Würde Ziehen deine Kette senken, bleibt sie stehen.');
+  // --- Glut: wächst mit dem Run ---
+  trinket('glutnest', 'Glutnest', 1, '+5 % Glut je Karte, die dein Deck über 16 hinaus hat.');
+  trinket('minimalist', 'Minimalist', 2, '+12 % Glut je Karte, die deinem Deck auf 16 fehlt.');
+  trinket('siegelring', 'Siegelring', 2, '+15 % Glut je veredelter Karte in deinem Deck.');
+  trinket('aktienpaket', 'Aktienpaket', 2, '+20 % Glut je abgeschlossenem Akt.');
+  trinket('serientaeter', 'Serientäter', 1, '+6 % Glut je Duell, das du in diesem Run gewonnen hast.');
+  trinket('gluecksstraehne', 'Glückssträhne', 1, '+10 % Glut je Sieg in Folge.');
+  // --- Glutziel und Löschmittel ---
+  trinket('vorglut', 'Vorglut', 1, 'Du beginnst jedes Duell mit 10 % des Glutziels als Glut.');
+  trinket('zuenglein', 'Zünglein an der Waage', 1, 'Jedes Glutziel ist 10 % niedriger.');
+  trinket('feuerdecke', 'Feuerfeste Decke', 1, 'Löschdecke und Sprinkler kosten dich keine Glut.');
+  trinket('oelfass', 'Ölfass', 1, 'Löschsand und Löschwasser senken deine Kette nicht.');
+  trinket('fettbrand', 'Fettbrand', 2, 'Jedes Löschmittel, das dich trifft, facht nach: +8 % des Glutziels als Glut.');
+  // --- Kasse ---
+  trinket('trinkgeld', 'Spendierhosen', 0, 'Nach jedem Sieg gibt es 10 % deiner Kasse obendrauf (höchstens eine Tischprämie).');
+  trinket('rabattmarke', 'Rabattmarke', 0, 'Die Neue Auslage kostet die Hälfte.');
+  trinket('nachtschicht', 'Nachtschicht', 0, 'Siege zur Sperrstunde zahlen 50 % mehr Prämie.');
+  trinket('brandpraemie', 'Brandprämie', 1, 'Abgefackelte Tische zahlen noch einmal 50 % der Prämie.');
+  trinket('hausfreund', 'Hausfreund', 1, 'Esmes Pakete kosten 25 % weniger.');
   trinket('teufelspakt', 'Teufelspakt', 3, 'Alle deine Karten bringen doppelte Glut. Du beginnst jedes Duell verflucht (×2).');
   ZU.TRINKETS = trinkets;
   ZU.TRINKET_IDS = Object.keys(trinkets);

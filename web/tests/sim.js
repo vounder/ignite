@@ -411,6 +411,20 @@ for (let i = 1; i < ZU.CASINOS.length; i++) assert.ok(ZU.CASINOS[i].ash > ZU.CAS
   else assert.strictEqual(d.chain, d.chainFloor());
 }
 
+// Vorschläge im Hinterzimmer: nur Entdecktes, Bezahlbares zuerst (das Wertvollste vorn), sonst Sparziele.
+{
+  const meta = ZU.Meta.defaults();
+  meta.feats = Object.assign({}, meta.feats, { duels: 30, chain: 12, played: 500, burnt: 9 });
+  meta.ash = 7;
+  const picks = ZU.Meta.suggest(meta, 'unlock');
+  assert.strictEqual(picks.length, 3);
+  picks.forEach(p => { assert.ok(ZU.Meta.isFound(meta, p.kind, p.id) && !ZU.Meta.isUnlocked(meta, p.kind, p.id)); if (p.afford) assert.ok(p.cost <= 7); else assert.strictEqual(p.missing, p.cost - 7); });
+  assert.ok(picks[0].afford && picks[0].worth >= picks[1].worth);
+  meta.ash = 0;
+  assert.ok(ZU.Meta.suggest(meta, 'unlock').every(p => !p.afford));
+  assert.ok(ZU.Meta.suggest(meta, 'upgrade').length > 0);
+}
+
 // Glutziel: Wer es erreicht, gewinnt sofort; die Ziele steigen steil, und der Überschuss zahlt ohne Deckel.
 {
   const run = ZU.Run.start('classic', 31337);

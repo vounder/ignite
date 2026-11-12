@@ -494,6 +494,12 @@
     this.setTarget(ev.glut);
     return wait(deep ? 620 : 380);
   };
+  DuelView.prototype.on_glut = function (ev) {
+    fx.count(this.glutEl, ev.glut, 320);
+    this.setTarget(ev.glut);
+    fx.punch(this.glutEl);
+    return wait(260);
+  };
   /* Glutziel erreicht: Der Tisch geht in Flammen auf. */
   DuelView.prototype.on_burnt = function (ev) {
     var self = this, times = Math.floor(ev.glut / ev.target);
@@ -673,6 +679,34 @@
     wucherer: ['pile', ['#fff1b8', '#d79a1e', '#3a2408'], 'coin'],
     sippschaft: ['pile', ['#f3e9d2', '#b98a4a', '#7c1f1c'], 'select'],
     kettenreaktion: ['chain', ['#ffffff', '#ffe98a', '#ff5a1e'], 'ignite', 'ring'],
+    kreuzfeuer: ['pile', ['#ffd75e', '#ff7b3a', '#1c1f18'], 'match'],
+    bauernopfer: ['pile', ['#e9d7a8', '#b9853f', '#5a3a1a'], 'place'],
+    rotlicht: ['pile', ['#ffb3b3', '#e0303a', '#7c1016'], 'chip'],
+    feuerzeug: ['chain', ['#fff3c4', '#e2b23c', '#ff7b3a'], 'match'],
+    'volle-zehn': ['pile', ['#ffffff', '#ffe98a', '#c79a3f'], 'coin', 'ring'],
+    'erster-funke': ['pile', ['#ffffff', '#fff27a', '#ff9f3a'], 'ignite'],
+    'volles-haus': ['me', ['#e6dabd', '#b9853f', '#17493a'], 'shuffle'],
+    'heisse-ware': ['pile', ['#ffd0a0', '#ff5a1e', '#7c1f1c'], 'burn', 'smoke'],
+    endspurt: ['me', ['#ffffff', '#ffd75e', '#ff5a1e'], 'whoosh', 'shake'],
+    vollmond: ['pile', ['#f4f7ff', '#b9c6e6', '#55608a'], 'spy', 'ring'],
+    'leere-taschen': ['bank', ['#cfc8bd', '#8a7f6c', '#4a4032'], 'flip', 'smoke'],
+    farbwechsel: ['pile', ['#c8273a', '#1c1f18', '#f1e2c0'], 'select'],
+    gluecksrad: ['pile', ['#e0303a', '#ffd75e', '#f4f0e2'], 'chip', 'ring'],
+    'schwarzer-peter': ['chain', ['#d8d8e6', '#4a4a66', '#101018'], 'flip'],
+    schadenfreude: ['chain', ['#ffe98a', '#c79a3f', '#7a3fb0'], 'skip'],
+    koenigsmacher: ['chain', ['#fff3c4', '#ffc21e', '#a82a16'], 'chip', 'ring'],
+    siebenmeilen: ['chain', ['#ffd75e', '#b9853f', '#5a3a1a'], 'whoosh'],
+    strasse: ['chain', ['#f1e2c0', '#d2452f', '#c79a3f'], 'tick'],
+    'zweite-luft': ['chain', ['#e8f4ff', '#9fd0f0', '#c79a3f'], 'whoosh', 'ring'],
+    glutnest: ['stock', ['#ffd75e', '#ff7b3a', '#6b4a2a'], 'ignite'],
+    minimalist: ['stock', ['#ffffff', '#d8d8d8', '#8a8a8a'], 'select'],
+    siegelring: ['pile', ['#ffe98a', '#d2452f', '#7c1f1c'], 'chip', 'ring'],
+    aktienpaket: ['bank', ['#f1e2c0', '#ffc21e', '#d2452f'], 'coin'],
+    serientaeter: ['opp', ['#f4f0e2', '#9aa0a8', '#33363c'], 'tick'],
+    gluecksstraehne: ['me', ['#fff3c4', '#ffc21e', '#c79a3f'], 'chip', 'ring'],
+    feuerdecke: ['chain', ['#d8c8c0', '#a8483a', '#e2b23c'], 'reflect', 'ring'],
+    oelfass: ['chain', ['#3a3a3a', '#ff7b3a', '#ffd75e'], 'reflect'],
+    fettbrand: ['chain', ['#ffffff', '#ffd75e', '#ff3a1e'], 'burn', 'shake'],
     perpetuum: ['stock', ['#fff1b8', '#c79a3f', '#3aa58f'], 'flip', 'ring']
   };
   DuelView.prototype.trinketFx = function (id, quick) {

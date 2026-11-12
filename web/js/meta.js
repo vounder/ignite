@@ -8,7 +8,9 @@
   /* Was von Anfang an im Spiel ist. Alles andere muss im Hinterzimmer entdeckt und gekauft werden. */
   var BASE = {
     starter: ['classic'],
-    trinket: ['lucky-chip', 'ashtray', 'false-bottom', 'ledger', 'fuse', 'brass-knuckles', 'pocket-watch', 'gold-tooth', 'cellar-key', 'counterfeit', 'loyalty'],
+    trinket: ['lucky-chip', 'ashtray', 'false-bottom', 'ledger', 'fuse', 'brass-knuckles', 'pocket-watch', 'gold-tooth', 'cellar-key', 'counterfeit', 'loyalty',
+      'kreuzfeuer', 'bauernopfer', 'rotlicht', 'volle-zehn', 'erster-funke', 'volles-haus', 'heisse-ware', 'endspurt',
+      'schwarzer-peter', 'schadenfreude', 'bierdeckel', 'trinkgeld', 'rabattmarke', 'nachtschicht'],
     special: ['stillstand', 'addieren', 'spion', 'fluch', 'hodl', 'opfer'],
     seal: ['glut', 'gold', 'anker']
   };
@@ -118,6 +120,29 @@
     'trinket:lauffeuer': ['chain', 16, 'Erreiche eine Kette von ×16.', 3],
     'trinket:phoenixfeder': ['last', 8, 'Gewinne 8 Duelle mit dem letzten Streichholz.', 3],
     'trinket:midas-hand': ['bank', 30, 'Kassiere in einem Duell eine Bank von 30 Mark.', 4],
+    // --- Glut-Serie ---
+    'trinket:feuerzeug': ['chain', 7, 'Erreiche eine Kette von ×7.'],
+    'trinket:vollmond': ['played', 60, 'Spiele 60 Karten.'],
+    'trinket:leere-taschen': ['losses', 2, 'Verliere 2 Duelle.'],
+    'trinket:farbwechsel': ['pairs', 8, 'Lege 8-mal mehrere Karten auf einmal.'],
+    'trinket:gluecksrad': ['specials', 10, 'Spiele 10 Spezialkarten.'],
+    'trinket:koenigsmacher': ['duels', 10, 'Gewinne 10 Duelle.'],
+    'trinket:siebenmeilen': ['sevens', 20, 'Spiele 20 Siebenen.'],
+    'trinket:strasse': ['chain', 10, 'Erreiche eine Kette von ×10.', 1],
+    'trinket:zweite-luft': ['nodraw', 2, 'Gewinne 2 Duelle, ohne freiwillig zu ziehen.'],
+    'trinket:glutnest': ['deck', 22, 'Trage ein Deck mit 22 Karten.'],
+    'trinket:minimalist': ['burned', 12, 'Verbrenne 12 Karten.'],
+    'trinket:siegelring': ['sealed', 6, 'Lass bei Esme 6 Karten veredeln.'],
+    'trinket:aktienpaket': ['casino', 2, '', NIE],
+    'trinket:serientaeter': ['duels', 20, 'Gewinne 20 Duelle.'],
+    'trinket:gluecksstraehne': ['duels', 15, 'Gewinne 15 Duelle.'],
+    'trinket:vorglut': ['burnt', 1, 'Fackle einen Tisch ab.'],
+    'trinket:zuenglein': ['burnt', 3, 'Fackle 3 Tische ab.'],
+    'trinket:feuerdecke': ['burnt', 8, 'Fackle 8 Tische ab.'],
+    'trinket:oelfass': ['chain', 8, 'Erreiche eine Kette von ×8.'],
+    'trinket:fettbrand': ['overkill', 2, 'Übertriff ein Glutziel um das Doppelte.', 1],
+    'trinket:brandpraemie': ['burnt', 2, 'Fackle 2 Tische ab.'],
+    'trinket:hausfreund': ['sealed', 3, 'Lass bei Esme 3 Karten veredeln.'],
     'trinket:teufelspakt': ['casino', 4, '', NIE],
     // --- Spezialkarten ---
     'special:zytokinese': ['deck', 22, 'Baue ein Deck aus 22 Karten.'],
@@ -381,6 +406,35 @@
     },
 
     level: function (meta, id) { return meta.upgrades[id] || 0; },
+    /* Vorschläge fürs Hinterzimmer, je Reiter ('unlock' oder 'upgrade'): die besten Stücke, die entdeckt, noch nicht
+       gekauft und bezahlbar sind – das wertvollste zuerst. Reicht die Asche für weniger als drei, folgen die
+       nächstgünstigen als Sparziel (afford: false, missing: fehlende Asche). */
+    UPGRADE_WORTH: { flinkefinger: 10, gluecksbringer: 9, reserve: 9, aschesieb: 8, etui: 7, startgeld: 6, schaufenster: 6, tarot: 5, stammkunde: 5 },
+    suggest: function (meta, tab, count) {
+      var list = [];
+      if (tab === 'upgrade') {
+        M.UPGRADE_IDS.forEach(function (id) {
+          var cost = M.upgradeCost(meta, id);
+          if (cost != null && M.isFound(meta, 'upgrade', id)) list.push({ kind: 'upgrade', id: id, cost: cost, worth: M.UPGRADE_WORTH[id] || 4 });
+        });
+      } else {
+        [['starter', ZU.STARTERS.map(function (s) { return s.id; })], ['trinket', ZU.TRINKET_IDS], ['special', ZU.SPECIAL_IDS], ['seal', ZU.SEAL_IDS]].forEach(function (pair) {
+          pair[1].forEach(function (id) {
+            if (M.isUnlocked(meta, pair[0], id) || !M.isFound(meta, pair[0], id)) return;
+            var worth = pair[0] === 'starter' ? 7 : pair[0] === 'seal' ? ZU.SEALS[id].value + 2
+              : pair[0] === 'trinket' ? [4, 6, 8, 10][ZU.TRINKETS[id].rarity] + (/Glut|Kette/.test(ZU.TRINKETS[id].text) ? 3 : 0)
+                : [4, 6, 8, 10][ZU.CARDS[id].rarity];
+            list.push({ kind: pair[0], id: id, cost: M.cost(pair[0], id), worth: worth });
+          });
+        });
+      }
+      var can = list.filter(function (x) { return x.cost <= meta.ash; }).sort(function (a, b) { return b.worth - a.worth || a.cost - b.cost; });
+      var save = list.filter(function (x) { return x.cost > meta.ash; }).sort(function (a, b) { return a.cost - b.cost || b.worth - a.worth; });
+      count = count || 3;
+      return can.slice(0, count).map(function (x) { x.afford = true; return x; })
+        .concat(save.slice(0, Math.max(0, count - can.length)).map(function (x) { x.afford = false; x.missing = x.cost - meta.ash; return x; }));
+    },
+
     upgradeCost: function (meta, id) {
       var costs = M.UPGRADES[id].costs, level = M.level(meta, id);
       return level < costs.length ? costs[level] : null;

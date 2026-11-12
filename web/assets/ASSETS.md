@@ -41,7 +41,7 @@ diente ein fertiger Streifen (`boss-consigliere.png` bzw. `boss-dolores.png`).
 Dritte Serie (12.11.2026, elf Figuren): Gigi, Olga und Samt-Eddie (Rote Laterne), Lil Zünd, Milan und Papa Platin
 (Block 9) sowie Stadtrat Kröger, Lucky Luis, Dr. Amsel, Kessler und Texas-Theo für alle Häuser; dazu die Hausbilder
 `casinos/laterne.png` und `casinos/block9.png` und die Kulisse `manfred/shop.png` für Manfreds Laden. Skripte und
-Prompts: `/data/ignite/art/wave3/`, `/data/ignite/art/wave4/` (Wachstums-Trinkets) und `/data/ignite/art/manfred-shop/`.
+Prompts: `/data/ignite/art/wave3/`, `/data/ignite/art/wave4/` (Wachstums-Trinkets), `/data/ignite/art/wave5/` (Glut-Serie) und `/data/ignite/art/manfred-shop/`.
 
 Gemeinsamer Prompt:
 
@@ -98,7 +98,7 @@ Posen in Reihenfolge: Ruhe, Blinzeln, Sprechen, Händereiben, verärgert mit
 verschränkten Armen, überrascht, Hut ziehen, Münze zeigen, brennendes
 Streichholz, Karten auffächern, Seitenblick, Zwinkern mit Daumen hoch.
 
-### Trinket-Icons (`trinkets/`, 92 Stück) und Privilegien (`perks/`, 8 Stück)
+### Trinket-Icons (`trinkets/`, 128 Stück) und Privilegien (`perks/`, 8 Stück)
 
 Einzelne Objekt-Icons im selben Stil, mit `prepare_assets.py --icons` auf 96×96
 freigestellt. Die erste Serie: Glückschip, Aschenbecher, Doppelboden,
