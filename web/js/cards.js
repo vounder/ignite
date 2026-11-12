@@ -107,7 +107,7 @@
     }
     el = h('div', 'card front std s-' + def.suit + ' rank-' + def.rank);
     atlasCell(el, FACE_RANKS.indexOf(def.rank), FACE_SUITS.indexOf(def.suit));
-    if (def.rank === '7') el.appendChild(h('div', 'fxmark', '+2'));
+    if (def.rank === '7') el.appendChild(h('div', 'fxmark', '+1'));
     el.appendChild(h('div', 'shine'));
     return el;
   };
