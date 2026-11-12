@@ -89,7 +89,7 @@
       if (voiceState !== 2) { A.loadVoices(); return; }
       var now = ctx.currentTime;
       if (now - voiceLast < 1.2) return;
-      var prof = ZU.VOICES[enemyId] || ['m', 1], set = (ZU.VOICE_CLIPS[prof[0]] || {})[mood];
+      var prof = ZU.VOICES[enemyId] || ['a', 1], set = (ZU.VOICE_CLIPS[prof[0]] || {})[mood];
       if (!set || !set.length) return;
       voiceLast = now;
       // Beutel je Stimme und Stimmung: Jeder Ruf kommt einmal dran, bevor sich einer wiederholt.

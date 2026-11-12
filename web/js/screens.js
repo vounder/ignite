@@ -231,7 +231,8 @@
       h('div', 'setrow', [h('span', null, 'Tempo'), speeds]),
       h('div', 'setrow', [h('span', null, 'Röhren-Filter'), onOff('crt')]),
       h('div', 'setrow', [h('span', null, 'Hintergrund'), onOff('bg')]),
-      app.canFullscreen() ? h('div', 'setrow', [h('span', null, 'Vollbild'), btn('Umschalten', 'small', function () { app.toggleFullscreen(); })]) : null
+      app.canFullscreen() ? h('div', 'setrow', [h('span', null, 'Vollbild'), btn('Umschalten', 'small', function () { app.toggleFullscreen(); })]) : null,
+      h('p', 'set-credit', ZU.VOICE_CREDIT)
     ];
     // Auf Handy und Tablet: ob beim Start nach dem Vollbild gefragt wird (im Browser, nicht in der installierten App).
     if (app.isTouch() && !app.isInstalled() && (app.canFullscreen() || app.isIOS())) {

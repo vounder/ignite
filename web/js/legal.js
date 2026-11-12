@@ -51,6 +51,7 @@
     licenses: function () {
       return '<h3>Spiel</h3>' +
         '<p>Zündung steht unter der MIT-Lizenz. Der Quelltext kommt ohne fremde Bibliotheken aus.</p>' +
+        '<p>Die Stimmen der Figuren stammen aus dem „Super Dialogue Audio Pack v1“ von Dillon Becker (<a href="https://dillonbecker.com" target="_blank" rel="noopener">dillonbecker.com</a>), lizenziert unter <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>. Die Aufnahmen wurden zugeschnitten, in der Tonhöhe verändert und verzerrt.</p>' +
         '<h3>Grafik, Schrift und Ton</h3>' +
         '<p>Figuren, Karten-Illustrationen, Symbole und Musik wurden eigens für Zündung erzeugt. Der Pixel-Font ist eine Eigenentwicklung, alle Soundeffekte entstehen zur Laufzeit.</p>';
     }
