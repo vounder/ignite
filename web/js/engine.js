@@ -199,6 +199,8 @@
       ev.push({ t: 'passive', id: 'upbeat' });
       ev.push(this._statusEvent());
     }
+    var anchored = this.hand.player.filter(function (cid) { return self.cards[cid].seal === 'anker'; });
+    if (anchored.length) ev.push({ t: 'seal', seal: 'anker', cards: anchored });
     if (this.rule('marked')) {
       this.status.curse.player += 1;
       ev.push({ t: 'rule', id: 'marked' });
@@ -555,28 +557,32 @@
       var base = def.base + (low && this.has('kleinvieh') ? 6 : 0) + (face && this.has('hofstaat') ? 5 : 0) +
         (this.has('zunder') ? 4 : 0) + (def.special && this.has('tintenfass') ? 15 : 0);
       if (flaw === 'matt') base = Math.max(1, base - 4);
-      var points = base * this.chain, doubled = false;
-      if (def.suit === 'hearts' && this.has('heartblood')) { points *= 2; doubled = true; }
-      if (def.suit === 'diamonds' && this.has('karoglanz')) { points *= 2; doubled = true; }
-      if ((def.suit === 'spades' || def.suit === 'clubs') && this.has('black-series')) points = Math.round(points * 1.5);
-      if (def.rank === 'A' && this.has('trumpf-ass')) { points *= 3; doubled = true; }
-      if (below && !def.special && !below.special && below.rank === def.rank && this.has('zwillinge')) { points *= 2; doubled = true; }
-      if (this.chain >= 6 && this.has('dampfkessel')) { points *= 2; doubled = true; }
-      if (!this.hand.player.length && this.has('letzte-glut')) { points *= 5; doubled = true; }
+      var points = base * this.chain, doubled = false, trig = []; // trig: Trinkets, die bei dieser Karte gezündet haben (für die Anzeige)
+      if (low && this.has('kleinvieh')) trig.push('kleinvieh');
+      if (face && this.has('hofstaat')) trig.push('hofstaat');
+      if (def.special && this.has('tintenfass')) trig.push('tintenfass');
+      if (def.suit === 'hearts' && this.has('heartblood')) { points *= 2; doubled = true; trig.push('heartblood'); }
+      if (def.suit === 'diamonds' && this.has('karoglanz')) { points *= 2; doubled = true; trig.push('karoglanz'); }
+      if ((def.suit === 'spades' || def.suit === 'clubs') && this.has('black-series')) { points = Math.round(points * 1.5); trig.push('black-series'); }
+      if (def.rank === 'A' && this.has('trumpf-ass')) { points *= 3; doubled = true; trig.push('trumpf-ass'); }
+      if (below && !def.special && !below.special && below.rank === def.rank && this.has('zwillinge')) { points *= 2; doubled = true; trig.push('zwillinge'); }
+      if (this.chain >= 6 && this.has('dampfkessel')) { points *= 2; doubled = true; trig.push('dampfkessel'); }
+      if (!this.hand.player.length && this.has('letzte-glut')) { points *= 5; doubled = true; trig.push('letzte-glut'); }
       if (this.status.blaze > 0) { this.status.blaze--; points *= 2; doubled = true; }
       if (this.has('teufelspakt')) { points *= 2; doubled = true; }
       if (seal === 'glut') { points *= 2; doubled = true; }
       this.glut += points;
       event.score = { base: base, chain: this.chain, points: points, glut: this.glut, doubled: doubled };
       var step = this.has('afterburner') ? 2 : 1;
-      if (def.special && this.has('blasebalg')) step += 2;
+      if (def.special && this.has('blasebalg')) { step += 2; trig.push('blasebalg'); }
       if (seal === 'zuend') step += 1;
-      if (below && def.suit && below.suit && ZU.SUITS[def.suit].red && ZU.SUITS[below.suit].red && this.has('roter-teppich')) step += 1;
+      if (below && def.suit && below.suit && ZU.SUITS[def.suit].red && ZU.SUITS[below.suit].red && this.has('roter-teppich')) { step += 1; trig.push('roter-teppich'); }
       if (flaw === 'stumpf') step = 0;
       this._setChain(this.chain + step);
       event.score.next = this.chain;
       if (seal) event.seal = seal;
       if (flaw) event.flaw = flaw;
+      if (trig.length) event.trig = trig;
       this.stats.played++;
       if (def.special) this.stats.specials++;
       else if (def.rank === '7') this.stats.sevens++;
@@ -585,16 +591,26 @@
     }
     ev.push(event);
     if (actor === 'player') {
+      // Siegel und Makel melden sich in der Reihenfolge, in der sie wirken: erst die Glut, dann Kasse, dann Folgen.
       var worn = this.cards[id];
-      if (worn.seal === 'gold') { this.bank += 1; ev.push(this._statusEvent()); }
-      if (worn.flaw === 'zoll') this.toll++;
-      if (worn.seal === 'haken') this.queue.push({ type: 'draw', amount: 1, reflectable: true, src: actor });
-      if (worn.flaw === 'klette') this.queue.push({ type: 'selfdraw', amount: 1, src: actor });
+      if (worn.seal === 'irrlicht' || worn.seal === 'glut' || worn.seal === 'zuend') ev.push({ t: 'seal', seal: worn.seal, card: id });
+      if (worn.flaw === 'matt' || worn.flaw === 'stumpf') ev.push({ t: 'flaw', flaw: worn.flaw, card: id });
+      if (worn.seal === 'gold') { this.bank += 1; ev.push({ t: 'seal', seal: 'gold', card: id }); ev.push(this._statusEvent()); }
+      if (worn.flaw === 'zoll') { this.toll++; ev.push({ t: 'flaw', flaw: 'zoll', card: id }); }
+      if (worn.seal === 'haken') {
+        this.queue.push({ type: 'sealnote', seal: 'haken', card: id, src: actor });
+        this.queue.push({ type: 'draw', amount: 1, reflectable: true, src: actor });
+      }
+      if (worn.flaw === 'klette') {
+        this.queue.push({ type: 'flawnote', flaw: 'klette', card: id, src: actor });
+        this.queue.push({ type: 'selfdraw', amount: 1, src: actor });
+      }
       if (worn.seal === 'bumerang' && !this.used['boom' + id] && from === 'hand' && this.hand.player.length > 0) {
         // Bumerang: Die Karte bleibt liegen, eine Zwillingskarte für dieses Duell kehrt auf die Hand zurück.
         this.used['boom' + id] = true;
         var twin = this._register(def.id, 'player', false);
         this.hand.player.push(twin);
+        ev.push({ t: 'seal', seal: 'bumerang', card: id });
         ev.push({ t: 'boomerang', id: twin, from: id });
       }
       if (this.has('midas-hand') && (this.used.midas || 0) < 10) {
@@ -674,6 +690,8 @@
     var src = item.src, tgt = other(src), self = this;
     if (item.type === 'note') { ev.push({ t: 'trinket', id: item.trinket }); return; }
     if (item.type === 'passive') { ev.push({ t: 'passive', id: item.id }); return; }
+    if (item.type === 'sealnote') { ev.push({ t: 'seal', seal: item.seal, card: item.card }); return; }
+    if (item.type === 'flawnote') { ev.push({ t: 'flaw', flaw: item.flaw, card: item.card }); return; }
     if (item.reflectable) {
       if (src === 'player' && this.enemy.passive === 'smoke' && !this.used.smoke) {
         this.used.smoke = true;
