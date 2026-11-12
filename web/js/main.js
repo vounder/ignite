@@ -63,6 +63,7 @@
       var fresh = ZU.Profile.load();
       fresh.settings = this.profile.settings;
       fresh.seenHelp = this.profile.seenHelp;
+      fresh.avatar = this.profile.avatar || {};
       ZU.Profile.save(fresh);
       this.profile = fresh;
     },
@@ -73,6 +74,7 @@
       var run = this.run, urls = [], self = this;
       function add(path) { urls.push(ZU.asset(path)); }
       if (name === 'casino') ZU.CASINO_ART.forEach(add);
+      if (name === 'avatar' || name === 'duel') ZU.avatar.urls(ZU.avatar.clean(this.profile.avatar, ZU.Meta.get())).forEach(function (u) { urls.push(u); });
       if (name === 'backroom') { add('backroom/room.png'); add('backroom/veil.png'); }
       if (!run || ['select', 'duel', 'shop', 'esme', 'reward'].indexOf(name) < 0) return urls;
       urls.push(ZU.cardAtlas());
