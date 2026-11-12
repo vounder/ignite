@@ -89,7 +89,7 @@ Posen in Reihenfolge: Ruhe, Blinzeln, Sprechen, Händereiben, verärgert mit
 verschränkten Armen, überrascht, Hut ziehen, Münze zeigen, brennendes
 Streichholz, Karten auffächern, Seitenblick, Zwinkern mit Daumen hoch.
 
-### Trinket-Icons (`trinkets/`, 35 Stück) und Privilegien (`perks/`, 8 Stück)
+### Trinket-Icons (`trinkets/`, 83 Stück) und Privilegien (`perks/`, 8 Stück)
 
 Einzelne Objekt-Icons im selben Stil, mit `prepare_assets.py --icons` auf 96×96
 freigestellt. Die erste Serie: Glückschip, Aschenbecher, Doppelboden,
@@ -104,6 +104,17 @@ Kurze Lunte, Falschgeld, Stempelkarte.
 
 Privilegien: Flinke Finger (behandschuhte Hand mit Kartenfächer), Großes Regal,
 Vitrine, Stammplatz, Schleifer, Glockenrecht, Aschekasten, Zündholzbrief.
+
+Die zweite große Serie (12.11.2026): 48 weitere Trinket-Icons und 11 Bilder für
+neue Spezialkarten (`special/`, 128×128). Erzeugt als Bögen auf Chroma-Grün
+(3×3 Objekte je Bogen für Trinkets, 2×2 für Spezialkarten; Referenz
+`trinkets/pocket-watch.png` bzw. `special/fluch.png`), in einzelne Objekte
+zerlegt und mit `cutout()` aus `prepare_assets.py` freigestellt. Prompt eines
+Bogens: „A square sprite sheet of game item icons: a strict grid of 3 columns x
+3 rows = 9 equal cells on one flat pure chroma-key green (#00FF00) background.
+Each cell holds ONE separate chunky object, centred in its cell, all at the
+same scale, with a wide empty green gap between neighbours …“, gefolgt von den
+neun Motiven und derselben Stilzeile wie oben.
 
 ### Kulisse des Titelbildschirms (`title/backroom.png`)
 

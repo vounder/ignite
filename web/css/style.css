@@ -327,7 +327,7 @@ body.nobg { background: radial-gradient(ellipse at 50% 85%, #34170f, #0b0706 75%
 .modal-text { text-align: center; color: var(--ivory-dim); line-height: 1.45; }
 .pickrow { display: flex; gap: 18px; justify-content: center; padding: 8px 0; }
 .pickitem { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 96px; text-align: center; font-size: 12px; }
-.deckgrid { display: flex; flex-wrap: wrap; gap: 14px 12px; justify-content: center; padding: 12px 6px 16px; overflow-y: auto; max-height: 420px; }
+.deckgrid { display: flex; flex-wrap: wrap; gap: 14px 12px; justify-content: center; padding: 12px 6px 16px; }
 .help { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 34px; font-size: 14px; line-height: 1.45; color: #e6dabd; }
 .help h3 { font-size: 15px; color: var(--ember); margin: 4px 0 6px; }
 .help p { margin-bottom: 8px; }
@@ -695,3 +695,30 @@ body.nobg { background: radial-gradient(ellipse at 50% 85%, #34170f, #0b0706 75%
   #rotate i { width: 34px; height: 56px; border: 3px solid var(--brass); border-radius: 7px; box-shadow: inset 0 -7px 0 -3px var(--brass); animation: rotate-hint 2.6s ease-in-out infinite; }
 }
 @keyframes rotate-hint { 0%, 25% { transform: rotate(0); } 55%, 85% { transform: rotate(-90deg); } 100% { transform: rotate(0); } }
+
+/* ---------- Casinos, verborgene Stücke im Hinterzimmer, Asche ---------- */
+.casinochips { display: flex; gap: 8px; justify-content: center; align-items: center; margin-top: 6px; }
+.rulechip.house { background: #8f2419; color: #ffe1d6; cursor: default; }
+.stake-rules { min-width: 120px; display: flex; justify-content: center; }
+.stakerow .stake-mid { width: 520px; }
+.br-rules { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+.br-tile { position: relative; }
+.br-tile.hidden { border-color: #33271d; background: linear-gradient(180deg, #1d1410, #130c09); }
+.br-tile.hidden > .trinket, .br-tile.hidden > .br-box { filter: brightness(0) opacity(.5); border-color: #33271d; box-shadow: none; }
+.br-tile.hidden .tk-img { filter: brightness(0); }
+.br-tile.hidden > .cardstatic { filter: grayscale(1) brightness(.45); }
+.br-tile.hidden .br-name { color: #7d6f5c; letter-spacing: 2px; }
+.br-hint { font-size: 10.5px; line-height: 1.25; text-align: center; color: #9a8b74; min-height: 26px; display: flex; align-items: center; overflow-wrap: anywhere; }
+.br-row.hidden { filter: none; border-color: #33271d; background: linear-gradient(180deg, #1d1410, #130c09); }
+.br-row.hidden .br-rowname { color: #7d6f5c; letter-spacing: 2px; }
+.br-row.hidden p { color: #9a8b74; }
+.br-tile.fresh, .br-row.fresh { border-color: var(--ember); box-shadow: 0 0 14px rgba(255,140,40,.35), 0 4px 0 rgba(0,0,0,.4); }
+.newtag { position: absolute; right: -6px; top: -8px; z-index: 2; font-style: normal; font-family: var(--px); font-size: 11px; letter-spacing: 1px; padding: 3px 7px 2px; border-radius: 6px; background: var(--ember); color: #2a1202; transform: rotate(7deg); box-shadow: 0 2px 0 rgba(0,0,0,.45); }
+.newtag.inline { position: static; display: inline-block; margin-left: 10px; transform: none; vertical-align: 2px; }
+.newdot { position: absolute; right: -8px; top: -8px; min-width: 22px; height: 22px; padding: 4px 5px 0; border-radius: 11px; font-style: normal; font-family: var(--px); font-size: 12px; line-height: 14px; text-align: center; background: var(--ember); color: #2a1202; text-shadow: none; box-shadow: 0 2px 0 rgba(0,0,0,.5); }
+.payash { display: flex; align-items: center; justify-content: center; gap: 7px; font-family: var(--px); font-size: 14px; letter-spacing: 1px; color: var(--ivory-dim); }
+.payash b { font-family: var(--px-wide); font-weight: normal; font-size: 17px; color: var(--ivory); }
+.payash .ashico { width: 20px; height: 20px; }
+.paynote { text-align: center; font-size: 12px; color: var(--ivory-dim); }
+.endnote { font-size: 12.5px; color: var(--ivory-dim); opacity: .85; margin-top: -4px; }
+.offer-full { font-family: var(--px); font-size: 11px; letter-spacing: 1px; color: #ffd0c4; margin: -4px 0 -6px; }

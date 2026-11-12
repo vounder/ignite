@@ -51,9 +51,12 @@
     this.stock = [];
     this.pile = [];
     this.staging = [];
-    this.status = { skip: { player: 0, opp: 0 }, curse: { player: 0, opp: 0 }, spy: 0, hodl: [] };
+    this.status = { skip: { player: 0, opp: 0 }, curse: { player: 0, opp: 0 }, spy: 0, blaze: 0, hodl: [] };
     this.used = {};
-    this.bank = 0;
+    this.tableRules = opts.rules || []; // Regeln nur dieses Tisches
+    this.houseRules = opts.house || []; // Hausordnung des Casinos
+    this.rules = this.tableRules.concat(this.houseRules);
+    this.bank = this.has('sparschwein') ? 2 : 0;
     this.bonusMult = 1;
     this.chain = this.chainFloor();
     this.maxChain = this.chain;
@@ -71,16 +74,21 @@
     this.retired = [];
     this.turns = 0;
     this.oppTurns = 0;
-    this.rules = opts.rules || [];
-    this.mods = opts.mods || {}; // Stellschrauben der Einsätze
+    this.mods = opts.mods || {}; // weitere Stellschrauben (Tests)
     this.specialPool = opts.specialPool || null;
-    this.turnLimit = this.enemy.passive === 'last-round' ? 36 : ZU.TURN_LIMIT;
+    this.turnLimit = (this.enemy.passive === 'last-round' ? 36 : ZU.TURN_LIMIT) - (this.rule('short-night') ? (this.enemy.passive === 'last-round' ? 6 : 14) : 0) +
+      (this.has('nachtlaterne') ? 10 : 0);
     this.showdown = false;
     this.afterDraw = null; // nach dem Ziehen: { actor, ids } der Karten, die sofort gelegt werden dürfen
-    this.stats = { played: 0, drawn: 0 };
+    this.suitRun = { suit: null, n: 0 }; // Farbenlehre: gleiche Symbole in Folge
+    this.lifeGain = 0; // Reservefunke
+    this.wonBy = null; // 'curfew', wenn Sperrstunde oder Kartenvergleich entschieden hat
+    // Zählwerke für Auszahlung und Hinterzimmer (was der Spieler in diesem Duell geschafft hat)
+    this.stats = { played: 0, drawn: 0, sevens: 0, eights: 0, aces: 0, specials: 0, pairs: 0, pushed: 0, skips: 0, curses: 0, reflects: 0, swaps: 0, sacrificed: 0 };
   }
 
   Duel.prototype.has = function (id) { return this.trinkets.indexOf(id) >= 0; };
+  Duel.prototype.rule = function (id) { return this.rules.indexOf(id) >= 0; };
   Duel.prototype.chainFloor = function () { return this.has('fuse') ? 2 : 1; };
   Duel.prototype.def = function (id) { return ZU.CARDS[this.cards[id].def]; };
   Duel.prototype.top = function () { return this.pile[this.pile.length - 1]; };
@@ -99,7 +107,11 @@
     var self = this, ev = [], rng = this.rng;
     var owned = this.collection.map(function (c) { return self._register(c.def, 'player', true, c.id, c.bind); });
     rng.shuffle(owned);
-    var handSize = ZU.HAND_SIZE;
+    if (this.has('gezinktes-blatt')) {
+      // Gezinktes Blatt: Spezialkarten wandern nach vorn und damit sicher auf die Starthand.
+      owned = owned.filter(function (id) { return self.def(id).special; }).concat(owned.filter(function (id) { return !self.def(id).special; }));
+    }
+    var handSize = ZU.HAND_SIZE - (this.has('schmale-hand') ? 1 : 0);
     var opening = owned.slice(0, handSize);
     var rest = owned.slice(handSize);
 
@@ -133,7 +145,7 @@
 
     var oppSize = ZU.OPP_HAND + (this.kind === 'battle' ? 1 : 0) + (this.enemy.handBonus || 0) -
       (this.enemy.passive === 'head-start' ? 2 : this.enemy.passive === 'house' ? 1 : 0);
-    oppSize = Math.max(4, oppSize + (this.mods.oppHand || 0));
+    oppSize = Math.max(4, oppSize + (this.mods.oppHand || 0) - (this.rule('house-edge') ? 1 : 0)) + (this.has('klebefinger') ? 1 : 0);
     if (this.enemy.passive === 'jewels') counts.hand = 3;
     var oppOpening = [];
     for (var h = 0; h < counts.hand && oppOpening.length < oppSize; h++) {
@@ -174,6 +186,21 @@
       ev.push({ t: 'passive', id: 'donna' });
       this._drawInto('player', 2, 'deal', ev, false);
     }
+    if (this.rule('marked')) {
+      this.status.curse.player += 1;
+      ev.push({ t: 'rule', id: 'marked' });
+      ev.push(this._statusEvent());
+    }
+    if (this.has('teufelspakt')) {
+      this.status.curse.player += 2;
+      ev.push({ t: 'trinket', id: 'teufelspakt' });
+      ev.push(this._statusEvent());
+    }
+    if (this.has('klebefinger')) ev.push({ t: 'trinket', id: 'klebefinger' });
+    if (this.has('sparschwein')) {
+      ev.push({ t: 'trinket', id: 'sparschwein' });
+      ev.push(this._statusEvent());
+    }
     if (this.has('short-fuse')) {
       this.status.skip.opp = 1;
       ev.push({ t: 'trinket', id: 'short-fuse' });
@@ -207,6 +234,7 @@
         skip: { player: this.status.skip.player, opp: this.status.skip.opp },
         curse: { player: this.status.curse.player, opp: this.status.curse.opp },
         spy: this.status.spy,
+        blaze: this.status.blaze,
         hodl: this.status.hodl.map(function (h) { return { turns: h.turns, amount: h.amount }; }),
         bank: this.bank,
         bonusMult: this.bonusMult
@@ -228,6 +256,7 @@
     if (def.rank === 'A' && ((actor === 'player' && this.has('ace-sleeve')) || (actor === 'opp' && this.enemy.passive === 'sleeve'))) {
       return ZU.SUIT_ORDER;
     }
+    if (def.rank === 'J' && actor === 'player' && this.has('bubenstueck')) return ZU.SUIT_ORDER;
     return [def.suit];
   };
 
@@ -312,6 +341,18 @@
     this.phase = 'resolving';
     check.order.forEach(function (id) { self._putOnTable(actor, id, 'hand', ev); });
     var single = check.order.length === 1 && this.def(check.order[0]).special;
+    if (actor === 'player' && check.order.length >= 2) {
+      this.stats.pairs++;
+      if (this.has('kettenbrief')) {
+        this._setChain(this.chain + check.order.length - 1);
+        ev.push({ t: 'trinket', id: 'kettenbrief' });
+        ev.push({ t: 'chain', chain: this.chain });
+      }
+    }
+    if (actor === 'player' && this.has('damenwahl') && check.order.some(function (id) { return self.def(id).rank === 'Q'; })) {
+      this.retain = true;
+      ev.push({ t: 'trinket', id: 'damenwahl' });
+    }
     if (single && actor === 'player' && this.has('hot-wire') && !this.used['hot-wire']) {
       this.used['hot-wire'] = true;
       this.retain = true;
@@ -328,6 +369,12 @@
       ev.push({ t: 'effect', type: 'fizzle', src: actor, tgt: actor });
     } else {
       this._queueEffects(actor, check.order, false);
+      var first = single ? this.def(check.order[0]).effects[0] : null;
+      if (single && actor === 'player' && this.has('echo') && !this.used.echo && first && ['clone', 'createSpecial', 'life'].indexOf(first.type) < 0) {
+        this.used.echo = true;
+        this.queue.push({ type: 'note', trinket: 'echo', src: actor });
+        this._queueEffects(actor, check.order, false);
+      }
     }
     if (actor === 'player' && check.order.length >= 2 && this.has('pair-king')) {
       this.queue.push({ type: 'note', trinket: 'pair-king', src: actor });
@@ -348,7 +395,9 @@
       ? this.hand[actor].slice(before).filter(function (id) { return self.playable(actor, id); })
       : [];
     if (actor === 'player') {
-      if (fresh.length && this.has('card-shark')) {
+      if (this.has('lauffeuer')) {
+        if (this.chain > this.chainFloor()) ev.push({ t: 'trinket', id: 'lauffeuer' });
+      } else if (fresh.length && this.has('card-shark')) {
         ev.push({ t: 'trinket', id: 'card-shark' });
       } else {
         var floor = this.chainFloor();
@@ -436,6 +485,10 @@
       this.status.curse[actor]--;
       amount += actor === 'opp' && this.has('voodoo') ? 2 : 1;
       ev.push({ t: 'curse', target: actor, left: this.status.curse[actor] });
+      if (actor === 'opp') {
+        this.stats.curses++;
+        if (this.has('fluchmuenze')) { this.bank += 1; ev.push({ t: 'trinket', id: 'fluchmuenze' }); }
+      }
       ev.push(this._statusEvent());
     }
     var drawn = 0;
@@ -448,6 +501,12 @@
     }
     if (actor === 'player') this.stats.drawn += drawn;
     return drawn;
+  };
+
+  /* Setzt die Kette; „Feuchte Luft" deckelt sie bei ×8. */
+  Duel.prototype._setChain = function (value) {
+    this.chain = this.rule('damp') ? Math.min(8, value) : value;
+    if (this.chain > this.maxChain) this.maxChain = this.chain;
   };
 
   Duel.prototype._discardUnder = function (actor, id, from, cause, ev) {
@@ -463,19 +522,60 @@
     var list = from === 'hand' ? this.hand[actor] : this.staging;
     list.splice(list.indexOf(id), 1);
     this.pile.push(id);
+    var below = this.pile.length > 1 ? this.def(this.pile[this.pile.length - 2]) : null; // was vorher oben lag
     var def = this.def(id), event = { t: 'play', id: id, actor: actor, from: from === 'hand' ? actor : 'staging' };
     if (actor === 'player') {
-      var points = def.base * this.chain, doubled = false;
+      var face = def.rank === 'J' || def.rank === 'Q' || def.rank === 'K', low = def.rank === '7' || def.rank === '8' || def.rank === '9';
+      var base = def.base + (low && this.has('kleinvieh') ? 6 : 0) + (face && this.has('hofstaat') ? 5 : 0) +
+        (this.has('zunder') ? 4 : 0) + (def.special && this.has('tintenfass') ? 15 : 0);
+      var points = base * this.chain, doubled = false;
       if (def.suit === 'hearts' && this.has('heartblood')) { points *= 2; doubled = true; }
+      if (def.suit === 'diamonds' && this.has('karoglanz')) { points *= 2; doubled = true; }
       if ((def.suit === 'spades' || def.suit === 'clubs') && this.has('black-series')) points = Math.round(points * 1.5);
+      if (def.rank === 'A' && this.has('trumpf-ass')) { points *= 3; doubled = true; }
+      if (below && !def.special && !below.special && below.rank === def.rank && this.has('zwillinge')) { points *= 2; doubled = true; }
+      if (this.chain >= 6 && this.has('dampfkessel')) { points *= 2; doubled = true; }
+      if (!this.hand.player.length && this.has('letzte-glut')) { points *= 5; doubled = true; }
+      if (this.status.blaze > 0) { this.status.blaze--; points *= 2; doubled = true; }
+      if (this.has('teufelspakt')) { points *= 2; doubled = true; }
       this.glut += points;
-      event.score = { base: def.base, chain: this.chain, points: points, glut: this.glut, doubled: doubled };
-      this.chain += this.has('afterburner') ? 2 : 1;
-      if (this.chain > this.maxChain) this.maxChain = this.chain;
+      event.score = { base: base, chain: this.chain, points: points, glut: this.glut, doubled: doubled };
+      var step = this.has('afterburner') ? 2 : 1;
+      if (def.special && this.has('blasebalg')) step += 2;
+      if (below && def.suit && below.suit && ZU.SUITS[def.suit].red && ZU.SUITS[below.suit].red && this.has('roter-teppich')) step += 1;
+      this._setChain(this.chain + step);
       event.score.next = this.chain;
       this.stats.played++;
+      if (def.special) this.stats.specials++;
+      else if (def.rank === '7') this.stats.sevens++;
+      else if (def.rank === '8') this.stats.eights++;
+      else if (def.rank === 'A') this.stats.aces++;
     }
     ev.push(event);
+    if (actor === 'player') {
+      if (this.has('midas-hand') && (this.used.midas || 0) < 10) {
+        this.used.midas = (this.used.midas || 0) + 1;
+        this.bank += 1;
+        ev.push({ t: 'trinket', id: 'midas-hand' });
+        ev.push(this._statusEvent());
+      }
+      if (def.rank === 'K' && this.has('loesegeld') && (this.used.ransom || 0) < 6) {
+        this.used.ransom = (this.used.ransom || 0) + 2;
+        this.bank += 2;
+        ev.push({ t: 'trinket', id: 'loesegeld' });
+        ev.push(this._statusEvent());
+      }
+      if (this.has('farbenlehre') && def.suit) {
+        this.suitRun = this.suitRun.suit === def.suit ? { suit: def.suit, n: this.suitRun.n + 1 } : { suit: def.suit, n: 1 };
+        if (this.suitRun.n >= 3) {
+          this.suitRun.n = 0;
+          this.queue.push({ type: 'note', trinket: 'farbenlehre', src: actor });
+          this.queue.push({ type: 'draw', amount: 1, reflectable: true, src: actor });
+        }
+      } else if (def.special) {
+        this.suitRun = { suit: null, n: 0 };
+      }
+    }
     if (actor === 'player' && def.suit === 'diamonds' && this.has('diamond-cut') && (this.used.diamonds || 0) < 5) {
       this.used.diamonds = (this.used.diamonds || 0) + 1;
       this.bank += 1;
@@ -491,10 +591,14 @@
       var def = self.def(id);
       def.effects.forEach(function (effect) {
         if (effect.type === 'draw') draw += effect.amount + (actor === 'opp' && def.rank === '7' && self.enemy.passive === 'heavy-hand' ? 1 : 0) +
-            (actor === 'player' && def.rank === '7' && self.has('seven-sleeper') ? 1 : 0);
-        else if (effect.type === 'skip') skip = true;
+            (actor === 'player' && def.rank === '7' && self.has('seven-sleeper') ? 1 : 0) + (def.rank === '7' && self.rule('sharp-sevens') ? 1 : 0);
+        else if (effect.type === 'skip') { if (!(actor === 'opp' && def.rank === '7' && self.has('asbesthandschuh'))) skip = true; }
         else rest.push({ type: effect.type, amount: effect.amount || 0, duration: effect.duration || 0, reflectable: !!effect.reflectable, src: actor, card: id });
       });
+      if (actor === 'player' && def.rank === '9' && self.has('neunmalklug')) {
+        if (!draw) rest.unshift({ type: 'note', trinket: 'neunmalklug', src: actor });
+        draw += 1;
+      }
       if (actor === 'player' && def.rank === '8' && self.has('rollercoaster')) {
         if (!skip) rest.unshift({ type: 'note', trinket: 'rollercoaster', src: actor });
         skip = true;
@@ -532,6 +636,7 @@
         src = 'opp'; tgt = 'player';
       } else if (tgt === 'player' && this.has('smoke-mirror') && !this.used['smoke-mirror']) {
         this.used['smoke-mirror'] = true;
+        this.stats.reflects++;
         ev.push({ t: 'trinket', id: 'smoke-mirror' });
         ev.push({ t: 'reflect', onto: 'opp', effect: item.type });
         src = 'player'; tgt = 'opp';
@@ -550,10 +655,82 @@
           amount += 1;
           ev.push({ t: 'trinket', id: 'brass-knuckles' });
         }
+        if (src === 'player' && this.has('daumenschraube')) {
+          amount += 1;
+          ev.push({ t: 'trinket', id: 'daumenschraube' });
+        }
+        if (tgt === 'player' && amount > 1 && this.has('regenschirm')) {
+          amount -= 1;
+          ev.push({ t: 'trinket', id: 'regenschirm' });
+        }
         ev.push({ t: 'effect', type: 'draw', src: src, tgt: tgt, amount: amount });
-        this._drawInto(tgt, amount, 'effect', ev, true);
+        var got = this._drawInto(tgt, amount, 'effect', ev, true);
+        if (tgt === 'opp') this.stats.pushed += got;
         break;
       }
+      case 'equalize': {
+        // Ausgleich: wird zu einem gewöhnlichen Zieheffekt in passender Höhe
+        var gap = Math.min(item.amount, this.hand[src].length - this.hand[tgt].length);
+        if (gap > 0) this.queue.unshift({ type: 'draw', amount: gap, reflectable: false, src: src });
+        else ev.push({ t: 'effect', type: 'idle', src: src, tgt: src });
+        break;
+      }
+      case 'redeal': {
+        var held = this.hand[tgt].slice();
+        if (!held.length) { ev.push({ t: 'effect', type: 'idle', src: src, tgt: src }); break; }
+        ev.push({ t: 'effect', type: 'redeal', src: src, tgt: tgt, amount: held.length + 1 });
+        held.forEach(function (cid) { self._discardUnder(tgt, cid, 'hand', 'redeal', ev); });
+        var dealt = this._drawInto(tgt, held.length + 1, 'effect', ev, false);
+        if (tgt === 'opp') this.stats.pushed += Math.max(0, dealt - held.length);
+        break;
+      }
+      case 'again':
+        this.retain = true;
+        ev.push({ t: 'effect', type: 'again', src: src, tgt: src });
+        break;
+      case 'stoke':
+      case 'double':
+        if (src === 'player') {
+          this._setChain(item.type === 'double' ? this.chain * 2 : this.chain + item.amount);
+          ev.push({ t: 'effect', type: 'stoke', src: src, tgt: src, amount: this.chain });
+          ev.push({ t: 'chain', chain: this.chain });
+        } else {
+          ev.push({ t: 'effect', type: 'idle', src: src, tgt: src });
+        }
+        break;
+      case 'blaze':
+        if (src === 'player') {
+          this.status.blaze += item.amount;
+          ev.push({ t: 'effect', type: 'blaze', src: src, tgt: src, amount: item.amount });
+          ev.push(this._statusEvent());
+        } else {
+          ev.push({ t: 'effect', type: 'idle', src: src, tgt: src });
+        }
+        break;
+      case 'bank':
+        if (src === 'player') {
+          this.bank += item.amount;
+          ev.push({ t: 'effect', type: 'bank', src: src, tgt: src, amount: item.amount });
+          ev.push(this._statusEvent());
+        } else {
+          ev.push({ t: 'effect', type: 'idle', src: src, tgt: src });
+        }
+        break;
+      case 'cleanse':
+        this.status.curse[src] = 0;
+        this.status.skip[src] = 0;
+        ev.push({ t: 'effect', type: 'cleanse', src: src, tgt: src });
+        ev.push(this._statusEvent());
+        break;
+      case 'life':
+        if (src === 'player' && !this.lifeGain) {
+          this._retire(item.card);
+          this.lifeGain = 1;
+          ev.push({ t: 'effect', type: 'life', src: src, tgt: src });
+        } else {
+          ev.push({ t: 'effect', type: 'idle', src: src, tgt: src });
+        }
+        break;
       case 'skip':
         if (tgt === 'player' && this.has('pocket-watch') && !this.used['pocket-watch']) {
           this.used['pocket-watch'] = true;
@@ -564,25 +741,38 @@
           ev.push({ t: 'passive', id: 'thick-skin' });
           ev.push({ t: 'effect', type: 'skip-blocked', src: src, tgt: tgt });
         } else {
-          this.status.skip[tgt] = 1;
+          var rounds = 1;
+          if (tgt === 'opp' && this.has('doppelschloss') && !this.used.doppelschloss) {
+            this.used.doppelschloss = true;
+            rounds = 2;
+            ev.push({ t: 'trinket', id: 'doppelschloss' });
+          }
+          this.status.skip[tgt] = Math.max(this.status.skip[tgt], rounds);
           ev.push({ t: 'effect', type: 'skip', src: src, tgt: tgt });
           ev.push(this._statusEvent());
         }
         break;
       case 'spy':
         if (src === 'player') {
-          this.status.spy = Math.max(this.status.spy, item.duration);
-          ev.push({ t: 'effect', type: 'spy', src: src, tgt: tgt, amount: item.duration });
+          var spyFor = item.duration + (this.has('opernglas') ? 3 : 0);
+          this.status.spy = Math.max(this.status.spy, spyFor);
+          ev.push({ t: 'effect', type: 'spy', src: src, tgt: tgt, amount: spyFor });
           ev.push(this._statusEvent());
         } else {
           ev.push({ t: 'effect', type: 'spy-idle', src: src, tgt: tgt });
         }
         break;
-      case 'curse':
-        this.status.curse[tgt] += item.amount;
-        ev.push({ t: 'effect', type: 'curse', src: src, tgt: tgt, amount: item.amount });
+      case 'curse': {
+        var curseBy = item.amount;
+        if (tgt === 'player' && this.has('pestmaske')) {
+          curseBy = Math.ceil(curseBy / 2);
+          ev.push({ t: 'trinket', id: 'pestmaske' });
+        }
+        this.status.curse[tgt] += curseBy;
+        ev.push({ t: 'effect', type: 'curse', src: src, tgt: tgt, amount: curseBy });
         ev.push(this._statusEvent());
         break;
+      }
       case 'hodl':
         if (src === 'player') {
           this.status.hodl.push({ turns: item.duration, amount: item.amount });
@@ -608,6 +798,7 @@
           var tmp = this.hand.player;
           this.hand.player = this.hand.opp;
           this.hand.opp = tmp;
+          if (src === 'player') this.stats.swaps++;
           ev.push({ t: 'swap', src: src });
         }
         break;
@@ -687,6 +878,7 @@
     var self = this;
     ids.forEach(function (id) { self._discardUnder(actor, id, 'hand', 'sacrifice', ev); });
     if (actor === 'player') {
+      this.stats.sacrificed += ids.length;
       var gain = 5;
       if (this.has('velvet-glove')) { gain += 3; ev.push({ t: 'trinket', id: 'velvet-glove' }); }
       this.bank += gain;
@@ -739,6 +931,7 @@
   /* Letzter Stapel aufgebraucht: Wer weniger Karten hält, gewinnt. Gleichstand geht ans Haus. */
   Duel.prototype._showdown = function (ev) {
     ev.push({ t: 'showdown' });
+    this.wonBy = 'curfew';
     return this._end(this._fewer(), ev);
   };
 
@@ -753,11 +946,18 @@
 
   Duel.prototype._beginTurn = function (actor, ev, guard) {
     if (this.status.skip[actor] > 0 && guard < 3) {
-      this.status.skip[actor] = 0;
+      this.status.skip[actor]--;
       ev.push({ t: 'skipped', actor: actor });
-      if (actor === 'opp' && this.has('stopwatch')) {
-        this.bank += 1;
-        ev.push({ t: 'trinket', id: 'stopwatch' });
+      if (actor === 'opp') {
+        this.stats.skips++;
+        if (this.has('stopwatch')) {
+          this.bank += 1;
+          ev.push({ t: 'trinket', id: 'stopwatch' });
+        }
+        if (this.has('sandmann')) {
+          ev.push({ t: 'trinket', id: 'sandmann' });
+          this.stats.pushed += this._drawInto('opp', 1, 'effect', ev, true);
+        }
       }
       ev.push(this._statusEvent());
       return this._beginTurn(other(actor), ev, guard + 1);
@@ -765,6 +965,7 @@
     if (this.turns >= this.turnLimit) {
       // Sperrstunde: Wer weniger Karten hält, gewinnt. Gleichstand geht ans Haus.
       ev.push({ t: 'curfew' });
+      this.wonBy = 'curfew';
       return this._end(this._fewer(), ev);
     }
     this.active = actor;
@@ -810,6 +1011,13 @@
       case 'addieren': value += 60 + (theirs <= 3 ? 60 : 0) + (ai === 'pressure' ? 30 : 0); break;
       case 'fluch': value += 50 + (ai === 'pressure' ? 40 : 0); break;
       case 'opfer': value += 110; break;
+      case 'nachschlag': value += 70; break;
+      case 'nebelkerze': value += 75 + (theirs <= 3 ? 60 : 0); break;
+      case 'brandsatz': value += 90 + (theirs <= 3 ? 70 : 0) + (ai === 'pressure' ? 30 : 0); break;
+      case 'inferno': value += 110 + (theirs <= 3 ? 70 : 0); break;
+      case 'ausgleich': value += mine - 1 > theirs ? 60 + (mine - 1 - theirs) * 25 : 5; break;
+      case 'mischmasch': value += theirs <= 3 ? 100 + (4 - theirs) * 30 : 5; break;
+      case 'bannbrecher': value += this.status.curse.opp || this.status.skip.opp ? 60 : 8; break;
       case 'zocken': value += 45 + (ai === 'gamble' ? 40 : 0); break;
       case 'tausch': {
         var diff = (mine - 1) - theirs;
@@ -872,11 +1080,19 @@
     return best && best.value > -200 ? best.order : null;
   };
 
+  /* Wie wahrscheinlich der Gegner einen Zug verschenkt: Hausregeln drücken das, Freibier hebt es. */
+  Duel.prototype._hesitation = function () {
+    var chance = ZU.aiHesitation(this.kind, this.act) * (this.mods.hesitation == null ? 1 : this.mods.hesitation);
+    if (this.rule('wide-awake')) chance = 0;
+    else if (this.rule('sober')) chance *= 0.5;
+    return this.has('freibier') ? chance * 1.25 + 0.04 : chance;
+  };
+
   Duel.prototype.aiMove = function () {
     this._requireAction('opp');
     var order = this._aiPlan();
     // Schwächere Gegner zögern gelegentlich und ziehen, obwohl sie legen könnten.
-    if (order && order.length < this.hand.opp.length && this.rng.next() < ZU.aiHesitation(this.kind, this.act) * (this.mods.hesitation == null ? 1 : this.mods.hesitation)) order = null;
+    if (order && order.length < this.hand.opp.length && this.rng.next() < this._hesitation()) order = null;
     var ev = order ? this.play('opp', order) : this.draw('opp');
     // Hat er gezogen und die Karte passt, legt er sie – außer sie würde ihm schaden (etwa ein schlechter Tausch).
     if (this.afterDraw && this.afterDraw.actor === 'opp' && this.phase === 'action') {
