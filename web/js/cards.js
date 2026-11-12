@@ -252,18 +252,59 @@
 
   /* ---------- Vorladen: Bilder im Hintergrund holen, damit sie beim Erscheinen sofort da sind ---------- */
   var queue = [], loading = 0, done = {}, keep = [];
+  var ready = {}, waiters = []; // ready: fertig geladen (oder endgültig fehlgeschlagen); waiters: wer darauf wartet
   function pump() {
-    while (loading < 2 && queue.length) {
+    while (loading < 4 && queue.length) {
       var url = queue.shift();
       if (done[url]) continue;
       done[url] = true;
+      keepSrc[url] = true;
       loading++;
       var image = new Image();
-      image.onload = image.onerror = function () { loading--; pump(); };
+      image.onload = image.onerror = (function (url) {
+        return function () {
+          loading--;
+          ready[url] = true;
+          waiters.slice().forEach(function (check) { check(); });
+          pump();
+        };
+      })(url);
       image.src = url;
       keep.push(image);
     }
   }
+  /* Ist ein Bild schon da? */
+  ZU.isLoaded = function (url) { return !!ready[url]; };
+  /* Wartet, bis alle Bilder da sind (zieht sie in der Warteschlange nach vorn). onProgress(fertig, gesamt).
+     Nach "timeout" Millisekunden geht es auch ohne den Rest weiter: Ein fehlendes Bild soll das Spiel nie aufhalten. */
+  ZU.whenLoaded = function (urls, onProgress, timeout) {
+    urls = urls.filter(function (url, i) { return urls.indexOf(url) === i; });
+    return new Promise(function (resolve) {
+      var finished = false, timer = null;
+      function check() {
+        var have = urls.filter(function (url) { return ready[url]; }).length;
+        if (onProgress) onProgress(have, urls.length);
+        if (have >= urls.length) end();
+      }
+      function end() {
+        if (finished) return;
+        finished = true;
+        clearTimeout(timer);
+        var at = waiters.indexOf(check);
+        if (at >= 0) waiters.splice(at, 1);
+        resolve();
+      }
+      waiters.push(check);
+      // noch nicht angefragte Bilder nach vorn; bereits wartende ebenfalls vorziehen
+      var missing = urls.filter(function (url) { return !ready[url]; });
+      queue = queue.filter(function (url) { return missing.indexOf(url) < 0; });
+      missing.forEach(function (url) { if (!keepSrc[url]) delete done[url]; });
+      ZU.preload(missing, true);
+      timer = setTimeout(end, timeout || 12000);
+      check();
+    });
+  };
+  var keepSrc = {};
   /* urgent = true stellt die Bilder an den Anfang der Warteschlange (z. B. die nächsten Gegner). */
   ZU.preload = function (urls, urgent) {
     urls = urls.filter(function (url) { return !done[url]; });

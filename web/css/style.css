@@ -915,3 +915,30 @@ body.nobg { background: radial-gradient(ellipse at 50% 85%, var(--bg-mid, #34170
 .esme-glow.g4 { right: -60px; top: 380px; animation-duration: 3.7s; animation-delay: -0.8s; }
 .shop.manfreds .hud, .shop.manfreds .shop-left, .shop.manfreds .shop-main, .shop.manfreds .shop-next, .shop.manfreds .esme-door { z-index: 2; }
 .shop.manfreds .shelf { backdrop-filter: blur(1px); }
+
+/* ---------- Ladebildschirm und Übergangsschleier ---------- */
+.loadveil { position: absolute; inset: -40px; z-index: 300; display: flex; align-items: center; justify-content: center; background: #0b0706; opacity: 0; pointer-events: auto; transition: opacity .2s ease-out; }
+.loadveil.on { opacity: 1; }
+.loadveil.out { opacity: 0; pointer-events: none; transition: opacity .25s ease-in; }
+.load-box { display: flex; flex-direction: column; align-items: center; gap: 14px; opacity: 0; transition: opacity .25s; }
+.loadveil.slow .load-box { opacity: 1; }
+.load-match { position: relative; width: 10px; height: 64px; border-radius: 3px; background: linear-gradient(180deg, #7c1f1c 0, #7c1f1c 16px, #e6d3a3 16px); box-shadow: 0 3px 0 rgba(0,0,0,.5); }
+.load-flame { position: absolute; left: -9px; top: -26px; width: 28px; height: 34px; border-radius: 50% 50% 46% 46%; background: radial-gradient(circle at 50% 70%, #fff3c4 0, #ffd75e 28%, #f08a24 58%, rgba(210,69,47,0) 74%); animation: load-flicker .5s steps(3) infinite; image-rendering: pixelated; }
+@keyframes load-flicker { 0% { transform: scale(1) translateY(0); } 33% { transform: scale(1.1, .92) translateY(1px); } 66% { transform: scale(.92, 1.12) translateY(-2px); } 100% { transform: scale(1); } }
+.load-line { font-family: var(--px); font-size: 18px; letter-spacing: 1px; color: var(--ivory); }
+.load-bar { width: 360px; height: 16px; border-radius: 8px; background: #1b110c; border: 3px solid var(--brass-dark); overflow: hidden; }
+.load-fill { display: block; width: 0; height: 100%; background: repeating-linear-gradient(90deg, #f08a24 0 10px, #ffd75e 10px 12px); transition: width .2s ease-out; }
+.load-pct { font-family: var(--px); font-size: 13px; letter-spacing: 1px; color: var(--ivory-dim); }
+
+/* ---------- Vorspann: Vounder Studios ---------- */
+.vsplash { position: absolute; inset: -40px; z-index: 320; display: flex; flex-direction: column; align-items: center; justify-content: center; background: radial-gradient(ellipse at 50% 45%, #1c1230, #100b1b 62%, #07050c 100%); transition: opacity .35s ease-in; }
+.vsplash.out { opacity: 0; pointer-events: none; }
+.vs-box { display: flex; flex-direction: column; align-items: center; gap: 18px; }
+.vs-logo { width: 234px; height: 234px; image-rendering: pixelated; filter: drop-shadow(0 0 22px rgba(255,128,220,.35)); }
+.vs-word { min-height: 40px; font-family: var(--px-wide); font-size: 38px; letter-spacing: 6px; color: #ffd9f4; text-shadow: 0 4px 0 #5a1f4a, 0 0 18px rgba(255,128,220,.5); }
+.vs-word::after { content: ''; display: inline-block; width: 16px; height: 30px; margin-left: 6px; background: #ff80dc; vertical-align: -4px; animation: vs-caret .5s steps(2) infinite; }
+.vsplash.named .vs-word::after { display: none; }
+@keyframes vs-caret { 50% { opacity: 0; } }
+.vs-sub { font-family: var(--px); font-size: 15px; letter-spacing: 4px; color: #b79ad0; opacity: 0; transform: translateY(6px); transition: opacity .4s, transform .4s; }
+.vsplash.named .vs-sub { opacity: 1; transform: none; }
+.vs-skip { position: absolute; bottom: 70px; font-family: var(--px); font-size: 12px; letter-spacing: 2px; color: #6f5c86; }
