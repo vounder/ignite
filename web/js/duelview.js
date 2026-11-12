@@ -441,7 +441,6 @@
         var sc = ev.score, hot = Math.min(1, sc.chain / 8);
         ZU.audio.score(sc.chain);
         fx.pop(PILE.x + ZU.rand(-20, 20), PILE.y - 96, '+' + ZU.fmt(sc.points), 'score' + (sc.chain >= 5 ? ' hot' : ''));
-        if (sc.doubled) fx.pop(PILE.x + 70, PILE.y - 60, '×2 Herz', 'small heart');
         fx.burst(PILE.x, PILE.y, { n: 6 + sc.chain * 3, speed: 200 + sc.chain * 30 });
         fx.count(self.glutEl, sc.glut, 380);
         fx.punch(self.glutEl);
@@ -452,6 +451,185 @@
         fx.burst(PILE.x, PILE.y, { n: 5, speed: 140, colors: ['#e9d8b0', '#b9aa86', '#7d7360'] });
       }
       return wait(ev.score ? Math.max(170, 300 - ev.score.chain * 14) : 330);
+    }).then(function () {
+      // Trinkets, die bei dieser Karte gezündet haben, melden sich nacheinander.
+      var chain = Promise.resolve();
+      (ev.trig || []).forEach(function (id) { chain = chain.then(function () { return self.destroyed ? null : self.trinketFx(id, true); }); });
+      return chain;
+    });
+  };
+
+  /* ---------- Effekte: Siegel, Makel und Trinkets ---------- */
+  /* Funkenspur von A nach B: kleine Stöße entlang der Strecke, zeitlich versetzt. */
+  DuelView.prototype.trail = function (ax, ay, bx, by, colors, ms, opts) {
+    var self = this, steps = 7;
+    opts = opts || {};
+    for (var i = 0; i <= steps; i++) {
+      (function (k) {
+        setTimeout(function () {
+          if (self.destroyed) return;
+          var arc = opts.arc ? Math.sin(k * Math.PI) * opts.arc : 0;
+          fx.burst(ax + (bx - ax) * k, ay + (by - ay) * k - arc, { n: opts.n || 3, speed: opts.speed || 70, life: 0.5, size: opts.size || 5, colors: colors });
+        }, (ms || 220) * k / ZU.speed);
+      })(i / steps);
+    }
+    return wait(ms || 220);
+  };
+  DuelView.prototype.ring = function (x, y, colors, n) {
+    for (var i = 0; i < (n || 14); i++) {
+      var a = i / (n || 14) * Math.PI * 2;
+      fx.burst(x + Math.cos(a) * 46, y + Math.sin(a) * 30, { n: 2, speed: 60, life: 0.55, size: 5, colors: colors });
+    }
+  };
+  DuelView.prototype.spot = function (name) {
+    if (name === 'opp') return ANCHOR.opp;
+    if (name === 'me') return ANCHOR.player;
+    if (name === 'stock') return STOCK;
+    if (name === 'bank') return ZU.stagePos(this.bankEl);
+    if (name === 'chain') return ZU.stagePos(this.chainEl);
+    return PILE;
+  };
+
+  /* Jedes Siegel hat seinen eigenen Auftritt, wenn die Karte gelegt wird. */
+  DuelView.prototype.on_seal = function (ev) {
+    var self = this, sp = ev.card != null ? this.sprites[ev.card] : null;
+    var x = sp ? sp.x : PILE.x, y = sp ? sp.y : PILE.y, to;
+    switch (ev.seal) {
+      case 'glut':
+        fx.burst(x, y, { n: 46, speed: 420, life: 1.1, colors: ['#fff3c4', '#ffd75e', '#f08a24', '#d2452f'] });
+        fx.burst(x, y + 30, { n: 16, speed: 160, grav: -420, life: 0.9, colors: ['#ffd75e', '#f08a24'] });
+        fx.pop(x, y - 120, 'Glutsiegel ×2', 'score hot');
+        ZU.audio.ignite();
+        ZU.bg.flash(0.35);
+        fx.shake(4);
+        return wait(360);
+      case 'zuend':
+        to = this.spot('chain');
+        ZU.audio.match();
+        fx.pop(x + 60, y - 70, 'Zündkopf: Kette +1', 'gold small');
+        return this.trail(x, y - 40, to.x, to.y, ['#fff3c4', '#ff9f3a', '#d2452f'], 240, { arc: 40 }).then(function () {
+          fx.burst(to.x, to.y, { n: 14, speed: 200, colors: ['#fff3c4', '#ff9f3a'] });
+          fx.punch(self.chainEl);
+        });
+      case 'gold':
+        to = this.spot('bank');
+        ZU.audio.coin(4);
+        fx.coins(x, y, 6);
+        return this.trail(x, y, to.x, to.y, ['#fff1b8', '#ffd75e', '#d79a1e'], 260, { arc: 60, n: 2, size: 6 }).then(function () { self.popBank('+1 Goldrand'); });
+      case 'haken':
+        to = this.spot('opp');
+        ZU.audio.whoosh();
+        fx.pop(x - 70, y - 80, 'Widerhaken!', 'good small');
+        return this.trail(x, y, to.x, to.y + 30, ['#8fe0d0', '#3aa58f', '#17493a'], 200, { n: 4, speed: 40 }).then(function () {
+          fx.burst(to.x, to.y + 30, { n: 18, speed: 260, colors: ['#8fe0d0', '#3aa58f'] });
+          fx.shake(3);
+        });
+      case 'bumerang':
+        ZU.audio.whoosh();
+        this.ring(x, y, ['#e9d8b0', '#b98a4a', '#6b4a12'], 16);
+        fx.pop(x, y - 110, 'Bumerang', 'gold small');
+        return wait(200);
+      case 'irrlicht':
+        ZU.audio.spy();
+        fx.burst(x, y, { n: 26, speed: 120, grav: -160, life: 1.3, colors: ['#f3e9ff', '#c9a8ff', '#8a5fd0'] });
+        this.ring(x, y, ['#c9a8ff', '#8a5fd0'], 12);
+        fx.pop(x + 70, y - 90, 'Irrlicht', 'small');
+        return wait(260);
+      case 'anker':
+        (ev.cards || []).forEach(function (id, i) {
+          var card = self.sprites[id];
+          if (!card) return;
+          setTimeout(function () {
+            if (self.destroyed) return;
+            fx.burst(card.x, card.y, { n: 12, speed: 150, colors: ['#dfeaff', '#7fa6e8', '#1f2f57'] });
+            card.punch(2.2);
+          }, i * 110 / ZU.speed);
+        });
+        fx.pop(ANCHOR.player.x, ANCHOR.player.y - 20, 'Anker hält', 'small');
+        ZU.audio.place();
+        return wait(260 + (ev.cards || []).length * 60);
+      default:
+        return null;
+    }
+  };
+  /* Makel: kurz, matt und in Rot – man soll ihn bemerken, aber er soll nicht aufhalten. */
+  DuelView.prototype.on_flaw = function (ev) {
+    var sp = this.sprites[ev.card], x = sp ? sp.x : PILE.x, y = sp ? sp.y : PILE.y;
+    var text = { matt: 'Matt: −4 Glut', stumpf: 'Stumpf: Kette bleibt', zoll: 'Zoll: −1 Mark', klette: 'Klette: du ziehst' }[ev.flaw];
+    fx.pop(x - 80, y + 70, text, 'bad small');
+    fx.burst(x, y, { n: 8, speed: 110, colors: ['#8f2419', '#4f120c', '#2a1a0a'] });
+    if (ev.flaw === 'zoll') { var bank = this.spot('bank'); this.trail(bank.x, bank.y, x, y, ['#d79a1e', '#8f2419'], 180, { n: 2 }); }
+    ZU.audio.error();
+    return wait(220);
+  };
+
+  /* Auftritt je Trinket: [Ziel der Funkenspur, Farben, Klang, Besonderheit]. Ziel: opp, me, bank, chain, stock, pile.
+     Trinkets mit sehr ähnlicher Wirkung teilen die Form, unterscheiden sich aber in Farbe und Klang. */
+  var TRINKET_FX = {
+    'short-fuse': ['opp', ['#fff3c4', '#ff9f3a', '#d2452f'], 'match'],
+    'hex-board': ['opp', ['#d9b8ff', '#7a3fb0', '#2a1140'], 'curse', 'smoke'],
+    'black-book': ['opp', ['#e6f0ff', '#8fb0e0', '#33466b'], 'spy'],
+    ashtray: ['stock', ['#cfc8bd', '#9b958c', '#6b665f'], 'burn', 'smoke'],
+    'hot-wire': ['pile', ['#ffffff', '#fff27a', '#ffb000'], 'ignite'],
+    'pair-king': ['opp', ['#ffd75e', '#d2452f', '#7c1f1c'], 'whoosh'],
+    'card-shark': ['chain', ['#bff3ea', '#3aa58f', '#17493a'], 'flip'],
+    lauffeuer: ['chain', ['#ffd75e', '#ff7b3a', '#a82a16'], 'ignite'],
+    'diamond-cut': ['bank', ['#fff2cf', '#ff9f3a', '#dc4a1c'], 'coin'],
+    'midas-hand': ['bank', ['#ffffff', '#ffe98a', '#ffc21e'], 'coin', 'ring'],
+    loesegeld: ['bank', ['#ffd75e', '#a82a16', '#5a1208'], 'coin'],
+    farbenlehre: ['opp', ['#c8273a', '#dc4a1c', '#1f2f57', '#1c1f18'], 'select'],
+    kettenbrief: ['chain', ['#e6e6e6', '#9aa0a8', '#e2b23c'], 'chip'],
+    damenwahl: ['me', ['#ffd9e6', '#e06a8c', '#7c1f3a'], 'select', 'ring'],
+    echo: ['pile', ['#f3e9ff', '#b78cff', '#5a3a9a'], 'reflect', 'ring'],
+    neunmalklug: ['opp', ['#f3e9d2', '#b98a4a', '#5a4634'], 'tick'],
+    rollercoaster: ['opp', ['#8fe0d0', '#d2452f', '#f3e9d2'], 'skip'],
+    asbesthandschuh: ['me', ['#d8d2c8', '#9b958c', '#f08a24'], 'reflect', 'ring'],
+    'smoke-mirror': ['opp', ['#ffffff', '#cfd6e0', '#8a93a3'], 'reflect', 'from-me'],
+    'brass-knuckles': ['opp', ['#fff1b8', '#c79a3f', '#8a6524'], 'place', 'shake'],
+    daumenschraube: ['opp', ['#b0b6be', '#6b7078', '#8f2419'], 'error', 'shake'],
+    regenschirm: ['me', ['#dfeaff', '#3d5a9a', '#16110f'], 'flip', 'ring'],
+    'pocket-watch': ['me', ['#fff3c4', '#e2b23c', '#f3e9d2'], 'tick', 'ring'],
+    doppelschloss: ['opp', ['#e2b23c', '#6b4a12', '#16110f'], 'skip'],
+    pestmaske: ['me', ['#d9f2e0', '#6fa88a', '#2a3a30'], 'curse', 'ring'],
+    'loaded-die': ['stock', ['#ffffff', '#f3e9d2', '#d2452f'], 'shuffle'],
+    'velvet-glove': ['bank', ['#e9c8ff', '#8a4fb5', '#3a1a55'], 'coin'],
+    stopwatch: ['bank', ['#ffffff', '#c8ced6', '#7d8590'], 'tick'],
+    sandmann: ['opp', ['#fff1b8', '#e8c96a', '#b08a2e'], 'whoosh', 'smoke'],
+    fluchmuenze: ['bank', ['#d9b8ff', '#7a3fb0', '#ffd75e'], 'curse'],
+    teufelspakt: ['me', ['#ff6a4a', '#b3120c', '#3a0606'], 'boss', 'ring'],
+    klebefinger: ['opp', ['#ffe0a0', '#e0a030', '#8a5a10'], 'card'],
+    sparschwein: ['bank', ['#ffd0dc', '#f08aa8', '#b04a6a'], 'coin'],
+    // Glut-Trinkets: kurzer Stoß vom Symbol zum Ablagestapel
+    heartblood: ['pile', ['#ffd0d6', '#e4572e', '#c8273a'], 'score'],
+    karoglanz: ['pile', ['#fff2cf', '#ffb060', '#dc4a1c'], 'score'],
+    'black-series': ['pile', ['#cfd8ef', '#4a5f9a', '#1f2f57'], 'score'],
+    'trumpf-ass': ['pile', ['#ffffff', '#ffe98a', '#e2b23c'], 'score', 'ring'],
+    zwillinge: ['pile', ['#ffb0b8', '#d2452f', '#7c1f1c'], 'score'],
+    dampfkessel: ['pile', ['#ffffff', '#d8d8d8', '#a0a0a0'], 'whoosh', 'smoke'],
+    'letzte-glut': ['pile', ['#ffd75e', '#ff5a1e', '#5a1208'], 'ignite', 'ring'],
+    kleinvieh: ['pile', ['#ffffff', '#f3e9d2', '#c79a3f'], 'tick'],
+    hofstaat: ['pile', ['#ffe98a', '#a878e0', '#5a2a8a'], 'chip'],
+    tintenfass: ['pile', ['#b8c8ff', '#3a4aa0', '#10142a'], 'flip'],
+    blasebalg: ['chain', ['#f3e9d2', '#b98a4a', '#f08a24'], 'whoosh'],
+    'roter-teppich': ['chain', ['#ffb0a0', '#c8273a', '#e2b23c'], 'select']
+  };
+  DuelView.prototype.trinketFx = function (id, quick) {
+    var el = this.trinketEls[id], spec = TRINKET_FX[id] || ['pile', ['#fff3c4', '#ffd75e', '#e2b23c'], 'chip'], self = this;
+    if (!el) return null;
+    var p = ZU.stagePos(el), to = this.spot(spec[0]), colors = spec[1], extra = spec[3];
+    fx.punch(el, 'trigger');
+    if (!quick) fx.pop(p.x - 70, p.y, ZU.TRINKETS[id] ? ZU.TRINKETS[id].name + '!' : '', 'gold small');
+    fx.burst(p.x, p.y, { n: 10, speed: 170, colors: colors });
+    if (spec[2] === 'coin') ZU.audio.coin(3); else if (spec[2] === 'score') ZU.audio.tick(); else if (ZU.audio[spec[2]]) ZU.audio[spec[2]]();
+    var from = extra === 'from-me' ? this.spot('me') : p;
+    return this.trail(from.x, from.y, to.x, to.y, colors, quick ? 150 : 230, { arc: spec[0] === 'bank' || spec[0] === 'chain' ? 30 : 0 }).then(function () {
+      if (self.destroyed) return;
+      if (extra === 'smoke') fx.smoke(to.x, to.y, 12);
+      else if (extra === 'ring') self.ring(to.x, to.y, colors, 12);
+      else fx.burst(to.x, to.y, { n: quick ? 10 : 16, speed: 220, colors: colors });
+      if (extra === 'shake') fx.shake(5);
+      if (spec[0] === 'chain') fx.punch(self.chainEl);
+      if (spec[0] === 'bank') fx.punch(self.bankEl);
     });
   };
 
@@ -609,17 +787,10 @@
   };
 
   DuelView.prototype.on_trinket = function (ev) {
-    var el = this.trinketEls[ev.id];
-    if (el) {
-      fx.punch(el, 'trigger');
-      var p = ZU.stagePos(el);
-      fx.pop(p.x - 70, p.y, ZU.TRINKETS[ev.id].name + '!', 'gold small');
-      fx.burst(p.x, p.y, { n: 8, speed: 150, colors: ['#fff3c4', '#ffd75e', '#e2b23c'] });
-    }
-    ZU.audio.chip();
-    return wait(330);
+    var done = this.trinketFx(ev.id, false);
+    if (!done) { ZU.audio.chip(); return wait(200); }
+    return done.then(function () { return wait(90); });
   };
-
   /* Siegel „Bumerang": Eine Zwillingskarte kehrt vom Ablagestapel auf die Hand zurück. */
   DuelView.prototype.on_boomerang = function (ev) {
     var sp = this.spawn(ev.id, PILE.x, PILE.y);

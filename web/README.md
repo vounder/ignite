@@ -93,6 +93,13 @@ zugehörigen Elemente blenden sich selbst aus.
   `js/data.js`); mindestens ein Paket ist makellos, und wer sich nichts leisten
   kann, bekommt einmal gratis neu ausgelegt. Siegel werden wie alles andere im
   Hinterzimmer entdeckt und gekauft; drei sind von Anfang an dabei.
+- **Effekte im Duell:** Jedes Siegel hat einen eigenen Auftritt, wenn die Karte
+  gelegt wird (Glutsiegel: Stichflamme, Goldrand: Münzen zur Bank, Widerhaken:
+  Spur zum Gegner …), der Reihe nach in der Reihenfolge der Wirkung; Makel
+  melden sich kurz in Rot. Auch jedes Trinket hat beim Auslösen eine eigene
+  Funkenspur mit eigenen Farben, eigenem Ziel und Klang (`TRINKET_FX` in
+  `js/duelview.js`). Die Engine meldet dafür `seal`-, `flaw`- und
+  `trinket`-Ereignisse sowie `trig` am Spielereignis.
 - **Laden:** Gekaufte Erweiterungen und Rabatte gelten sofort – die Vitrine
   füllt ihren dritten Platz, das Große Regal legt eine Karte aus, der
   Doppelboden zieht schon beim nächsten Kauf.
