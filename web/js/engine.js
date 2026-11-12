@@ -59,7 +59,8 @@
     this.bank = this.has('sparschwein') ? 2 : 0;
     this.bonusMult = 1;
     this.target = opts.target || 0; // Glutziel: Wer es erreicht, fackelt den Tisch ab und gewinnt sofort
-    this.grow = opts.grow || {}; // Stand des Runs für wachsende Trinkets: burned, bosses, money, trinkets, lastChain
+    this.grow = opts.grow || {};
+    this.douse = opts.douse || []; // Stand des Runs für wachsende Trinkets: burned, bosses, money, trinkets, lastChain
     this.chain = this.chainFloor();
     if (this.has('glutspeicher')) this.chain = Math.max(this.chain, Math.ceil((this.grow.lastChain || 0) / 2));
     this.maxChain = this.chain;
@@ -425,8 +426,9 @@
       } else if (fresh.length && this.has('card-shark')) {
         ev.push({ t: 'trinket', id: 'card-shark' });
       } else {
-        var floor = this.chainFloor();
-        var next = this.has('slow-burner') ? Math.max(floor, Math.ceil(this.chain / 2)) : floor;
+        // Ziehen löscht die Kette; passt die gezogene Karte sofort, bleibt die Hälfte stehen.
+        var floor = this.chainFloor(), half = Math.max(floor, Math.ceil(this.chain / 2));
+        var next = this.has('slow-burner') ? (fresh.length ? this.chain : half) : fresh.length ? half : floor;
         if (next !== this.chain) {
           this.chain = next;
           ev.push({ t: 'chain', chain: this.chain, reset: true });
@@ -604,6 +606,16 @@
       else if (def.rank === 'A') this.stats.aces++;
     }
     ev.push(event);
+    if (actor === 'opp' && !def.special) {
+      // Löschmittel: Die 8 und das Ass des Gegners drücken die Kette des Spielers.
+      var low = this.chainFloor(), cooled = this.chain;
+      if (def.rank === '8' && this.douses('sand')) cooled = Math.max(low, this.chain - 2);
+      if (def.rank === 'A' && this.douses('water')) cooled = Math.max(low, Math.ceil(this.chain / 2));
+      if (cooled < this.chain) {
+        this.chain = cooled;
+        ev.push({ t: 'douse', id: def.rank === '8' ? 'sand' : 'water', chain: this.chain, glut: this.glut });
+      }
+    }
     if (actor === 'player') {
       // Siegel und Makel melden sich in der Reihenfolge, in der sie wirken: erst die Glut, dann Kasse, dann Folgen.
       var worn = this.cards[id];
@@ -999,6 +1011,8 @@
     ev.push({ t: 'created', defs: [defId], binds: [bind], via: 'zytokinese', source: id });
   };
 
+  Duel.prototype.douses = function (id) { return this.target > 0 && this.douse.indexOf(id) >= 0; };
+
   /* ---------- Zugfolge ---------- */
   Duel.prototype._complete = function (ev) {
     var root = this.root;
@@ -1007,6 +1021,12 @@
       ev.push({ t: 'burnt', glut: this.glut, target: this.target });
       this.wonBy = 'glut';
       return this._end('player', ev);
+    }
+    if (this.douses('blanket') && !this.used.blanket && this.glut * 2 >= this.target) {
+      this.used.blanket = true;
+      this.glut -= Math.round(this.glut / 4);
+      this.chain = this.chainFloor();
+      ev.push({ t: 'douse', id: 'blanket', chain: this.chain, glut: this.glut });
     }
     if (!this.hand[root].length) return this._end(root, ev);
     if (!this.hand[other(root)].length) return this._end(other(root), ev);
@@ -1073,6 +1093,10 @@
     this.turns++;
     if (actor === 'opp') {
       this.oppTurns++;
+      if (this.douses('sprinkler') && this.oppTurns % 4 === 0 && this.glut > 0) {
+        this.glut = Math.max(0, this.glut - Math.round(this.target * 0.05));
+        ev.push({ t: 'douse', id: 'sprinkler', chain: this.chain, glut: this.glut });
+      }
       if (this.enemy.passive === 'storm' && this.oppTurns % 5 === 0) {
         ev.push({ t: 'passive', id: 'storm' });
         this._drawInto('player', 1, 'effect', ev, true);

@@ -98,6 +98,18 @@
     var step = raw < 1000 ? 10 : raw < 10000 ? 50 : raw < 100000 ? 500 : 5000;
     return Math.round(raw / step) * step;
   };
+  /* Löschmittel eines Tisches: Akt 1 bleibt für Tische frei, Bosse haben immer die Löschdecke. Fest je Gegner und Akt. */
+  Run.prototype.douse = function (enc) {
+    var act = this.s.act, n = act, id = enc.enemy;
+    for (var i = 0; i < id.length; i++) n = (n * 31 + id.charCodeAt(i)) % 9973;
+    if (enc.kind === 'boss') return act >= 3 ? ['blanket', n % 2 ? 'sand' : 'water'] : ['blanket'];
+    if (enc.kind === 'elite') {
+      if (act === 1) return ['sand'];
+      var first = ['water', 'sprinkler', 'sand'][n % 3];
+      return act >= 4 ? [first, first === 'sprinkler' ? 'water' : 'sprinkler'] : [first];
+    }
+    return act === 1 ? [] : [n % 2 ? 'sand' : 'water'];
+  };
   Run.prototype.encounter = function () { return this.s.encounters[this.s.table]; };
   Run.prototype.actName = function () {
     var acts = this.acts();
@@ -165,6 +177,7 @@
       rules: e.rules || [],
       house: this.houseRules(),
       target: this.glutTarget(e.kind),
+      douse: this.douse(e),
       grow: { burned: this.s.burnCount || 0, bosses: this.s.bossesBeaten || 0, money: this.s.money, trinkets: this.s.trinkets.length, lastChain: this.s.lastChain || 0 },
       perks: this.s.perks || [],
       specialPool: this.meta().specials,

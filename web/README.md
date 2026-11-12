@@ -31,6 +31,13 @@ zugehörigen Elemente blenden sich selbst aus.
   „abgefackelt“ und gewinnt sofort; die Auszahlung zahlt dafür +50 % der Prämie
   und weitere +50 % je Verdopplung über dem Ziel (ohne Deckel), dazu Asche.
   Werte in `ZU.GLUT_TARGET` (`js/data.js`).
+- **Löschmittel:** Die Antwort der Gegner auf Glut (`ZU.DOUSE`, vergeben in
+  `run.douse`): Löschsand (8 des Gegners: Kette −2), Löschwasser (Ass: Kette
+  halbiert), Sprinkler (jeder 4. Gegnerzug: −5 % des Ziels an Glut), Löschdecke
+  (Bosse, einmal: beim halben Ziel −25 % Glut, Kette zurück). Tische in Akt 1
+  haben keines.
+- **Ziehen:** setzt die Kette zurück; passt die gezogene Karte sofort, bleibt
+  die halbe Kette stehen.
 - **Wirtschaft in Prozent:** Prämien, Preise, Bank und Zinsdeckel wachsen je Akt
   um 15 % (`ZU.ACT_GROWTH`); Rabatte, Aufschläge und Geld-Trinkets rechnen in
   Prozent, damit sie in späten Akten noch zählen.

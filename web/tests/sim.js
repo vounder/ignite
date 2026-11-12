@@ -372,6 +372,45 @@ assert.strictEqual(ZU.Meta.clean({ stake: 2, maxStake: 3 }).maxStake, 5, 'Grandh
 assert.strictEqual(ZU.Meta.clean({ stake: 2, maxStake: 3, cv: ZU.CASINO_VERSION }).maxStake, 3, 'neue Stände bleiben unverändert');
 for (let i = 1; i < ZU.CASINOS.length; i++) assert.ok(ZU.CASINOS[i].ash > ZU.CASINOS[i - 1].ash && ZU.CASINOS[i].acts >= ZU.CASINOS[i - 1].acts, 'Häuser werden härter und lohnender');
 
+// Löschmittel: Akt 1 lässt Tische in Ruhe, Bosse haben die Löschdecke; die Mittel drücken Kette und Glut.
+{
+  const run = ZU.Run.start('classic', 4711);
+  assert.deepStrictEqual(run.douse({ enemy: 'barkeeper', kind: 'battle' }), []);
+  assert.ok(run.douse({ enemy: 'barkeeper', kind: 'boss' }).includes('blanket'));
+  run.s.act = 2;
+  assert.strictEqual(run.douse({ enemy: 'barkeeper', kind: 'battle' }).length, 1);
+  const mk = (douse) => { const r = ZU.Run.start('classic', 9); const d = r.newDuel(); d.target = 1000; d.douse = douse; d.start(); return d; };
+  for (const [kind, rank, expect] of [['sand', '8', 6], ['water', 'A', 4]]) {
+    const d = mk([kind]);
+    d.chain = 8;
+    const def = Object.keys(ZU.CARDS).find(k => ZU.CARDS[k].rank === rank && !ZU.CARDS[k].special);
+    const id = d._register(def, 'house', false);
+    d.hand.opp.push(id);
+    const ev = [];
+    d._putOnTable('opp', id, 'hand', ev);
+    assert.strictEqual(d.chain, expect, kind);
+    assert.ok(ev.some(e => e.t === 'douse' && e.id === kind));
+  }
+  const b = mk(['blanket']);
+  b.glut = 600; b.chain = 7; b.root = 'player';
+  const ev = [];
+  b._complete(ev);
+  assert.strictEqual(b.glut, 450);
+  assert.strictEqual(b.chain, b.chainFloor());
+  b.glut = 900; b.root = b.active; b._complete([]);
+  assert.strictEqual(b.glut, 900, 'Löschdecke nur einmal');
+  // Ziehen: Passt die gezogene Karte, bleibt die halbe Kette stehen.
+  const d = mk([]);
+  d.phase = 'action'; d.active = 'player'; d.pending = null; d.afterDraw = null;
+  d.chain = 9;
+  const top = d.def(d.pile[d.pile.length - 1]);
+  const fit = Object.keys(ZU.CARDS).find(k => !ZU.CARDS[k].special && ZU.CARDS[k].suit === (d.wish || top.suit) && !'78AJ'.includes(ZU.CARDS[k].rank));
+  d.stocks.player.push(d._register(fit, 'player', false));
+  const drawn = d.draw('player');
+  if (drawn.some(e => e.t === 'drawfit')) assert.strictEqual(d.chain, 5);
+  else assert.strictEqual(d.chain, d.chainFloor());
+}
+
 // Glutziel: Wer es erreicht, gewinnt sofort; die Ziele steigen steil, und der Überschuss zahlt ohne Deckel.
 {
   const run = ZU.Run.start('classic', 31337);
