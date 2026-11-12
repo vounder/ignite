@@ -35,7 +35,7 @@
     this.chain = duel.chain;
     this.destroyed = false;
     this.baseMood = 'idle';
-    this.multiOwned = run.has('nimble-fingers');
+    this.multiOwned = (run.s.kniffe || []).length > 0;
     this.multi = this.multiOwned && game.multiSelect !== false;
   }
 
@@ -93,7 +93,7 @@
     this.playBtn = h('button', 'btn big ember', 'Ausspielen', { onclick: function () { self.onPlayButton(); } });
     this.multiBtn = h('button', 'btn small switch', 'An', { onclick: function () { self.setMulti(!self.multi); } });
     this.multiRow = h('div', 'multirow', [h('span', 'label', 'Mehrfachwahl'), this.multiBtn]);
-    ZU.tip.bind(this.multiRow, '<b>Flinke Finger</b><p>Bei <b>An</b> wählst du Karten mit gleichem Wert aus und legst sie zusammen; Karten ohne passenden Partner werden weiter sofort gespielt. Bei <b>Aus</b> wird jede angeklickte Karte sofort gespielt.</p>');
+    ZU.tip.bind(this.multiRow, '<b>Mehrfachwahl</b><p>Bei <b>An</b> wählst du Karten aus, die dein Kniff zusammen erlaubt (sie leuchten auf), und legst sie in einem Zug; Karten ohne passenden Partner werden weiter sofort gespielt. Bei <b>Aus</b> wird jede angeklickte Karte sofort gespielt.</p>');
     this.drawBtn = h('button', 'btn big felt', 'Ziehen', { onclick: function () { self.onDrawButton(); } });
     var lives = h('div', 'lives');
     for (var l = 0; l < run.maxLives(); l++) lives.appendChild(ZU.iconEl(l < run.s.lives ? 'match' : 'matchOut', 'match'));
@@ -104,7 +104,7 @@
       ]),
       h('div', 'statline', [ZU.iconEl('coin', 'coin'), this.moneyEl, h('span', 'unit', 'Mark'), h('div', 'grow'), lives]),
       h('div', 'statline bank', [h('span', 'label', 'Bank'), this.bankEl, h('span', 'unit', 'Mark'), this.bankMult]),
-      h('div', 'label', 'Privilegien und Trinkets'),
+      h('div', 'label', 'Kniffe, Privilegien und Trinkets'),
       slots,
       h('div', 'grow'),
       this.multiOwned ? this.multiRow : null,
@@ -882,6 +882,14 @@
     return wait(520);
   };
 
+  /* Ein Kniff trägt den Zug: Name und Kartenzahl blitzen über dem Stapel auf, das Abzeichen zuckt. */
+  DuelView.prototype.on_kniff = function (ev) {
+    var el = this.trinketEls['kniff:' + ev.id];
+    fx.pop(PILE.x, PILE.y - 130, ZU.KNIFFE[ev.id].name + ' ×' + ev.count, 'gold small');
+    ZU.audio.chip();
+    if (el) { fx.punch(el); var p = ZU.stagePos(el); this.trail(p.x, p.y, PILE.x, PILE.y, ['#fff3c4', '#ffd75e', '#3aa58f'], 240); }
+    return wait(160);
+  };
   DuelView.prototype.on_trinket = function (ev) {
     var done = this.trinketFx(ev.id, false);
     if (!done) { ZU.audio.chip(); return wait(200); }
@@ -1143,8 +1151,9 @@
   /* Gibt es eine zweite Handkarte mit gleichem Wert, die sich mit dieser zusammen legen ließe? */
   DuelView.prototype.hasPartner = function (sp) {
     if (sp.def.special) return false;
+    var duel = this.duel;
     return this.pHand.some(function (other) {
-      return other !== sp && !other.def.special && other.def.rank === sp.def.rank;
+      return other !== sp && !other.def.special && duel.groupOk([sp.id, other.id]).ok;
     });
   };
 
@@ -1288,13 +1297,14 @@
 
     // Markierungen der Handkarten
     var firstRank = this.selected.length && !this.selected[0].def.special ? this.selected[0].def.rank : null;
+    var chosen = this.selected.map(function (item) { return item.id; });
     this.pHand.forEach(function (sp) {
       var cl = sp.el.classList;
       var active = mode === 'play' && !busy;
       var playable = active && d.playable('player', sp.id);
       cl.toggle('playable', playable && !sp.selected);
       cl.toggle('unplayable', active && !playable && !sp.selected && !firstRank);
-      cl.toggle('chainable', active && !!firstRank && !sp.selected && !sp.def.special && sp.def.rank === firstRank);
+      cl.toggle('chainable', active && !!firstRank && !sp.selected && !sp.def.special && d.groupOk(chosen.concat([sp.id])).ok);
       cl.toggle('selected', sp.selected);
       cl.toggle('option', !!pending && pending.pool === 'hand' && !sp.selected);
       var order = self.selected.indexOf(sp);

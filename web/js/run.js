@@ -17,7 +17,7 @@
   /* Ohne Meta-Angaben (Tests, alte Spielstände) ist alles frei und nichts erschwert. */
   var NO_META = {
     stake: 0, cv: ZU.CASINO_VERSION, acts: 3, rules: [], ashMult: 1, startgeld: 0, freeReroll: false, shopBonus: 0, maxLives: ZU.MAX_LIVES, trinkets: null, specials: null,
-    seals: null, esmePacks: 3, specialSlots: 99, interest: 0, trinketOffers: 0, perkDiscount: 0, bossTip: 0, burnDiscount: 0, luckyTrinket: false, nimble: false
+    seals: null, esmePacks: 3, specialSlots: 99, interest: 0, trinketOffers: 0, perkDiscount: 0, bossTip: 0, burnDiscount: 0, luckyTrinket: false, kniffTier: 9, kniffSlots: 2, startKniff: false
   };
 
   /* meta: Ergebnis von ZU.Meta.runOptions() – Einsatz, Upgrades und freigeschaltete Inhalte. */
@@ -28,7 +28,7 @@
       v: 1, seed: seed >>> 0, rng: seed >>> 0, starter: starter.id,
       act: 1, table: 0, lives: meta.maxLives, money: starter.money + meta.startgeld, score: 0, nextId: 1,
       meta: meta, ash: 0, ashPaid: 0,
-      collection: [], trinkets: starter.trinkets.slice(), perks: (starter.perks || []).slice(), perkOffer: null, bonusLives: 0, phase: 'select',
+      collection: [], trinkets: starter.trinkets.slice(), perks: (starter.perks || []).slice(), perkOffer: null, kniffe: (starter.kniffe || []).map(function (k) { return { id: k.id, level: k.level }; }), bonusLives: 0, phase: 'select',
       encounters: [], seen: [], shop: null, reward: null, burnCount: 0, endless: false,
       stats: { duels: 0, wins: 0, losses: 0, bestChain: 1, bestGlut: 0, played: 0, earned: 0 }
     };
@@ -44,7 +44,11 @@
       var commons = run._specialPool().filter(function (id) { return ZU.CARDS[id].rarity === 0; });
       run._add(run.rng.pick(commons.length ? commons : ['stillstand']), run.rng.pick(ZU.SUIT_ORDER));
     }
-    if (meta.nimble && state.perks.indexOf('nimble-fingers') < 0) state.perks.push('nimble-fingers'); // Upgrade „Flinke Finger"
+    if (meta.startKniff && !state.kniffe.length) {
+      // Upgrade „Kniff im Ärmel": ein zufälliger enger Kniff zum Start
+      var narrow = run.kniffPool().filter(function (id) { return ZU.KNIFFE[id].tier === 0; });
+      if (narrow.length) { var kid = run.rng.pick(narrow); state.kniffe.push({ id: kid, level: ZU.KNIFFE[kid].start }); }
+    }
     if (meta.luckyTrinket) {
       // Upgrade „Glücksbringer": ein zufälliges gewöhnliches Trinket zum Start
       var commons = run._trinketPool().filter(function (id) { return ZU.TRINKETS[id].rarity === 0; });
@@ -111,6 +115,61 @@
     }
     return act === 1 ? [] : [n % 2 ? 'sand' : 'water'];
   };
+  /* ---------- Kniffe ---------- */
+  Run.prototype.kniffSlots = function () { return this.meta().kniffSlots || 1; };
+  Run.prototype.kniffe = function () { return this.s.kniffe || (this.s.kniffe = []); };
+  /* Kniffe, die in diesem Run noch auftauchen können: nach ausgeräumten Casinos gestaffelt, ohne die eigenen. */
+  Run.prototype.kniffPool = function () {
+    var owned = this.kniffe().map(function (k) { return k.id; }), tier = this.meta().kniffTier == null ? 9 : this.meta().kniffTier;
+    return ZU.KNIFF_IDS.filter(function (id) { return ZU.KNIFFE[id].tier <= tier && owned.indexOf(id) < 0; });
+  };
+  Run.prototype.kniffPrice = function (id, level) {
+    var spec = ZU.KNIFFE[id];
+    return this._price(level <= spec.start ? spec.price : Math.round(spec.price * [0, 0, 1.2, 2][level]));
+  };
+  /* Angebot des Ladens: ein neuer Kniff, solange ein Platz frei ist, sonst (oder im Wechsel) die nächste Stufe eines eigenen. */
+  Run.prototype._rollKniff = function () {
+    var s = this.s, own = this.kniffe(), pool = this.kniffPool();
+    var up = own.filter(function (k) { return k.level < 3; }), free = own.length < this.kniffSlots() && pool.length > 0;
+    var offer = null;
+    if (free && (!own.length || !up.length || this.rng.next() < 0.45)) {
+      var narrow = pool.filter(function (id) { return ZU.KNIFFE[id].tier === 0; });
+      var id = this.rng.pick(!own.length && narrow.length ? narrow : pool);
+      offer = { id: id, level: ZU.KNIFFE[id].start, fresh: true };
+    } else if (up.length) {
+      var k = this.rng.pick(up);
+      offer = { id: k.id, level: k.level + 1, fresh: false };
+    }
+    if (offer) { offer.price = this.kniffPrice(offer.id, offer.level); offer.sold = false; }
+    s.shop.kniff = offer;
+  };
+  Run.prototype.buyKniff = function () {
+    var offer = this.s.shop && this.s.shop.kniff;
+    if (!offer || offer.sold) throw new Error('Nicht verfügbar.');
+    this._pay(offer.price);
+    offer.sold = true;
+    this._gainKniff(offer.id, offer.level);
+    this.save();
+    return offer.id;
+  };
+  Run.prototype._gainKniff = function (id, level) {
+    var own = this.kniffe(), have = own.filter(function (k) { return k.id === id; })[0];
+    if (have) have.level = Math.min(3, Math.max(have.level, level));
+    else own.push({ id: id, level: level });
+    ZU.Meta.note({ kniffe: 1 });
+  };
+  /* Boss-Beute: statt der Spezialkarte eine Stufe auf einen eigenen Kniff. */
+  Run.prototype.rewardKniff = function () {
+    var s = this.s, r = s.reward;
+    if (!r || !r.kniff) throw new Error('Keine Belohnung offen.');
+    var have = this.kniffe().filter(function (k) { return k.id === r.kniff; })[0];
+    if (have) this._gainKniff(have.id, have.level + 1);
+    s.reward = null;
+    this._openShop();
+    this._sync();
+    this.save();
+  };
+
   Run.prototype.encounter = function () { return this.s.encounters[this.s.table]; };
   Run.prototype.actName = function () {
     var acts = this.acts();
@@ -178,6 +237,7 @@
       rules: e.rules || [],
       house: this.houseRules(),
       target: this.glutTarget(e.kind),
+      kniffe: this.kniffe().map(function (k) { return { id: k.id, level: k.level }; }),
       douse: this.douse(e),
       grow: { burned: this.s.burnCount || 0, bosses: this.s.bossesBeaten || 0, money: this.s.money, trinkets: this.s.trinkets.length, lastChain: this.s.lastChain || 0,
         deck: this.s.collection.length, sealed: this.s.collection.filter(function (c) { return c.seal; }).length, act: this.s.act,
@@ -310,6 +370,8 @@
       // Boss-Beute ist freier gebunden als das, was der Akt sonst hergibt.
       var rng = this.rng, ahead = s.act + 1;
       if (specials.length) s.reward = { type: 'card', options: specials, binds: specials.map(function () { return ZU.rollBind(rng, ahead); }), skip: 5 };
+      var upgradable = this.kniffe().filter(function (k) { return k.level < 3; });
+      if (s.reward && upgradable.length) s.reward.kniff = rng.pick(upgradable).id;
     }
     s.phase = 'payout';
     this._sync();
@@ -431,6 +493,7 @@
     if (this.rule('cover-charge')) this.s.money = Math.max(0, this.s.money - Math.max(2, Math.round(this.s.money * 0.1))); // Hausregel „Eintritt"
     if (this.has('mitgift')) this.s.money += Math.max(3, Math.round(this.s.money * 0.15));
     if (!this.s.perkOffer || this.s.perkOffer.act !== this.s.act) this._rollPerk();
+    this._rollKniff();
     this._stockShop();
     this.s.phase = 'shop';
   };
@@ -441,7 +504,7 @@
     s.perks = s.perks || [];
     var open = ZU.PERK_IDS.filter(function (id) { return s.perks.indexOf(id) < 0; });
     if (!open.length) { s.perkOffer = { id: null, price: 0, sold: true, act: s.act }; return; }
-    var id = s.act === 1 && open.indexOf('nimble-fingers') >= 0 ? 'nimble-fingers' : this.rng.pick(open);
+    var id = this.rng.pick(open);
     s.perkOffer = { id: id, price: Math.max(1, Math.round(this._price(ZU.PERKS[id].price) * (1 - (this.meta().perkDiscount || 0)))), sold: false, act: s.act };
   };
 
@@ -744,6 +807,15 @@
         state.trinkets.splice(legacy, 1);
         if (state.perks.indexOf('nimble-fingers') < 0) state.perks.push('nimble-fingers');
       }
+      // Spielstände vor den Kniffen: „Flinke Finger" wird zum Kniff Pasch auf höchster Stufe.
+      state.kniffe = (state.kniffe || []).filter(function (k) { return k && ZU.KNIFFE[k.id]; });
+      var nimble = state.perks.indexOf('nimble-fingers');
+      if (nimble >= 0) {
+        state.perks.splice(nimble, 1);
+        if (!state.kniffe.some(function (k) { return k.id === 'pasch'; })) state.kniffe.push({ id: 'pasch', level: 3 });
+      }
+      state.perks = state.perks.filter(function (id) { return ZU.PERKS[id]; });
+      if (state.perkOffer && state.perkOffer.id && !ZU.PERKS[state.perkOffer.id]) state.perkOffer = null;
       if (state.shop) state.shop.trinkets = state.shop.trinkets.filter(function (offer) { return ZU.TRINKETS[offer.id]; });
       if (state.reward && state.reward.type === 'trinket') {
         state.reward.options = state.reward.options.filter(function (id) { return ZU.TRINKETS[id]; });

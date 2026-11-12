@@ -161,6 +161,17 @@
     return el;
   };
 
+  /* Abzeichen eines Kniffs: Kurzzeichen und Stufe (1–3 Punkte). */
+  ZU.kniffEl = function (id, level) {
+    var spec = ZU.KNIFFE[id], pips = h('i', 'kn-pips');
+    for (var i = 1; i <= 3; i++) pips.appendChild(h('b', i <= level ? 'on' : ''));
+    var red = spec.suit === 'hearts' || spec.suit === 'diamonds';
+    var el = h('div', 'trinket kniff' + (red ? ' red' : ''), [h('span', 'kn-glyph', spec.glyph), pips]);
+    el.dataset.id = id;
+    ZU.tip.bind(el, '<b>' + spec.name + '</b><i class="rar rare">Kniff · Stufe ' + level + ' von 3</i><p>' + ZU.kniffText(id, level) + '</p>');
+    return el;
+  };
+
   /* Füllt eine Leiste mit allem, was der Spieler trägt: erst Privilegien, dann Trinkets.
      Je mehr es sind, desto kleiner werden die Symbole. Liefert die Elemente nach Kennung. */
   /* Siegel als Symbol (Hinterzimmer, Esmes Pakete). */
@@ -189,10 +200,14 @@
   };
 
   ZU.fillOwned = function (container, run, onTrinket) {
-    var map = {}, perks = run.s.perks || [], trinkets = run.s.trinkets, total = perks.length + trinkets.length;
+    var map = {}, perks = run.s.perks || [], trinkets = run.s.trinkets, kniffe = run.s.kniffe || [], total = perks.length + trinkets.length + kniffe.length;
     container.innerHTML = '';
     container.classList.toggle('many', total > 6 && total <= 12);
     container.classList.toggle('lots', total > 12);
+    kniffe.forEach(function (k) {
+      map['kniff:' + k.id] = ZU.kniffEl(k.id, k.level);
+      container.appendChild(map['kniff:' + k.id]);
+    });
     perks.forEach(function (id) {
       map[id] = ZU.perkEl(id);
       container.appendChild(map[id]);

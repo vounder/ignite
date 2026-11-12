@@ -22,7 +22,7 @@
     trinkets: 'max', perks: 'max', casino: 'max', flawless: 'max', endless: 'max',
     played: 'sum', sevens: 'sum', eights: 'sum', aces: 'sum', specials: 'sum', pairs: 'sum', skips: 'sum', curses: 'sum', reflects: 'sum',
     swaps: 'sum', sacrificed: 'sum', nodraw: 'sum', fast: 'sum', curfew: 'sum', last: 'sum', slim: 'sum', losses: 'sum',
-    burned: 'sum', sold: 'sum', rerolls: 'sum', healed: 'sum', sealed: 'sum', bought: 'sum', burnt: 'sum', overkill: 'max'
+    burned: 'sum', sold: 'sum', rerolls: 'sum', healed: 'sum', sealed: 'sum', bought: 'sum', burnt: 'sum', overkill: 'max', kniffe: 'sum'
   };
 
   /* Bedingungen, unter denen etwas im Hinterzimmer auftaucht: [Zählwerk, Schwelle, Hinweis, ab wann der Hinweis zu lesen ist].
@@ -199,9 +199,11 @@
       aschesieb: { name: 'Aschesieb', text: '+10 % Asche je Stufe.', costs: [12, 20, 30] },
       reserve: { name: 'Reserveholz', text: 'Du beginnst mit einem vierten Streichholz.', costs: [25] },
       tarot: { name: 'Viertes Blatt', text: 'Esme legt ein Paket mehr aus.', costs: [16] },
+      kniffplatz: { name: 'Zweite Hand', text: 'Du kannst einen Kniff mehr je Stufe tragen (ohne Ausbau: 1).', costs: [15, 30] },
+      startkniff: { name: 'Kniff im Ärmel', text: 'Du beginnst jeden Run mit einem zufälligen einfachen Kniff.', costs: [18] },
       gluecksbringer: { name: 'Glücksbringer', text: 'Du beginnst jeden Run mit einem zufälligen gewöhnlichen Trinket.', costs: [22] }
     },
-    UPGRADE_IDS: ['startgeld', 'etui', 'stammkunde', 'spuernase', 'sparbuch', 'zuendelei', 'schaufenster', 'handschlag', 'trinkgeld', 'aschesieb', 'reserve', 'tarot', 'gluecksbringer'],
+    UPGRADE_IDS: ['startgeld', 'etui', 'stammkunde', 'spuernase', 'sparbuch', 'zuendelei', 'schaufenster', 'handschlag', 'trinkgeld', 'aschesieb', 'reserve', 'tarot', 'kniffplatz', 'startkniff', 'gluecksbringer'],
 
     /* Casinos als Stufen. Der Name STAKES und die Felder stake/maxStake stammen von den früheren „Einsätzen"
        und bleiben, damit gespeicherte Profile und Konten weiter passen. */
@@ -410,7 +412,7 @@
     /* Vorschläge fürs Hinterzimmer, je Reiter ('unlock' oder 'upgrade'): die besten Stücke, die entdeckt, noch nicht
        gekauft und bezahlbar sind – das wertvollste zuerst. Reicht die Asche für weniger als drei, folgen die
        nächstgünstigen als Sparziel (afford: false, missing: fehlende Asche). */
-    UPGRADE_WORTH: { gluecksbringer: 9, reserve: 9, aschesieb: 8, etui: 7, startgeld: 6, schaufenster: 6, tarot: 5, stammkunde: 5 },
+    UPGRADE_WORTH: { startkniff: 9, kniffplatz: 8, gluecksbringer: 9, reserve: 9, aschesieb: 8, etui: 7, startgeld: 6, schaufenster: 6, tarot: 5, stammkunde: 5 },
     suggest: function (meta, tab, count) {
       var list = [];
       if (tab === 'upgrade') {
@@ -481,7 +483,9 @@
         bossTip: M.level(meta, 'trinkgeld') * 0.2,
         burnDiscount: M.level(meta, 'zuendelei') * 0.25,
         luckyTrinket: M.level(meta, 'gluecksbringer') > 0,
-        nimble: false, // das Upgrade „Flinke Finger“ gibt es nicht mehr (zu stark für den Anfang)
+        kniffTier: meta.maxStake || 0,
+        kniffSlots: 1 + M.level(meta, 'kniffplatz'),
+        startKniff: M.level(meta, 'startkniff') > 0,
         trinkets: open('trinket', ZU.TRINKET_IDS),
         specials: open('special', ZU.SPECIAL_IDS),
         seals: open('seal', ZU.SEAL_IDS),

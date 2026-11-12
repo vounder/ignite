@@ -2,13 +2,13 @@
 (function (ZU) {
   'use strict';
 
-  ZU.VERSION = '2.3.0';
+  ZU.VERSION = '2.4.0';
   /* Stand der Casino-Liste. Ändert sich die Reihenfolge, rechnen js/meta.js und js/run.js gespeicherte Stände um. */
   ZU.CASINO_VERSION = 2;
   ZU.CASINO_REMAP = [0, 1, 3, 5, 6, 7]; // alter Index (sechs Häuser) → neuer Index (acht Häuser) // im Hauptmenü unten rechts angezeigt
   /* Build-Kennung: wird an alle Asset-Adressen gehängt, damit Browser und CDN nach einem Update frische
      Dateien holen. Nicht von Hand ändern: web/tools/stamp_version.py setzt den Wert. */
-  ZU.BUILD = 'ac81772cd3';
+  ZU.BUILD = 'a027514ff7';
   ZU.asset = function (path) { return 'assets/' + path + '?v=' + ZU.BUILD; };
 
   ZU.HAND_SIZE = 7;
@@ -403,12 +403,35 @@
   ZU.TRINKETS = trinkets;
   ZU.TRINKET_IDS = Object.keys(trinkets);
 
+  /* ---------- Kniffe ----------
+     Ein Kniff ist eine Regel, welche normalen Karten in einem Zug zusammen gelegt werden dürfen. Ein Zug folgt genau
+     einem Kniff. Die Stufe begrenzt die Zahl der Karten (ZU.KNIFF_LIMIT); Aufstufen macht die Züge länger.
+     tier: ab wie vielen ausgeräumten Casinos der Kniff in Runs auftaucht. */
+  ZU.KNIFF_LIMIT = [0, 2, 3, 99];
+  ZU.KNIFFE = {
+    'pasch-7': { name: 'Siebenerpasch', glyph: '7·7', kind: 'rank', ranks: ['7'], start: 2, price: 8, tier: 0, text: 'Mehrere 7en gehen in einem Zug raus.' },
+    'pasch-8': { name: 'Achterpasch', glyph: '8·8', kind: 'rank', ranks: ['8'], start: 2, price: 8, tier: 0, text: 'Mehrere 8en gehen in einem Zug raus.' },
+    'pasch-zahl': { name: 'Zahlenpasch', glyph: '9·9', kind: 'rank', ranks: ['9', '10'], start: 2, price: 9, tier: 0, text: 'Mehrere 9en oder mehrere 10en gehen in einem Zug raus.' },
+    'pasch-bild': { name: 'Hofpasch', glyph: 'B·B', kind: 'rank', ranks: ['J', 'Q', 'K'], start: 1, price: 10, tier: 1, text: 'Mehrere Buben, mehrere Damen oder mehrere Könige gehen in einem Zug raus.' },
+    'pasch-ass': { name: 'Ass-Parade', glyph: 'A·A', kind: 'rank', ranks: ['A'], start: 2, price: 9, tier: 1, text: 'Mehrere Asse gehen in einem Zug raus.' },
+    'lauf-spades': { name: 'Pik-Lauf', glyph: '♠♠', kind: 'suit', suit: 'spades', start: 1, price: 12, tier: 2, text: 'Mehrere Pik-Karten gehen in einem Zug raus.' },
+    'lauf-hearts': { name: 'Herz-Lauf', glyph: '♥♥', kind: 'suit', suit: 'hearts', start: 1, price: 12, tier: 2, text: 'Mehrere Herz-Karten gehen in einem Zug raus.' },
+    'lauf-diamonds': { name: 'Karo-Lauf', glyph: '♦♦', kind: 'suit', suit: 'diamonds', start: 1, price: 12, tier: 2, text: 'Mehrere Karo-Karten gehen in einem Zug raus.' },
+    'lauf-clubs': { name: 'Kreuz-Lauf', glyph: '♣♣', kind: 'suit', suit: 'clubs', start: 1, price: 12, tier: 2, text: 'Mehrere Kreuz-Karten gehen in einem Zug raus.' },
+    folge: { name: 'Kleine Straße', glyph: '8›9', kind: 'run', start: 1, price: 12, tier: 3, text: 'Aufeinanderfolgende Werte desselben Symbols gehen in einem Zug raus, etwa Herz 8-9-10.' },
+    pasch: { name: 'Pasch', glyph: '=·=', kind: 'rank', ranks: null, start: 1, price: 16, tier: 5, text: 'Karten mit gleichem Wert gehen in einem Zug raus – egal welcher Wert.' }
+  };
+  ZU.KNIFF_IDS = Object.keys(ZU.KNIFFE);
+  ZU.kniffText = function (id, level) {
+    var limit = ZU.KNIFF_LIMIT[level];
+    return ZU.KNIFFE[id].text + ' Stufe ' + level + ': ' + (limit >= 99 ? 'beliebig viele Karten.' : 'höchstens ' + limit + ' Karten.');
+  };
+
   /* ---------- Privilegien ----------
      Gelten für den ganzen Run und belegen keinen Trinket-Platz. Manfred bietet je Akt genau eines an;
-     die Neue Auslage ändert daran nichts. In Akt 1 ist es immer „Flinke Finger". */
+     die Neue Auslage ändert daran nichts. */
   var perks = {};
   function perk(id, name, price, text) { perks[id] = { id: id, name: name, price: price, text: text }; }
-  perk('nimble-fingers', 'Flinke Finger', 12, 'Mehrfachwahl: Lege mehrere Karten mit gleichem Wert in einem Zug.');
   perk('shelf', 'Großes Regal', 14, 'Das Spezialkarten-Regal hat 3 statt 2 Plätze.');
   perk('showcase', 'Vitrine', 14, 'Manfred zeigt 3 statt 2 Trinkets.');
   perk('regular', 'Stammplatz', 16, 'Jede Tischprämie fällt 25 % höher aus.');
@@ -1066,7 +1089,7 @@
   /* ---------- Startschachteln ---------- */
   ZU.STARTERS = [
     { id: 'classic', name: 'Klassisch', money: 10, text: '16 zufällige Karten, eine zufällige Spezialkarte und das meiste Startgeld. Solide.', cards: [], special: true, trinkets: [], color: '#2f7d5b' },
-    { id: 'igniter', name: 'Zündler', money: 5, text: '16 Karten, darunter vier 7en, und eine zufällige Spezialkarte. Dazu das Privileg Flinke Finger: Gleiche Werte gehen zusammen raus.', cards: ['hearts-7', 'spades-7', 'diamonds-7', 'clubs-7'], special: true, trinkets: [], perks: ['nimble-fingers'], color: '#f08a24' },
+    { id: 'igniter', name: 'Zündler', money: 5, text: '16 Karten, darunter vier 7en, und eine zufällige Spezialkarte. Dazu der Kniff Siebenerpasch: Mehrere 7en gehen zusammen raus.', cards: ['hearts-7', 'spades-7', 'diamonds-7', 'clubs-7'], kniffe: [{ id: 'pasch-7', level: 2 }], special: true, trinkets: [], color: '#f08a24' },
     { id: 'cheater', name: 'Falschspieler', money: 5, text: '16 Karten plus Tausch und Zocken, beide an ein Symbol gebunden.', cards: ['tausch', 'zocken'], trinkets: [], color: '#a3271f' },
     { id: 'alchemist', name: 'Alchemist', money: 4, text: '16 Karten plus Zytokinese und HODL, beide an ein Symbol gebunden.', cards: ['zytokinese', 'hodl'], trinkets: [], color: '#2a8c8c' }
   ];
