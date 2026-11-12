@@ -87,7 +87,7 @@ zugehörigen Elemente blenden sich selbst aus.
 - **Meta-Progression:** Asche gibt es sofort nach jedem Sieg (1 je Tisch, 2 je
   Elite, 5 je Boss, 8 für das ausgeräumte Casino, mal Asche-Faktor). Im
   Hinterzimmer (Hauptmenü) kauft man damit Schachteln, Trinkets, Spezialkarten
-  und zwölf Upgrades. Anfangs gibt es eine Schachtel, 11 Trinkets und 6
+  und dreizehn Upgrades (darunter „Flinke Finger“ für 20 Asche: jeder Run beginnt mit dem Privileg). Anfangs gibt es eine Schachtel, 11 Trinkets und 6
   Spezialkarten. Alles Weitere ist zunächst **verborgen** („?????“) und taucht
   erst auf, wenn eine Bedingung am Tisch erfüllt ist – etwa „Spiele 10
   Siebenen“ oder „Schlage Madame Rauch“. Manche Stücke zeigen diesen Hinweis

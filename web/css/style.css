@@ -31,10 +31,10 @@ p { margin: 0; }
 h1, h2, h3 { margin: 0; font-family: var(--px-wide); font-weight: normal; letter-spacing: 1px; }
 
 #bg { position: fixed; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; }
-#bg.fallback { background: radial-gradient(ellipse at 50% 80%, #6b2414, #1c0f0b 70%); }
+#bg.fallback { background: radial-gradient(ellipse at 50% 80%, var(--bg-mid, #6b2414), var(--bg-dark, #1c0f0b) 70%); }
 /* Einstellung „Hintergrund: Aus“: ruhiger Verlauf statt des bewegten Rauchs. */
 body.nobg #bg { display: none; }
-body.nobg { background: radial-gradient(ellipse at 50% 85%, #34170f, #0b0706 75%); }
+body.nobg { background: radial-gradient(ellipse at 50% 85%, var(--bg-mid, #34170f), var(--bg-dark, #0b0706) 75%); }
 #viewport { position: fixed; inset: 0; overflow: hidden; }
 #stage { position: absolute; left: 50%; top: 50%; width: 1280px; height: 720px; transform-origin: 50% 50%; }
 #screen, #overlay, #pops { position: absolute; inset: 0; }
@@ -795,3 +795,5 @@ body.nobg { background: radial-gradient(ellipse at 50% 85%, #34170f, #0b0706 75%
 .handcount.lose { background: #8f2419; border-color: #ffb09e; color: #ffe1d6; }
 .spr.counted .card { box-shadow: 0 0 0 4px var(--ember-hot), 0 0 16px 4px rgba(255,190,80,.7); }
 .spr.counted { filter: brightness(1.15); }
+/* Jedes Casino trägt seine Farbe: als Schimmer am Kartenfuß der Auswahl */
+.casino-card.open { background: linear-gradient(180deg, var(--walnut-2) 0, var(--walnut) 62%, color-mix(in srgb, var(--tint, #2b1a12) 55%, var(--walnut)) 100%); }

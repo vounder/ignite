@@ -2,10 +2,10 @@
 (function (ZU) {
   'use strict';
 
-  ZU.VERSION = '1.4.0'; // im Hauptmenü unten rechts angezeigt
+  ZU.VERSION = '1.4.1'; // im Hauptmenü unten rechts angezeigt
   /* Build-Kennung: wird an alle Asset-Adressen gehängt, damit Browser und CDN nach einem Update frische
      Dateien holen. Nicht von Hand ändern: web/tools/stamp_version.py setzt den Wert. */
-  ZU.BUILD = '3e6eba633a';
+  ZU.BUILD = '072c847d5c';
   ZU.asset = function (path) { return 'assets/' + path + '?v=' + ZU.BUILD; };
 
   ZU.HAND_SIZE = 7;
@@ -173,19 +173,20 @@
 
   /* ---------- Casinos ----------
      Sechs Häuser, die der Reihe nach freigeschaltet werden: Ein Sieg im bisher schwersten öffnet das nächste.
-     Jedes hat seine Zahl an Akten, eigene Räume, feste Hausregeln für alle Tische und einen Asche-Faktor. */
+     Jedes hat seine Zahl an Akten, eigene Räume, feste Hausregeln für alle Tische, einen Asche-Faktor
+     und eine eigene Farbwelt für den Rauch im Hintergrund (tint: dunkel, mittel, Glanzlicht). */
   ZU.CASINOS = [
-    { id: 'hahn', name: 'Zum Goldenen Hahn', sub: 'Eckkneipe mit Hinterzimmer', acts: 3, ash: 1,
+    { id: 'hahn', tint: { a: [0.09, 0.06, 0.03], b: [0.31, 0.18, 0.07], c: [0.94, 0.68, 0.24] }, name: 'Zum Goldenen Hahn', sub: 'Eckkneipe mit Hinterzimmer', acts: 3, ash: 1,
       rooms: ['Hinterzimmer', 'Rauchsalon', 'Das Haus'], rules: [] },
-    { id: 'rialto', name: 'Tanzpalast Rialto', sub: 'Wo die halbe Stadt ihr Geld vertanzt', acts: 4, ash: 1.5,
+    { id: 'rialto', tint: { a: [0.13, 0.03, 0.06], b: [0.46, 0.09, 0.15], c: [1.0, 0.66, 0.34] }, name: 'Tanzpalast Rialto', sub: 'Wo die halbe Stadt ihr Geld vertanzt', acts: 4, ash: 1.5,
       rooms: ['Garderobe', 'Parkett', 'Separee', 'Direktion'], rules: ['last-call', 'sober'] },
-    { id: 'fortuna', name: 'Dampfer Fortuna', sub: 'Schwimmt außerhalb jeder Zuständigkeit', acts: 4, ash: 2,
+    { id: 'fortuna', tint: { a: [0.02, 0.09, 0.11], b: [0.05, 0.28, 0.31], c: [0.62, 0.88, 0.78] }, name: 'Dampfer Fortuna', sub: 'Schwimmt außerhalb jeder Zuständigkeit', acts: 4, ash: 2,
       rooms: ['Unterdeck', 'Salon', 'Kapitänstisch', 'Brücke'], rules: ['last-call', 'sober', 'markup', 'short-night'] },
-    { id: 'imperial', name: 'Grandhotel Imperial', sub: 'Gespielt wird nur mit Krawatte', acts: 5, ash: 2.75,
+    { id: 'imperial', tint: { a: [0.07, 0.04, 0.12], b: [0.25, 0.14, 0.36], c: [0.94, 0.84, 0.58] }, name: 'Grandhotel Imperial', sub: 'Gespielt wird nur mit Krawatte', acts: 5, ash: 2.75,
       rooms: ['Foyer', 'Hotelbar', 'Bel Etage', 'Fürstensuite', 'Penthouse'], rules: ['last-call', 'sober', 'markup', 'short-night', 'cover', 'sharp-sevens'] },
-    { id: 'monopol', name: 'Spielbank Monopol', sub: 'Die Bank gewinnt. Steht so im Namen', acts: 5, ash: 3.5,
+    { id: 'monopol', tint: { a: [0.04, 0.06, 0.10], b: [0.14, 0.21, 0.30], c: [0.72, 0.80, 0.90] }, name: 'Spielbank Monopol', sub: 'Die Bank gewinnt. Steht so im Namen', acts: 5, ash: 3.5,
       rooms: ['Automatensaal', 'Roulettesaal', 'Baccara-Zimmer', 'Tresorraum', 'Direktorium'], rules: ['last-call', 'sober', 'markup', 'short-night', 'cover', 'sharp-sevens', 'house-edge', 'no-credit'] },
-    { id: 'inferno', name: 'Das Inferno', sub: 'Hier hat noch keiner das Licht ausgemacht', acts: 6, ash: 5,
+    { id: 'inferno', tint: { a: [0.06, 0.01, 0.01], b: [0.27, 0.03, 0.02], c: [1.0, 0.34, 0.07] }, name: 'Das Inferno', sub: 'Hier hat noch keiner das Licht ausgemacht', acts: 6, ash: 5,
       rooms: ['Vorhof', 'Glutkammer', 'Aschegrube', 'Schwefelsaal', 'Thronsaal', 'Der Abgrund'], rules: ['last-call', 'wide-awake', 'markup', 'short-night', 'cover', 'sharp-sevens', 'house-edge', 'no-credit', 'marked', 'damp'] }
   ];
 

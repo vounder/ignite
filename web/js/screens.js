@@ -747,6 +747,7 @@
           })
           : h('div', 'locked-note', [ZU.iconEl('lock', 'lockico'), 'Erst „' + ZU.CASINOS[index - 1].name + '“ ausräumen'])
       ]);
+      card.style.setProperty('--tint', 'rgb(' + casino.tint.b.map(function (v) { return Math.round(v * 255 * 1.6); }).join(',') + ')');
       if (index % CASINOS_PER_PAGE === 0) { pages.push(h('div', 'casino-page')); track.appendChild(pages[pages.length - 1]); }
       pages[pages.length - 1].appendChild(card);
     });

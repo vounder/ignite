@@ -17,7 +17,7 @@
   /* Ohne Meta-Angaben (Tests, alte Spielstände) ist alles frei und nichts erschwert. */
   var NO_META = {
     stake: 0, acts: 3, rules: [], ashMult: 1, startgeld: 0, freeReroll: false, shopBonus: 0, maxLives: ZU.MAX_LIVES, trinkets: null, specials: null,
-    specialSlots: 99, interest: 0, trinketOffers: 0, perkDiscount: 0, bossTip: 0, burnDiscount: 0, luckyTrinket: false
+    specialSlots: 99, interest: 0, trinketOffers: 0, perkDiscount: 0, bossTip: 0, burnDiscount: 0, luckyTrinket: false, nimble: false
   };
 
   /* meta: Ergebnis von ZU.Meta.runOptions() – Einsatz, Upgrades und freigeschaltete Inhalte. */
@@ -44,6 +44,7 @@
       var commons = run._specialPool().filter(function (id) { return ZU.CARDS[id].rarity === 0; });
       run._add(run.rng.pick(commons.length ? commons : ['stillstand']), run.rng.pick(ZU.SUIT_ORDER));
     }
+    if (meta.nimble && state.perks.indexOf('nimble-fingers') < 0) state.perks.push('nimble-fingers'); // Upgrade „Flinke Finger"
     if (meta.luckyTrinket) {
       // Upgrade „Glücksbringer": ein zufälliges gewöhnliches Trinket zum Start
       var commons = run._trinketPool().filter(function (id) { return ZU.TRINKETS[id].rarity === 0; });

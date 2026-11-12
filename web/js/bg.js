@@ -55,6 +55,22 @@
   ].join('\n');
 
   var gl, canvas, uniforms = {}, cur = clone(PALETTES.menu), target = PALETTES.menu, flash = 0, enabled = true, lost = false;
+  var scene = 'menu', theme = null; // theme: Farbwelt des Casinos, in dem gerade gespielt wird
+  var THEME_WEIGHT = 0.68;
+
+  /* Farben einer Szene, eingefärbt in die Farbwelt des Casinos. Die Szene bestimmt weiter Helligkeit und Hitze
+     (ein Boss glüht stärker als der Laden), das Casino den Farbton. */
+  function tinted(name) {
+    var base = PALETTES[name] || PALETTES.menu;
+    if (!theme || name === 'menu' || name === 'lose') return base;
+    function mix(key) {
+      var lift = (base[key][0] + base[key][1] + base[key][2]) / Math.max(0.001, theme[key][0] + theme[key][1] + theme[key][2]);
+      lift = Math.max(0.6, Math.min(1.5, lift)); // Helligkeit der Szene halten
+      return [0, 1, 2].map(function (i) { return Math.min(1, base[key][i] * (1 - THEME_WEIGHT) + theme[key][i] * lift * THEME_WEIGHT); });
+    }
+    return { a: mix('a'), b: mix('b'), c: mix('c'), heat: base.heat };
+  }
+  function css(color) { return 'rgb(' + color.map(function (v) { return Math.round(v * 255); }).join(',') + ')'; }
 
   function clone(p) { return { a: p.a.slice(), b: p.b.slice(), c: p.c.slice(), heat: p.heat }; }
 
@@ -142,8 +158,17 @@
       if (enabled) cur = clone(target);
     },
     set: function (name) {
-      target = PALETTES[name] || PALETTES.menu;
+      scene = name;
+      target = tinted(name);
       if (!gl && canvas) canvas.setAttribute('data-scene', name);
+      // Auch der ruhige Verlauf (Hintergrund aus oder kein WebGL) trägt die Farbe des Hauses.
+      document.body.style.setProperty('--bg-mid', css(target.b));
+      document.body.style.setProperty('--bg-dark', css(target.a));
+    },
+    /* Farbwelt eines Casinos (ZU.CASINOS[i].tint) oder null für die neutrale. */
+    setTheme: function (tint) {
+      theme = tint || null;
+      target = tinted(scene);
     },
     /* Kurzes Aufglühen, z. B. bei hohen Ketten. */
     flash: function (amount) { flash = Math.min(1.2, flash + amount); }
