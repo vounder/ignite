@@ -135,6 +135,7 @@ Tasten: `1`–`9` spielt Handkarten, `Leertaste` zieht, `Enter` legt die Auswahl
 | `js/screens.js`, `js/main.js` | Menü, Tischwahl, Laden, Dialoge, Ablaufsteuerung |
 | `js/account.js` | Anbindung an die Konto-API des Servers |
 | `js/legal.js` | Impressum, Datenschutz, Lizenzen samt Betreiberangaben |
+| `js/boot.js` | Studio-Vorspann, Ladebildschirm und Übergangsschleier |
 | `js/app.js` | Installation als App und Vollbild-Abfrage auf Touch-Geräten |
 | `manifest.webmanifest`, `sw.js` | App-Manifest und App-Hülle (Service Worker, speichert nichts zwischen) |
 
@@ -226,6 +227,18 @@ Die Musik liegt als MP3 vor (zusammen rund 7,5 MB); zum Kodieren braucht
 `prepare_assets.py --audio` das Python-Paket `lameenc`.
 
 ## Ladezeiten und Deployment
+
+- **Vorspann:** Beim ersten Aufruf je Besuch läuft „Vounder Studios“ (`js/boot.js`,
+  rund drei Sekunden, per Tipp überspringbar). In dieser Zeit lädt alles, was
+  der Titel zeigt. Reicht das nicht, folgt ein Ladebalken.
+- **Gestaffeltes Laden:** Danach holt das Spiel im Hintergrund alle übrigen
+  Bilder, vier zugleich. Jeder Bildschirm nennt in `game.needs()` die Bilder,
+  ohne die er halb leer wäre (Gegner des Akts, eigene Trinkets und
+  Spezialkarten, Laden, Esme). Fehlt beim Wechsel noch etwas, legt sich ein
+  Schleier darüber; nach 0,45 Sekunden wird daraus der Ladebildschirm mit
+  Balken. Nach 12 Sekunden geht es in jedem Fall weiter.
+- **Übergang:** Der Start eines Runs zeigt den Schleier immer kurz – das wirkt
+  als Übergang und verschafft langsamen Geräten Zeit.
 
 - Alle Bilder werden nach dem Start im Hintergrund vorgeladen, die Gegner des
   laufenden Runs zuerst. Zusammen sind das rund 1,2 MB.
