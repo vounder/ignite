@@ -37,7 +37,7 @@ zugehörigen Elemente blenden sich selbst aus.
 - **Trinkets:** 92 Stück (darunter neun Wachstums-Trinkets, die über den Run
   stärker werden) mit Synergie-Familien (Zieh-Druck und Flüche,
   Aussetzen, Kette und Glut, Mehrfachwahl, Spezialkarten, Kasse, Schutz). Es
-  gibt keine Obergrenze; dafür kostet jedes weitere Trinket im Laden 3 Mark
+  gibt keine Obergrenze; dafür kostet jedes weitere Trinket im Laden 12 %
   mehr. Elf Trinkets sind von Anfang an im Spiel, der Rest wird im Hinterzimmer
   entdeckt und gekauft.
 - **Privilegien:** Upgrades, die den ganzen Run gelten und keinen Trinket-Platz
