@@ -53,10 +53,18 @@ zugehörigen Elemente blenden sich selbst aus.
   gibt keine Obergrenze; dafür kostet jedes weitere Trinket im Laden 12 %
   mehr. 25 Trinkets sind von Anfang an im Spiel, der Rest wird im Hinterzimmer
   entdeckt und gekauft.
+- **Kniffe:** Regeln, welche normalen Karten in einem Zug zusammen gelegt werden
+  dürfen (`ZU.KNIFFE`): Pasch für einzelne Werte (7er, 8er, 9/10, Bildkarten,
+  Asse), Läufe je Symbol, Kleine Straße und der freie Pasch. Ein Zug folgt genau
+  einem Kniff; die Stufe begrenzt die Kartenzahl (2, 3, beliebig). Man trägt
+  einen Kniff (Upgrade „Zweite Hand“: bis zu drei). Manfred bietet in jedem
+  Laden einen neuen Kniff oder die nächste Stufe an; Bosse geben wahlweise eine
+  Stufe statt der Spezialkarte. Ausgeräumte Casinos bringen weitere Kniffe in
+  die Runs (`tier`). Das frühere Privileg „Flinke Finger“ gibt es nicht mehr;
+  alte Spielstände erhalten dafür den Pasch auf Stufe 3.
 - **Privilegien:** Upgrades, die den ganzen Run gelten und keinen Trinket-Platz
   belegen. Manfred bietet je Akt genau eines an; die Neue Auslage ändert daran
-  nichts. In Akt 1 ist es immer „Flinke Finger" – die Mehrfachwahl, mit der man
-  mehrere Karten gleichen Werts in einem Zug legt (Schalter rechts am Tisch).
+  nichts.
 - **Spezialkarten** (22 Stück, von Stillstand bis Inferno) sind begrenzt: Ein
   Deck fasst drei, das Upgrade „Kartenetui“ und das gleichnamige Trinket
   erweitern das. Ist das Deck voll, ersetzt eine Boss-Karte eine alte, und der
@@ -129,7 +137,7 @@ zugehörigen Elemente blenden sich selbst aus.
 - **Meta-Progression:** Asche gibt es sofort nach jedem Sieg (1 je Tisch, 2 je
   Elite, 5 je Boss, 8 für das ausgeräumte Casino, mal Asche-Faktor). Im
   Hinterzimmer (Hauptmenü) kauft man damit Schachteln, Trinkets, Spezialkarten
-  und dreizehn Upgrades. Anfangs gibt es eine Schachtel, 25 Trinkets und 6
+  und fünfzehn Upgrades. Anfangs gibt es eine Schachtel, 25 Trinkets und 6
   Spezialkarten. Alles Weitere ist zunächst **verborgen** („?????“) und taucht
   erst auf, wenn eine Bedingung am Tisch erfüllt ist – etwa „Spiele 10
   Siebenen“ oder „Schlage Madame Rauch“. Manche Stücke zeigen diesen Hinweis

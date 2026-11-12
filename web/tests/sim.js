@@ -83,7 +83,18 @@ function shop(run, rnd) {
   const s = run.s;
   // Privileg: ein Angebot je Akt, in Akt 1 immer die Mehrfachwahl, von der Neuen Auslage unberührt
   assert.strictEqual(s.perkOffer.act, s.act, 'Privileg-Angebot gehört zum laufenden Akt');
-  if (s.act === 1 && !s.perkOffer.sold && !run.has('nimble-fingers')) assert.strictEqual(s.perkOffer.id, 'nimble-fingers');
+  // Kniff: neuer Kniff oder nächste Stufe; nie über die Plätze oder Stufe 3 hinaus
+  const kn = s.shop.kniff;
+  if (kn) {
+    assert.ok(ZU.KNIFFE[kn.id] && kn.level >= 1 && kn.level <= 3 && kn.price >= 1);
+    if (kn.fresh) assert.ok(run.kniffe().length < run.kniffSlots() && !run.kniffe().some(k => k.id === kn.id));
+    else assert.strictEqual(run.kniffe().find(k => k.id === kn.id).level, kn.level - 1);
+    if (!kn.sold && s.money >= kn.price && rnd.next() < 0.7) {
+      run.buyKniff();
+      assert.strictEqual(run.kniffe().find(k => k.id === kn.id).level, kn.level);
+      assert.throws(() => run.buyKniff());
+    }
+  }
   const perkBefore = JSON.stringify(s.perkOffer);
   if (!s.perkOffer.sold && s.money >= s.perkOffer.price && rnd.next() < 0.8) {
     const lives = s.lives, id = run.buyPerk();
@@ -329,7 +340,7 @@ ZU.STARTERS.forEach(starter => {
   assert.strictEqual(cleaned.ash, 23);
   assert.strictEqual(cleaned.upgrades.flinkefinger, undefined);
   assert.strictEqual(ZU.Meta.clean(cleaned).ash, 23, 'nur einmal erstattet');
-  assert.ok(!ZU.Run.start('classic', 12, ZU.Meta.runOptions(cleaned)).has('nimble-fingers'));
+  assert.strictEqual(ZU.Run.start('classic', 12, ZU.Meta.runOptions(cleaned)).kniffe().length, 0);
 }
 
 // Akten: jede Figur hat genau drei Einträge, und die Schwellen steigen.
@@ -422,6 +433,38 @@ for (let i = 1; i < ZU.CASINOS.length; i++) assert.ok(ZU.CASINOS[i].ash > ZU.CAS
   meta.ash = 0;
   assert.ok(ZU.Meta.suggest(meta, 'unlock').every(p => !p.afford));
   assert.ok(ZU.Meta.suggest(meta, 'upgrade').length > 0);
+}
+
+// Kniffe: Ein Zug folgt genau einem Kniff, die Stufe begrenzt die Kartenzahl.
+{
+  const mk = (kniffe) => { const r = ZU.Run.start('classic', 77); r.s.kniffe = kniffe; const d = r.newDuel(); d.start(); return d; };
+  const card = (d, def) => d._register(def, 'player', false);
+  let d = mk([]);
+  assert.strictEqual(d.groupOk([card(d, 'hearts-8'), card(d, 'spades-8')]).ok, false, 'ohne Kniff kein Mehrfachlegen');
+  d = mk([{ id: 'pasch-8', level: 1 }]);
+  const e = [card(d, 'hearts-8'), card(d, 'spades-8'), card(d, 'clubs-8')];
+  assert.strictEqual(d.groupOk(e.slice(0, 2)).kniff, 'pasch-8');
+  assert.strictEqual(d.groupOk(e).ok, false, 'Stufe 1 erlaubt nur 2 Karten');
+  assert.strictEqual(d.groupOk([card(d, 'hearts-9'), card(d, 'spades-9')]).ok, false, 'Achterpasch gilt nur für 8en');
+  d = mk([{ id: 'lauf-spades', level: 2 }, { id: 'folge', level: 3 }]);
+  assert.strictEqual(d.groupOk([card(d, 'spades-7'), card(d, 'spades-K'), card(d, 'spades-9')]).kniff, 'lauf-spades');
+  assert.strictEqual(d.groupOk([card(d, 'hearts-10'), card(d, 'hearts-8'), card(d, 'hearts-9'), card(d, 'hearts-J')]).kniff, 'folge');
+  assert.strictEqual(d.groupOk([card(d, 'hearts-8'), card(d, 'hearts-10')]).ok, false, 'Lücke ist keine Straße');
+  assert.strictEqual(d.groupOk([card(d, 'hearts-8'), card(d, 'diamonds-8')]).ok, false, 'kein Pasch ohne Pasch-Kniff');
+  // Ein echter Zug: zwei 8en mit Achterpasch.
+  d = mk([{ id: 'pasch-8', level: 2 }]);
+  d.phase = 'action'; d.active = 'player'; d.pending = null; d.afterDraw = null;
+  const a = card(d, 'hearts-8'), b = card(d, 'spades-8');
+  d.hand.player.push(a, b);
+  d.pile.push(d._register('hearts-9', 'house', false));
+  const ev = d.play('player', [b, a]);
+  assert.ok(ev.some(x => x.t === 'kniff' && x.id === 'pasch-8' && x.count === 2));
+  // Zündler startet mit Siebenerpasch; alte Spielstände mit „Flinke Finger" bekommen Pasch Stufe 3.
+  assert.deepStrictEqual(ZU.Run.start('igniter', 5).kniffe(), [{ id: 'pasch-7', level: 2 }]);
+  // Staffelung: ohne ausgeräumtes Casino nur die einfachen Kniffe.
+  const fresh = ZU.Run.start('classic', 5, ZU.Meta.runOptions(ZU.Meta.defaults()));
+  assert.ok(fresh.kniffPool().length > 0 && fresh.kniffPool().every(id => ZU.KNIFFE[id].tier === 0));
+  assert.strictEqual(fresh.kniffSlots(), 1);
 }
 
 // Glutziel: Wer es erreicht, gewinnt sofort; die Ziele steigen steil, und der Überschuss zahlt ohne Deckel.

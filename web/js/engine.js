@@ -60,7 +60,8 @@
     this.bonusMult = 1;
     this.target = opts.target || 0; // Glutziel: Wer es erreicht, fackelt den Tisch ab und gewinnt sofort
     this.grow = opts.grow || {};
-    this.douse = opts.douse || []; // Stand des Runs für wachsende Trinkets: burned, bosses, money, trinkets, lastChain
+    this.douse = opts.douse || [];
+    this.kniffe = opts.kniffe || []; // [{ id, level }]: was der Spieler in einem Zug zusammen legen darf // Stand des Runs für wachsende Trinkets: burned, bosses, money, trinkets, lastChain
     this.chain = this.chainFloor();
     if (this.has('glutspeicher')) this.chain = Math.max(this.chain, Math.ceil((this.grow.lastChain || 0) / 2));
     if (this.has('bierdeckel') && this.grow.lastLost) this.chain = Math.max(this.chain, 4);
@@ -321,15 +322,20 @@
       }
       return { ok: true, order: ids.slice() };
     }
-    var limit = actor === 'player' ? (this.has('nimble-fingers') ? 99 : 1) : this.enemy.chain;
-    if (ids.length > limit) {
-      return { ok: false, reason: actor === 'player' ? 'Mehrere Karten auf einmal gehen nur mit „Flinke Finger“.' : 'Zu viele Karten.' };
-    }
-    var first = this.def(ids[0]);
     for (var k = 0; k < ids.length; k++) {
-      var def = this.def(ids[k]);
-      if (def.special) return { ok: false, reason: 'Spezialkarten werden einzeln gespielt.' };
-      if (def.rank !== first.rank) return { ok: false, reason: 'Eine Kette braucht Karten mit gleichem Wert.' };
+      if (this.def(ids[k]).special) return { ok: false, reason: 'Spezialkarten werden einzeln gespielt.' };
+    }
+    var used = null;
+    if (actor === 'player') {
+      var fit = this.groupOk(ids);
+      if (!fit.ok) return { ok: false, reason: fit.reason };
+      used = fit.kniff;
+    } else {
+      if (ids.length > this.enemy.chain) return { ok: false, reason: 'Zu viele Karten.' };
+      var first = this.def(ids[0]);
+      for (var q = 0; q < ids.length; q++) {
+        if (this.def(ids[q]).rank !== first.rank) return { ok: false, reason: 'Eine Kette braucht Karten mit gleichem Wert.' };
+      }
     }
     var opener = -1;
     for (var m = 0; m < ids.length; m++) {
@@ -342,7 +348,31 @@
       var moved = order.splice(opener, 1)[0];
       order.unshift(moved);
     }
-    return { ok: true, order: order };
+    return { ok: true, order: order, kniff: used };
+  };
+
+  /* Passen diese normalen Karten als Gruppe zu einem Kniff des Spielers? Prüft nur Muster und Obergrenze, nicht
+     ob eine davon auf den Stapel passt. Liefert { ok, kniff } oder { ok: false, reason }. */
+  Duel.prototype.groupOk = function (ids) {
+    var self = this, defs = ids.map(function (id) { return self.def(id); }), tooMany = null;
+    if (defs.some(function (d) { return d.special; })) return { ok: false, reason: 'Spezialkarten werden einzeln gespielt.' };
+    if (!this.kniffe.length) return { ok: false, reason: 'Mehrere Karten auf einmal gehen nur mit einem Kniff.' };
+    var sameRank = defs.every(function (d) { return d.rank === defs[0].rank; });
+    var sameSuit = defs.every(function (d) { return d.suit === defs[0].suit; });
+    for (var i = 0; i < this.kniffe.length; i++) {
+      var k = this.kniffe[i], spec = ZU.KNIFFE[k.id], fits = false;
+      if (spec.kind === 'rank') fits = sameRank && (!spec.ranks || spec.ranks.indexOf(defs[0].rank) >= 0);
+      else if (spec.kind === 'suit') fits = sameSuit && defs[0].suit === spec.suit;
+      else if (spec.kind === 'run' && sameSuit) {
+        var orders = defs.map(function (d) { return ZU.RANKS[d.rank].order; }).sort(function (x, y) { return x - y; });
+        fits = orders.every(function (o, n) { return n === 0 || o === orders[n - 1] + 1; });
+      }
+      if (!fits) continue;
+      if (ids.length <= ZU.KNIFF_LIMIT[k.level]) return { ok: true, kniff: k.id };
+      tooMany = k;
+    }
+    if (tooMany) return { ok: false, reason: '„' + ZU.KNIFFE[tooMany.id].name + '“ erlaubt auf Stufe ' + tooMany.level + ' höchstens ' + ZU.KNIFF_LIMIT[tooMany.level] + ' Karten.' };
+    return { ok: false, reason: 'Dafür hast du keinen Kniff.' };
   };
 
   Duel.prototype._requireAction = function (actor) {
@@ -365,6 +395,7 @@
     var single = check.order.length === 1 && this.def(check.order[0]).special;
     if (actor === 'player' && check.order.length >= 2) {
       this.stats.pairs++;
+      ev.push({ t: 'kniff', id: check.kniff, count: check.order.length });
       if (this.has('kettenbrief')) {
         this._setChain(this.chain + check.order.length - 1);
         ev.push({ t: 'trinket', id: 'kettenbrief' });
@@ -1290,10 +1321,15 @@
     hand.forEach(function (id) {
       if (!self.playable('player', id)) return;
       var def = self.def(id), group = [id];
-      if (!def.special && self.has('nimble-fingers')) {
-        hand.forEach(function (o) {
-          if (o !== id && !self.def(o).special && self.def(o).rank === def.rank) group.push(o);
-        });
+      if (!def.special && self.kniffe.length) {
+        // Gierig erweitern: jede weitere Handkarte dazunehmen, solange ein Kniff die Gruppe trägt.
+        var grew = true;
+        while (grew) {
+          grew = false;
+          hand.forEach(function (o) {
+            if (group.indexOf(o) < 0 && !self.def(o).special && self.groupOk(group.concat([o])).ok) { group.push(o); grew = true; }
+          });
+        }
       }
       var check = self.canPlay('player', group);
       if (!check.ok) return;

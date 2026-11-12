@@ -162,7 +162,7 @@
           '<div><h3>Das Duell</h3>' +
           '<p>Mau-Mau gegen den Dealer: Lege eine Karte mit <b>gleicher Farbe</b> oder <b>gleichem Wert</b> auf den Stapel. Wer zuerst keine Karten mehr hat, gewinnt.</p>' +
           '<p>Ein <b>' + (touch ? 'Tipp' : 'Klick') + '</b> auf eine passende Handkarte spielt sie sofort.</p>' +
-          '<p><b>Mehrfachwahl:</b> Mit dem Privileg „Flinke Finger“ legst du mehrere Karten mit gleichem Wert in einem Zug. Der Schalter dafür erscheint rechts am Tisch.</p>' +
+          '<p><b>Kniffe:</b> Ein Kniff erlaubt, mehrere Karten in einem Zug zu legen – etwa alle 8en (Achterpasch) oder mehrere Pik (Pik-Lauf). Jeder Zug folgt genau einem Kniff; seine Stufe begrenzt die Zahl der Karten (2, 3, beliebig). Kniffe und Stufen gibt es bei Manfred und als Boss-Beute. Was zusammenpasst, leuchtet auf, sobald du eine Karte anwählst.</p>' +
           '<p><b>Die 7:</b> Der Gegner zieht 1 Karte.</p>' +
           '<p><b>Spezialkarten</b> sind gebunden: an ein Symbol, an Rot oder Schwarz – oder gar nicht (Joker). Sie passen nur auf ihre Symbole und geben sie danach vor. Je weiter der Run, desto freier die Karten.</p>' +
           '<p><b>Löschmittel</b> sind die Antwort der Gegner auf deine Glut: Löschsand und Löschwasser drücken die Kette, Sprinkler und Löschdecke kosten Glut. Welche gelten, steht blau am Tisch.</p>' +
@@ -1080,8 +1080,9 @@
         var ids = idsOf(pair[0]), have = ids.filter(function (id) { return ZU.Meta.isUnlocked(meta, pair[0], id); }).length;
         return [pair[0], pair[1] + ' ' + have + '/' + ids.length];
       }));
+      entries.push(['kniff', 'Kniffe']);
       var bar = subTabs(entries, sub, function (key) { game.backroomSub = key; game.backroomPick = null; render(); });
-      if (sub !== 'picks') bar.appendChild(btn(only ? 'Nur Kaufbares ✓' : 'Nur Kaufbares', 'small br-only' + (only ? ' on' : ''), function () { game.backroomOnly = !only; game.backroomPick = null; render(); }));
+      if (sub !== 'picks' && sub !== 'kniff') bar.appendChild(btn(only ? 'Nur Kaufbares ✓' : 'Nur Kaufbares', 'small br-only' + (only ? ' on' : ''), function () { game.backroomOnly = !only; game.backroomPick = null; render(); }));
       content.appendChild(bar);
       var list, tiles;
       if (sub === 'picks') {
@@ -1093,6 +1094,7 @@
         renderDetail(meta, hit && hit[0], hit && hit[1]);
         return;
       }
+      if (sub === 'kniff') { renderKniffe(meta); return; }
       var ids = idsOf(sub).filter(function (id) { return !only || stateOf(meta, sub, id) === 'closed'; });
       // Kaufbares zuerst, dann was schon im Spiel ist, Verhülltes ans Ende.
       var order = { closed: 0, open: 1, hidden: 2 };
@@ -1102,6 +1104,33 @@
       if (!ids.length) content.appendChild(h('p', 'br-dhint left', 'Hier gibt es gerade nichts zu kaufen.'));
       else content.appendChild(h('div', 'br-section', [h('div', 'br-grid big', ids.map(function (id) { return tile(meta, sub, id); }))]));
       renderDetail(meta, chosen && chosen[0], chosen && chosen[1]);
+    }
+
+    /* Kniffe kauft man nicht mit Asche: Ausgeräumte Casinos bringen neue in die Runs. Hier steht, welche schon dabei sind. */
+    function renderKniffe(meta) {
+      var cur = game.backroomPick && game.backroomPick.indexOf('kniff:') === 0 ? game.backroomPick.slice(6) : ZU.KNIFF_IDS[0];
+      if (!ZU.KNIFFE[cur]) cur = ZU.KNIFF_IDS[0];
+      game.backroomPick = 'kniff:' + cur;
+      content.appendChild(h('div', 'br-section', [h('div', 'br-grid big', ZU.KNIFF_IDS.map(function (id) {
+        var spec = ZU.KNIFFE[id], open = spec.tier <= meta.maxStake;
+        var el = h('div', 'br-tile ' + (open ? 'open' : 'hidden') + (id === cur ? ' sel' : ''), [
+          open ? ZU.kniffEl(id, spec.start) : veil(),
+          h('div', 'br-name', open ? spec.name : '?????'),
+          h('div', 'br-open' + (open ? '' : ' dim'), open ? 'In deinen Runs' : 'Nach Casino ' + ZU.roman(spec.tier))
+        ]);
+        el.addEventListener('click', function () { game.backroomPick = 'kniff:' + id; ZU.audio.select(true); render(true); });
+        return el;
+      }))]));
+      detail.innerHTML = '';
+      var s = ZU.KNIFFE[cur], ok = s.tier <= meta.maxStake;
+      detail.appendChild(h('div', 'br-show k-kniff' + (ok ? '' : ' hidden'), [ok ? ZU.kniffEl(cur, s.start) : veil()]));
+      detail.appendChild(h('div', 'br-dcard', [
+        h('h2', null, ok ? s.name : '?????'),
+        h('div', 'br-dkind', 'Kniff · mehrere Karten in einem Zug'),
+        h('p', 'br-dtext', ok ? s.text + ' Beginnt auf Stufe ' + s.start + ' (höchstens ' + ZU.KNIFF_LIMIT[s.start] + ' Karten); bei Manfred und als Boss-Beute steigt die Stufe bis 3 (beliebig viele).'
+          : 'Dieser Kniff taucht in deinen Runs auf, sobald du „' + ZU.CASINOS[s.tier - 1].name + '“ ausgeräumt hast.'),
+        h('div', ok ? 'br-dstate' : 'br-dnote', ok ? 'Kann dir bei Manfred begegnen' : 'Kniffe kosten keine Asche.')
+      ]));
     }
 
     function renderUpgrade(meta) {
@@ -1431,6 +1460,11 @@
       h('p', 'sub', reward.type === 'trinket' ? 'Trinkets wirken für den Rest des Runs.'
         : run.specialFree() ? 'Die Karte wandert dauerhaft in dein Deck.' : 'Dein Deck ist voll (' + run.specialSlots() + ' Spezialkarten): Die neue Karte ersetzt eine alte.'),
       row,
+      reward.kniff ? btn('Lieber Kniff aufstufen: ' + ZU.KNIFFE[reward.kniff].name, 'ember', function () {
+        run.rewardKniff();
+        ZU.audio.win();
+        leave();
+      }) : null,
       btn('Lieber ' + reward.skip + ' Mark nehmen', 'felt', function () {
         run.chooseReward(null);
         ZU.audio.coin(3);
@@ -1680,7 +1714,7 @@
         trinketRow.appendChild(slot);
       });
       if (!s.shop.trinkets.length) trinketRow.appendChild(h('div', 'offer sold', [h('div', 'soldout', 'Ausverkauft')]));
-      trinketNote.textContent = s.trinkets.length ? '+' + (ZU.TRINKET_SURCHARGE * s.trinkets.length) + ' Mark Aufschlag' : '';
+      trinketNote.textContent = s.trinkets.length ? '+' + Math.round(ZU.TRINKET_SURCHARGE * 100 * s.trinkets.length) + ' % Aufschlag' : '';
 
       // Privileg des Akts: bleibt in allen Läden dieses Akts stehen, die Neue Auslage ändert es nicht
       perkBox.innerHTML = '';
@@ -1702,6 +1736,29 @@
         }));
       } else {
         perkBox.appendChild(h('div', 'shelf-empty', perkOffer && perkOffer.id ? 'Gekauft. Das nächste Privileg gibt es im nächsten Akt.' : 'Alle Privilegien vergeben.'));
+      }
+
+      // Kniff des Ladens: ein neuer Kniff oder die nächste Stufe eines eigenen
+      var kn = s.shop.kniff;
+      if (kn && !kn.sold) {
+        var knIcon = ZU.kniffEl(kn.id, kn.level);
+        services.appendChild(h('div', 'service kniff', [
+          knIcon,
+          h('div', 'svc-body', [
+            h('div', 'svc-name', (kn.fresh ? 'Kniff: ' : 'Aufstufen: ') + ZU.KNIFFE[kn.id].name),
+            h('p', null, ZU.kniffText(kn.id, kn.level))
+          ]),
+          priceBtn(kn.price, 'gold', function () {
+            run.buyKniff();
+            ZU.audio.win();
+            mf.act('bigbuy');
+            say('buy');
+            var p = ZU.stagePos(knIcon);
+            fx.burst(p.x, p.y, { n: 30, speed: 320, life: 1.1, colors: ['#fff3c4', '#ffd75e', '#3aa58f'] });
+            fx.flyTo(knIcon, bar.slots, 480);
+            render();
+          })
+        ]));
       }
 
       // Dienste: jeder mit eigenem Gesicht
