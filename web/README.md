@@ -31,10 +31,12 @@ zugehörigen Elemente blenden sich selbst aus.
   „abgefackelt“ und gewinnt sofort; die Auszahlung zahlt dafür +50 % der Prämie
   und weitere +50 % je Verdopplung über dem Ziel (ohne Deckel), dazu Asche.
   Werte in `ZU.GLUT_TARGET` (`js/data.js`).
-- **Vorschläge im Hinterzimmer:** Die Reiter „Freischalten“ und „Upgrades“
-  zeigen oben drei Empfehlungen mit Rang (`Meta.suggest`): das Wertvollste, das
-  entdeckt und mit der vorhandenen Asche bezahlbar ist; reicht die Asche nicht,
-  die nächstgünstigen als Sparziel.
+- **Hinterzimmer:** gemalter Raum (`assets/backroom/room.png`). „Freischalten“
+  und „Upgrades“ zeigen links das Regal mit großen Kacheln (Unterreiter je Art,
+  Filter „Nur Kaufbares“, Verborgenes unter einem Tuch) und rechts den
+  Schaukasten: Antippen legt ein Stück hinein, dort stehen Wirkung, Preis und
+  der Kaufknopf. Der Unterreiter „Empfohlen“ nennt Platz 1–3 (`Meta.suggest`):
+  das Wertvollste, das entdeckt und bezahlbar ist, sonst Sparziele.
 - **Löschmittel:** Die Antwort der Gegner auf Glut (`ZU.DOUSE`, vergeben in
   `run.douse`): Löschsand (8 des Gegners: Kette −2), Löschwasser (Ass: Kette
   halbiert), Sprinkler (jeder 4. Gegnerzug: −5 % des Ziels an Glut), Löschdecke
@@ -127,7 +129,7 @@ zugehörigen Elemente blenden sich selbst aus.
 - **Meta-Progression:** Asche gibt es sofort nach jedem Sieg (1 je Tisch, 2 je
   Elite, 5 je Boss, 8 für das ausgeräumte Casino, mal Asche-Faktor). Im
   Hinterzimmer (Hauptmenü) kauft man damit Schachteln, Trinkets, Spezialkarten
-  und dreizehn Upgrades (darunter „Flinke Finger“ für 20 Asche: jeder Run beginnt mit dem Privileg). Anfangs gibt es eine Schachtel, 25 Trinkets und 6
+  und dreizehn Upgrades. Anfangs gibt es eine Schachtel, 25 Trinkets und 6
   Spezialkarten. Alles Weitere ist zunächst **verborgen** („?????“) und taucht
   erst auf, wenn eine Bedingung am Tisch erfüllt ist – etwa „Spiele 10
   Siebenen“ oder „Schlage Madame Rauch“. Manche Stücke zeigen diesen Hinweis

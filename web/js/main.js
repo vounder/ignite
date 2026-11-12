@@ -72,6 +72,7 @@
       var run = this.run, urls = [], self = this;
       function add(path) { urls.push(ZU.asset(path)); }
       if (name === 'casino') ZU.CASINO_ART.forEach(add);
+      if (name === 'backroom') { add('backroom/room.png'); add('backroom/veil.png'); }
       if (!run || ['select', 'duel', 'shop', 'esme', 'reward'].indexOf(name) < 0) return urls;
       urls.push(ZU.cardAtlas());
       run.s.trinkets.forEach(function (id) { add('trinkets/' + id + '.png'); });

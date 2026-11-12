@@ -206,3 +206,8 @@ gezeichneten Rahmen entsteht der Atlas (siehe unten).
   (`tools/music/`) gerechnet. Die Melodien stammen aus den ursprünglichen
   Projektstücken unter `godot/game/Assets/Audio/`; Harmonien, Tempo und Klang
   sind neu. Es sind keine Samples oder fremden Klänge enthalten.
+
+### Hinterzimmer (`backroom/`)
+
+`room.png` (1280×720, Hintergrund; Schaukasten-Fleck rechts oben, Regalwand links) und `veil.png` (96×96, verhülltes Stück).
+Quellen und Prompts: `/data/ignite/art/backroom/`.
