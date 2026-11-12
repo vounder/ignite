@@ -504,7 +504,7 @@
     deckBtn.addEventListener('click', function () { ZU.audio.click(); deckModal(game, false); });
     var scoreEl = h('b', null, ZU.fmt(s.score));
     var bar = h('div', 'hud', [
-      h('div', 'hud-title', [h('b', null, 'Akt ' + ZU.roman(s.act)), h('span', null, run.actName() + ' · Tisch ' + (s.table + 1) + '/3')]),
+      h('div', 'hud-title', [h('b', null, 'Akt ' + ZU.roman(s.act)), h('span', null, run.actName() + (s.table < 0 ? ' · Laden' : ' · Tisch ' + (s.table + 1) + '/3'))]),
       h('div', 'hud-score', [ZU.iconEl('flame', 'flame'), scoreEl, h('span', 'unit', 'Glut')]),
       slots,
       h('div', 'grow'),
@@ -1740,8 +1740,8 @@
       }
 
       // Kniff des Ladens: ein neuer Kniff oder die nächste Stufe eines eigenen
-      var kn = s.shop.kniff;
-      if (kn && !kn.sold) {
+      var kn = s.kniffOffer;
+      if (kn && kn.id && !kn.sold) {
         var knIcon = ZU.kniffEl(kn.id, kn.level);
         services.appendChild(h('div', 'service kniff', [
           knIcon,

@@ -219,7 +219,8 @@ Quellen und Prompts: `/data/ignite/art/kniffe/` (`build_kniffe.py`).
 
 ### Stimmen (`voices/voices.mp3`)
 
-Ein Stück mit 72 kurzen Rufen (18 je Grundstimme: Mann, lallend, flüsternd, Frau), erzeugt mit Piper aus Stimmen,
+Ein Stück mit 260 kurzen Rufen (52 je Grundstimme: Mann, lallend, flüsternd, Frau, Frau hell; die Frauenstimmen sind
+Kerstin um 2,5 bzw. 5 Halbtöne angehoben), erzeugt mit Piper aus Stimmen,
 deren Datensätze gemeinfrei sind (Thorsten, Thorsten emotional, Kerstin; CC0). Skript: `tools/make_voices.py`
 (Arbeitsordner `/data/ignite/voice/`), es schreibt auch die Zeitmarken für `ZU.VOICE_CLIPS` in `js/data.js`.
 Tonhöhe je Figur (`ZU.VOICES`) und die Funkgerät-Verzerrung entstehen erst beim Abspielen (`js/audio.js`).

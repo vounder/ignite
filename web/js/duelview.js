@@ -508,6 +508,7 @@
     ZU.bg.flash(1);
     fx.shake(14);
     this.react('shocked', 2400);
+    ZU.audio.voice(this.duel.enemy.id, 'shocked');
     for (var i = 0; i < 7; i++) {
       (function (k) {
         setTimeout(function () {
@@ -1080,7 +1081,7 @@
   DuelView.prototype.say = function (kind) {
     var lines = this.duel.enemy.say[kind], self = this;
     if (!lines || !lines.length) return;
-    ZU.audio.voice(this.duel.enemy.id, { start: 'greet', attack: 'smug', gloat: 'smug', hurt: 'angry', nervous: 'shocked', win: 'win', lose: 'lose' }[kind] || 'smug');
+    ZU.audio.voice(this.duel.enemy.id, { start: 'greet', attack: 'smug', gloat: 'gloat', hurt: 'angry', nervous: 'nervous', win: 'win', lose: 'lose' }[kind] || 'smug');
     this.bubble.textContent = lines[Math.floor(Math.random() * lines.length)];
     fx.punch(this.bubble, 'on');
     this.portrait.classList.add('talk');

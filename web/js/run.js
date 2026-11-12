@@ -127,7 +127,8 @@
     var spec = ZU.KNIFFE[id];
     return this._price(level <= spec.start ? spec.price : Math.round(spec.price * [0, 0, 1.2, 2][level]));
   };
-  /* Angebot des Ladens: ein neuer Kniff, solange ein Platz frei ist, sonst (oder im Wechsel) die nächste Stufe eines eigenen. */
+  /* Kniff des Akts: ein neuer Kniff, solange ein Platz frei ist, sonst (oder im Wechsel) die nächste Stufe eines eigenen.
+     Wie das Privileg nur einmal je Akt zu kaufen; das Angebot bleibt in allen Läden des Akts stehen. */
   Run.prototype._rollKniff = function () {
     var s = this.s, own = this.kniffe(), pool = this.kniffPool();
     var up = own.filter(function (k) { return k.level < 3; }), free = own.length < this.kniffSlots() && pool.length > 0;
@@ -141,11 +142,12 @@
       offer = { id: k.id, level: k.level + 1, fresh: false };
     }
     if (offer) { offer.price = this.kniffPrice(offer.id, offer.level); offer.sold = false; }
-    s.shop.kniff = offer;
+    s.kniffOffer = offer || { id: null, sold: true };
+    s.kniffOffer.act = s.act;
   };
   Run.prototype.buyKniff = function () {
-    var offer = this.s.shop && this.s.shop.kniff;
-    if (!offer || offer.sold) throw new Error('Nicht verfügbar.');
+    var offer = this.s.kniffOffer;
+    if (!offer || offer.sold || !offer.id || this.s.phase !== 'shop') throw new Error('Nicht verfügbar.');
     this._pay(offer.price);
     offer.sold = true;
     this._gainKniff(offer.id, offer.level);
@@ -156,6 +158,8 @@
     var own = this.kniffe(), have = own.filter(function (k) { return k.id === id; })[0];
     if (have) have.level = Math.min(3, Math.max(have.level, level));
     else own.push({ id: id, level: level });
+    var offer = this.s.kniffOffer; // ein Stufen-Angebot, das die Boss-Beute schon eingelöst hat, ist erledigt
+    if (offer && offer.id === id && !offer.fresh && own.filter(function (k) { return k.id === id; })[0].level >= offer.level) offer.sold = true;
     ZU.Meta.note({ kniffe: 1 });
   };
   /* Boss-Beute: statt der Spezialkarte eine Stufe auf einen eigenen Kniff. */
@@ -488,12 +492,18 @@
 
   /* ---------- Laden ---------- */
   Run.prototype._openShop = function () {
+    // Nach dem Boss gehört der Laden schon zum nächsten Akt: neue Preise, neues Privileg, neuer Kniff.
+    if (this.s.table >= 2) {
+      this.s.table = -1;
+      this.s.act++;
+      this._encounters();
+    }
     this.s.shop = { cards: [], specials: [], trinkets: [], rerolls: 0, discount: this.has('false-bottom'), healed: false, burned: false, esme: { packs: [], rerolls: 0, pity: false } };
     this._stockEsme();
     if (this.rule('cover-charge')) this.s.money = Math.max(0, this.s.money - Math.max(2, Math.round(this.s.money * 0.1))); // Hausregel „Eintritt"
     if (this.has('mitgift')) this.s.money += Math.max(3, Math.round(this.s.money * 0.15));
     if (!this.s.perkOffer || this.s.perkOffer.act !== this.s.act) this._rollPerk();
-    this._rollKniff();
+    if (!this.s.kniffOffer || this.s.kniffOffer.act !== this.s.act) this._rollKniff();
     this._stockShop();
     this.s.phase = 'shop';
   };

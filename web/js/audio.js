@@ -4,7 +4,7 @@
 
   var ctx = null, master = null, noiseBuf = null;
   var sfxVolume = 0.7, musicVolume = 0.5, voiceVolume = 0.7;
-  var voiceBuf = null, voiceState = 0, voiceOut = null, voiceLast = -9; // voiceState: 0 nicht geladen, 1 lädt, 2 bereit, 3 gescheitert
+  var voiceBuf = null, voiceState = 0, voiceOut = null, voiceLast = -9, voiceBags = {}; // voiceState: 0 nicht geladen, 1 lädt, 2 bereit, 3 gescheitert
   var tracks = {}, current = null, wanted = null, unlocked = false, hidden = false;
   var SCALE = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24, 26, 28]; // Pentatonik: jede Kettenstufe klingt höher
 
@@ -83,7 +83,7 @@
       }).then(function (buf) { voiceBuf = buf; voiceState = 2; }).catch(function () { voiceState = 3; });
     },
     /* Ruf einer Figur wie aus einem alten Funkgerät: schmales Band, übersteuert, mit Rauschen und Knacken.
-       mood: greet | smug | angry | shocked | win | lose. Bosse klingen rauer. */
+       mood: greet | smug | gloat | angry | nervous | shocked | win | lose. Bosse klingen rauer. */
     voice: function (enemyId, mood) {
       if (hidden || !unlocked || voiceVolume <= 0 || !ensure()) return;
       if (voiceState !== 2) { A.loadVoices(); return; }
@@ -92,7 +92,15 @@
       var prof = ZU.VOICES[enemyId] || ['m', 1], set = (ZU.VOICE_CLIPS[prof[0]] || {})[mood];
       if (!set || !set.length) return;
       voiceLast = now;
-      var clip = set[Math.floor(Math.random() * set.length)], boss = ZU.ENEMIES[enemyId] && ZU.ENEMIES[enemyId].kind === 'boss';
+      // Beutel je Stimme und Stimmung: Jeder Ruf kommt einmal dran, bevor sich einer wiederholt.
+      var key = prof[0] + ':' + mood, bag = voiceBags[key];
+      if (!bag || !bag.length) {
+        bag = voiceBags[key] = set.map(function (c, i) { return i; }).sort(function () { return Math.random() - 0.5; });
+        if (bag.length > 1 && bag[bag.length - 1] === voiceBags[key + '!']) bag.unshift(bag.pop()); // nicht denselben Ruf zweimal hintereinander
+      }
+      var pickAt = bag.pop();
+      voiceBags[key + '!'] = pickAt;
+      var clip = set[pickAt], boss = ZU.ENEMIES[enemyId] && ZU.ENEMIES[enemyId].kind === 'boss';
       var rate = prof[1] * (0.97 + Math.random() * 0.06), dur = clip[1] / rate, t = now + 0.03;
       if (!voiceOut) { voiceOut = ctx.createGain(); voiceOut.gain.value = voiceVolume; voiceOut.connect(ctx.destination); }
       var src = ctx.createBufferSource(), hp = ctx.createBiquadFilter(), lp = ctx.createBiquadFilter(), peak = ctx.createBiquadFilter();

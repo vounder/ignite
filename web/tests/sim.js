@@ -84,12 +84,13 @@ function shop(run, rnd) {
   // Privileg: ein Angebot je Akt, in Akt 1 immer die Mehrfachwahl, von der Neuen Auslage unberührt
   assert.strictEqual(s.perkOffer.act, s.act, 'Privileg-Angebot gehört zum laufenden Akt');
   // Kniff: neuer Kniff oder nächste Stufe; nie über die Plätze oder Stufe 3 hinaus
-  const kn = s.shop.kniff;
-  if (kn) {
+  const kn = s.kniffOffer;
+  assert.strictEqual(kn.act, s.act, 'Kniff-Angebot gehört zum laufenden Akt');
+  if (kn.id && !kn.sold) {
     assert.ok(ZU.KNIFFE[kn.id] && kn.level >= 1 && kn.level <= 3 && kn.price >= 1);
     if (kn.fresh) assert.ok(run.kniffe().length < run.kniffSlots() && !run.kniffe().some(k => k.id === kn.id));
     else assert.strictEqual(run.kniffe().find(k => k.id === kn.id).level, kn.level - 1);
-    if (!kn.sold && s.money >= kn.price && rnd.next() < 0.7) {
+    if (s.money >= kn.price && rnd.next() < 0.7) {
       run.buyKniff();
       assert.strictEqual(run.kniffe().find(k => k.id === kn.id).level, kn.level);
       assert.throws(() => run.buyKniff());
@@ -465,6 +466,25 @@ for (let i = 1; i < ZU.CASINOS.length; i++) assert.ok(ZU.CASINOS[i].ash > ZU.CAS
   const fresh = ZU.Run.start('classic', 5, ZU.Meta.runOptions(ZU.Meta.defaults()));
   assert.ok(fresh.kniffPool().length > 0 && fresh.kniffPool().every(id => ZU.KNIFFE[id].tier === 0));
   assert.strictEqual(fresh.kniffSlots(), 1);
+}
+
+// Nach dem Boss gehört der Laden schon zum nächsten Akt; der Kniff ist wie das Privileg nur einmal je Akt zu haben.
+{
+  const run = ZU.Run.start('classic', 909);
+  run.s.table = 2; run.s.money = 500;
+  run._openShop();
+  assert.strictEqual(run.s.act, 2);
+  assert.strictEqual(run.s.table, -1);
+  assert.strictEqual(run.s.perkOffer.act, 2);
+  assert.strictEqual(run.s.kniffOffer.act, 2);
+  const offer = JSON.stringify(run.s.kniffOffer);
+  run.buyKniff();
+  assert.throws(() => run.buyKniff());
+  run.leaveShop();
+  assert.strictEqual(run.s.act, 2); assert.strictEqual(run.s.table, 0);
+  run._openShop();
+  assert.strictEqual(run.s.kniffOffer.sold, true, 'im selben Akt kein zweiter Kniff');
+  assert.strictEqual(run.s.table, 0);
 }
 
 // Glutziel: Wer es erreicht, gewinnt sofort; die Ziele steigen steil, und der Überschuss zahlt ohne Deckel.
