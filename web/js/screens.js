@@ -189,6 +189,30 @@
   }
   ZU.helpModal = helpModal;
 
+  /* Credits: wer was gemacht hat. Die Stimmen stehen unter CC BY 4.0 und müssen genannt werden. */
+  function creditRows() {
+    function block(role, names, note) {
+      return h('div', 'cred', [h('div', 'cred-role', role), h('div', 'cred-names', names), note ? h('p', 'cred-note', note) : null]);
+    }
+    var license = h('a', null, 'CC BY 4.0', { href: 'https://creativecommons.org/licenses/by/4.0/', target: '_blank', rel: 'noopener' });
+    var source = h('a', null, 'dillonbecker.com', { href: 'https://dillonbecker.com', target: '_blank', rel: 'noopener' });
+    return [
+      h('div', 'cred-studio', 'Ein Spiel von Vounder Studios'),
+      block('Idee, Spieldesign und Leitung', 'Vounder'),
+      block('Programmierung, Regelwerk und Balance', 'Klaudia Antrup'),
+      block('Texte, Figuren und Geschichten', 'Klaudia Antrup', 'nach Ideen von Vounder'),
+      block('Musik und Klangeffekte', 'Klaudia Antrup'),
+      block('Illustration: Figuren, Karten, Räume und Symbole', 'Codelius Schatt'),
+      block('Bildregie und Aufbereitung', 'Klaudia Antrup'),
+      h('div', 'cred', [
+        h('div', 'cred-role', 'Stimmen'),
+        h('div', 'cred-names', 'Alex Brodie · Ian Lampert · Sean Lenhart · Karen Cenon · Meghan Christian'),
+        h('p', 'cred-note', ['aus dem „Super Dialogue Audio Pack v1“ von Dillon Becker (', source, '), lizenziert unter ', license, '. Die Aufnahmen wurden zugeschnitten, in der Tonhöhe verändert und verzerrt.'])
+      ]),
+      block('Dank', 'allen, die Zündung spielen')
+    ];
+  }
+
   function settingsModal(game, inRun) {
     var settings = game.profile.settings, app = ZU.app, entry;
     function slider(label, key, apply) {
@@ -231,8 +255,7 @@
       h('div', 'setrow', [h('span', null, 'Tempo'), speeds]),
       h('div', 'setrow', [h('span', null, 'Röhren-Filter'), onOff('crt')]),
       h('div', 'setrow', [h('span', null, 'Hintergrund'), onOff('bg')]),
-      app.canFullscreen() ? h('div', 'setrow', [h('span', null, 'Vollbild'), btn('Umschalten', 'small', function () { app.toggleFullscreen(); })]) : null,
-      h('p', 'set-credit', ZU.VOICE_CREDIT)
+      app.canFullscreen() ? h('div', 'setrow', [h('span', null, 'Vollbild'), btn('Umschalten', 'small', function () { app.toggleFullscreen(); })]) : null
     ];
     // Auf Handy und Tablet: ob beim Start nach dem Vollbild gefragt wird (im Browser, nicht in der installierten App).
     if (app.isTouch() && !app.isInstalled() && (app.canFullscreen() || app.isIOS())) {
@@ -277,9 +300,25 @@
         });
       })]));
     }
-    rows.push(h('div', 'btnrow', buttons));
-    rows.push(h('div', 'legalrow', [linkBtn('Rechtliches', legalMenu)]));
-    entry = ZU.modal.open(rows, { cls: 'small settings' + (inRun ? ' pause' : '') });
+    // Zwei Reiter: die Einstellungen selbst und die Credits.
+    var title = rows.shift();
+    var pane = h('div', 'set-pane', rows), credits = h('div', 'set-pane credits', creditRows());
+    credits.style.display = 'none';
+    var tabSet = btn('Einstellungen', 'small on', function () { showTab(false); }), tabCred = btn('Credits', 'small', function () { showTab(true); });
+    function showTab(cred) {
+      pane.style.display = cred ? 'none' : '';
+      credits.style.display = cred ? '' : 'none';
+      tabSet.classList.toggle('on', !cred);
+      tabCred.classList.toggle('on', cred);
+    }
+    entry = ZU.modal.open([
+      title,
+      h('div', 'set-tabs', [tabSet, tabCred]),
+      pane,
+      credits,
+      h('div', 'btnrow', buttons),
+      h('div', 'legalrow', [linkBtn('Rechtliches', legalMenu)])
+    ], { cls: 'small settings' + (inRun ? ' pause' : '') });
     return entry;
   }
   ZU.settingsModal = settingsModal;
