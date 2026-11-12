@@ -256,7 +256,7 @@ for (let n = 0; n < RUNS; n++) {
   assert.deepStrictEqual(staked.houseRules(), ZU.CASINOS[1].rules);
   assert.strictEqual(ZU.Meta.hint(ZU.Meta.get(), 'trinket', 'furnace'), 'Sammle 1.500 Glut in einem Duell.', 'nach dem ersten Casino steht der Hinweis da');
   assert.deepStrictEqual(ZU.Meta.clean({ ash: -5, stake: 9, maxStake: 99, unlocked: { 'trinket:gibtsnicht': true, 'special:tausch': true }, upgrades: { startgeld: 99, quatsch: 3 }, feats: { chain: 7, quatsch: 2 } }),
-    Object.assign(ZU.Meta.defaults(), { stake: 5, maxStake: 5, unlocked: { 'special:tausch': true }, upgrades: { startgeld: 3 }, feats: { chain: 7 } }));
+    Object.assign(ZU.Meta.defaults(), { stake: 7, maxStake: 7, unlocked: { 'special:tausch': true }, upgrades: { startgeld: 3 }, feats: { chain: 7 } }));
 
   // Asche fließt sofort nach jedem Sieg; die Nachglut bringt keine mehr.
   ZU.Profile._memory = null;
@@ -362,6 +362,14 @@ Object.values(ZU.LORE_STEPS).forEach(steps => assert.ok(steps.length === 3 && st
   assert.ok(early.flawChance() > 0.6 && late.flawChance() < 0.3);
 }
 
+// Acht Casinos; alte Stände (sechs Häuser) wandern an den neuen Platz ihres Hauses.
+assert.strictEqual(ZU.CASINOS.length, 8);
+assert.deepStrictEqual(ZU.CASINOS.map(c => c.id), ['hahn', 'rialto', 'laterne', 'fortuna', 'block9', 'imperial', 'monopol', 'inferno']);
+assert.strictEqual(ZU.Meta.clean({ stake: 2, maxStake: 3 }).stake, 3, 'Dampfer Fortuna bleibt gewählt');
+assert.strictEqual(ZU.Meta.clean({ stake: 2, maxStake: 3 }).maxStake, 5, 'Grandhotel Imperial bleibt das höchste offene Haus');
+assert.strictEqual(ZU.Meta.clean({ stake: 2, maxStake: 3, cv: ZU.CASINO_VERSION }).maxStake, 3, 'neue Stände bleiben unverändert');
+for (let i = 1; i < ZU.CASINOS.length; i++) assert.ok(ZU.CASINOS[i].ash > ZU.CASINOS[i - 1].ash && ZU.CASINOS[i].acts >= ZU.CASINOS[i - 1].acts, 'Häuser werden härter und lohnender');
+
 // Die 7 lässt nur noch 1 Karte ziehen und niemanden aussetzen.
 assert.deepStrictEqual(ZU.CARDS['hearts-7'].effects, [{ type: 'draw', amount: 1, reflectable: true }]);
 
@@ -378,7 +386,7 @@ ZU.CASINOS.forEach((casino, index) => {
     run._encounters();
     if (act === 2) assert.strictEqual(run.s.encounters[1].enemy, casino.foes.elite);
     assert.strictEqual(run.s.encounters[2].enemy === casino.foes.boss, act === casino.acts, 'der Boss des Hauses wartet im letzten Akt');
-    run.s.encounters.forEach(e => assert.ok(!ZU.ENEMIES[e.enemy].casino || ZU.ENEMIES[e.enemy].casino === index, 'fremde Hausfigur: ' + e.enemy));
+    run.s.encounters.forEach(e => assert.ok(!ZU.ENEMIES[e.enemy].casino || ZU.ENEMIES[e.enemy].casino === casino.id, 'fremde Hausfigur: ' + e.enemy));
   }
 });
 assert.ok(ZU.BATTLE_POOL.concat(ZU.ELITE_POOL).every(id => !ZU.ENEMIES[id].casino));

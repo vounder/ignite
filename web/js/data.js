@@ -2,10 +2,13 @@
 (function (ZU) {
   'use strict';
 
-  ZU.VERSION = '1.6.0'; // im Hauptmenü unten rechts angezeigt
+  ZU.VERSION = '1.7.0';
+  /* Stand der Casino-Liste. Ändert sich die Reihenfolge, rechnen js/meta.js und js/run.js gespeicherte Stände um. */
+  ZU.CASINO_VERSION = 2;
+  ZU.CASINO_REMAP = [0, 1, 3, 5, 6, 7]; // alter Index (sechs Häuser) → neuer Index (acht Häuser) // im Hauptmenü unten rechts angezeigt
   /* Build-Kennung: wird an alle Asset-Adressen gehängt, damit Browser und CDN nach einem Update frische
      Dateien holen. Nicht von Hand ändern: web/tools/stamp_version.py setzt den Wert. */
-  ZU.BUILD = '1530a1bc29';
+  ZU.BUILD = '6bf8908f5b';
   ZU.asset = function (path) { return 'assets/' + path + '?v=' + ZU.BUILD; };
 
   ZU.HAND_SIZE = 7;
@@ -167,12 +170,14 @@
     'no-credit': { name: 'Kein Kredit', text: 'Es gibt keine Zinsen.' },
     marked: { name: 'Böses Omen', text: 'Du beginnst jedes Duell verflucht (×1).' },
     'wide-awake': { name: 'Hellwach', text: 'Gegner verschenken keinen Zug mehr.' },
-    damp: { name: 'Feuchte Luft', text: 'Deine Kette steigt nie über ×8.' }
+    damp: { name: 'Feuchte Luft', text: 'Deine Kette steigt nie über ×8.' },
+    'cover-charge': { name: 'Eintritt', text: 'Jeder Besuch in Manfreds Laden kostet 2 Mark.' },
+    hype: { name: 'Hype', text: 'Gegner mischen 2 Spezialkarten mehr in ihren Stapel.' }
   };
   ZU.RULE_CHANCE = { 'one-pass': [0.1, 0.3, 0.5, 0.7] };
 
   /* ---------- Casinos ----------
-     Sechs Häuser, die der Reihe nach freigeschaltet werden: Ein Sieg im bisher schwersten öffnet das nächste.
+     Acht Häuser, die der Reihe nach freigeschaltet werden: Ein Sieg im bisher schwersten öffnet das nächste.
      Jedes hat seine Zahl an Akten, eigene Räume, feste Hausregeln für alle Tische, einen Asche-Faktor
      und eine eigene Farbwelt für den Rauch im Hintergrund (tint: dunkel, mittel, Glanzlicht). */
   ZU.CASINOS = [
@@ -180,8 +185,12 @@
       rooms: ['Hinterzimmer', 'Rauchsalon', 'Das Haus'], rules: [] },
     { id: 'rialto', tint: { a: [0.13, 0.03, 0.06], b: [0.46, 0.09, 0.15], c: [1.0, 0.66, 0.34] }, name: 'Tanzpalast Rialto', sub: 'Wo die halbe Stadt ihr Geld vertanzt', acts: 4, ash: 1.5,
       rooms: ['Garderobe', 'Parkett', 'Separee', 'Direktion'], rules: ['last-call', 'sober'] },
+    { id: 'laterne', tint: { a: [0.13, 0.02, 0.09], b: [0.46, 0.06, 0.30], c: [1.0, 0.62, 0.78] }, name: 'Rote Laterne', sub: 'Ein Nachtclub, in dem keiner fragt', acts: 4, ash: 1.75,
+      rooms: ['Foyer', 'Champagnerbar', 'Separee', 'Chefetage'], rules: ['last-call', 'sober', 'cover-charge'] },
     { id: 'fortuna', tint: { a: [0.02, 0.09, 0.11], b: [0.05, 0.28, 0.31], c: [0.62, 0.88, 0.78] }, name: 'Dampfer Fortuna', sub: 'Schwimmt außerhalb jeder Zuständigkeit', acts: 4, ash: 2,
       rooms: ['Unterdeck', 'Salon', 'Kapitänstisch', 'Brücke'], rules: ['last-call', 'sober', 'markup', 'short-night'] },
+    { id: 'block9', tint: { a: [0.03, 0.04, 0.12], b: [0.11, 0.15, 0.46], c: [0.56, 0.76, 1.0] }, name: 'Block 9', sub: 'Hinterhof, Shisha-Lounge und das lauteste Studio der Stadt', acts: 5, ash: 2.4,
+      rooms: ['Hinterhof', 'Shisha-Lounge', 'Studio', 'VIP-Raum', 'Chefbüro'], rules: ['last-call', 'sober', 'markup', 'short-night', 'hype'] },
     { id: 'imperial', tint: { a: [0.07, 0.04, 0.12], b: [0.25, 0.14, 0.36], c: [0.94, 0.84, 0.58] }, name: 'Grandhotel Imperial', sub: 'Gespielt wird nur mit Krawatte', acts: 5, ash: 2.75,
       rooms: ['Foyer', 'Hotelbar', 'Bel Etage', 'Fürstensuite', 'Penthouse'], rules: ['last-call', 'sober', 'markup', 'short-night', 'cover', 'sharp-sevens'] },
     { id: 'monopol', tint: { a: [0.04, 0.06, 0.10], b: [0.14, 0.21, 0.30], c: [0.72, 0.80, 0.90] }, name: 'Spielbank Monopol', sub: 'Die Bank gewinnt. Steht so im Namen', acts: 5, ash: 3.5,
@@ -630,7 +639,7 @@
   /* --- Casinos: Jedes Haus nach dem ersten bringt einen eigenen Tisch, eine eigene Elite und seinen Boss mit.
      "casino" ist der Index in ZU.CASINOS; diese Figuren tauchen nur dort auf. --- */
   enemy('taxi-dancer', {
-    name: 'Mimi', role: 'Eintänzerin', kind: 'battle', casino: 1, ai: 'greedy', pool: ['stillstand', 'addieren', 'nachschlag'], bg: '#1f4a4a', chain: 2,
+    name: 'Mimi', role: 'Eintänzerin', kind: 'battle', casino: 'rialto', ai: 'greedy', pool: ['stillstand', 'addieren', 'nachschlag'], bg: '#1f4a4a', chain: 2,
     passive: 'chains', passiveText: 'Paartanz: legt Paare mit gleichem Wert.',
     say: {
       start: ['Ein Tanz kostet zehn Pfennig. Verlieren ist gratis~', 'Führen oder folgen, Süßer?'],
@@ -643,7 +652,7 @@
     }
   });
   enemy('bandleader', {
-    name: 'Kapellmeister Bela', role: 'Kapellmeister', kind: 'elite', casino: 1, ai: 'counter', handBonus: 1, pool: COMMON.concat(['nebelkerze', 'zocken']), bg: '#3a2a44',
+    name: 'Kapellmeister Bela', role: 'Kapellmeister', kind: 'elite', casino: 'rialto', ai: 'counter', handBonus: 1, pool: COMMON.concat(['nebelkerze', 'zocken']), bg: '#3a2a44',
     passive: 'upbeat', passiveText: 'Auftakt: Du setzt zu Beginn einmal aus.',
     say: {
       start: ['Und eins, und zwei – ICH gebe den Takt an!', 'Ruhe im Saal! Der Maestro spielt.'],
@@ -656,7 +665,7 @@
     }
   });
   enemy('boss-impresario', {
-    name: 'Der Impresario', role: 'Boss im Rialto', kind: 'boss', casino: 1, ai: 'house', pool: COMMON.concat(['nebelkerze', 'tausch', 'zocken']), bg: '#4a1a26',
+    name: 'Der Impresario', role: 'Boss im Rialto', kind: 'boss', casino: 'rialto', ai: 'house', pool: COMMON.concat(['nebelkerze', 'tausch', 'zocken']), bg: '#4a1a26',
     passive: 'finale', passiveText: 'Großes Finale: Hält er nur noch 2 Karten, ziehst du einmal 2.',
     say: {
       start: ['Mein Palast, meine Bühne, mein Abend. Du bist die Vorgruppe.', 'Jeder Stern hier gehört mir. Du auch gleich.'],
@@ -669,7 +678,7 @@
     }
   });
   enemy('sailor', {
-    name: 'Matrose Hein', role: 'Decksmann', kind: 'battle', casino: 2, ai: 'pressure', pool: ['addieren', 'fluch', 'stillstand'], bg: '#1c3246',
+    name: 'Matrose Hein', role: 'Decksmann', kind: 'battle', casino: 'fortuna', ai: 'pressure', pool: ['addieren', 'fluch', 'stillstand'], bg: '#1c3246',
     passive: 'list', passiveText: 'Schlagseite: Du beginnst mit einer Karte mehr.',
     say: {
       start: ['Landratte an Bord! Halt dich fest.', 'Hier draußen gilt nur ein Gesetz: meins.'],
@@ -682,7 +691,7 @@
     }
   });
   enemy('purser', {
-    name: 'Zahlmeister Pfennig', role: 'Zahlmeister', kind: 'elite', casino: 2, ai: 'counter', pool: COMMON.concat(['hodl', 'opfer', 'zocken']), bg: '#3a3a2a',
+    name: 'Zahlmeister Pfennig', role: 'Zahlmeister', kind: 'elite', casino: 'fortuna', ai: 'counter', pool: COMMON.concat(['hodl', 'opfer', 'zocken']), bg: '#3a3a2a',
     passive: 'purser', passiveText: 'Bordkasse: Von deiner Bank behält er die Hälfte ein.',
     say: {
       start: ['Jede Mark an Bord geht durch MEINE Bücher.', 'Quittung? Wird nachgereicht. Nie.'],
@@ -695,7 +704,7 @@
     }
   });
   enemy('boss-captain', {
-    name: 'Kapitänin Fortuna', role: 'Boss der Fortuna', kind: 'boss', casino: 2, ai: 'pressure', pool: CURSE.concat(['nebelkerze', 'brandsatz', 'zocken']), bg: '#16324a',
+    name: 'Kapitänin Fortuna', role: 'Boss der Fortuna', kind: 'boss', casino: 'fortuna', ai: 'pressure', pool: CURSE.concat(['nebelkerze', 'brandsatz', 'zocken']), bg: '#16324a',
     passive: 'storm', passiveText: 'Sturmwarnung: Jeden fünften ihrer Züge ziehst du 1 Karte.',
     say: {
       start: ['Mein Schiff, mein Glück. Dein Name steht nicht auf der Passagierliste.', 'Auf See gewinnt, wer den Sturm kennt.'],
@@ -708,7 +717,7 @@
     }
   });
   enemy('bellboy', {
-    name: 'Page Anton', role: 'Hotelpage', kind: 'battle', casino: 3, ai: 'gamble', pool: ['nachschlag', 'zocken', 'addieren'], bg: '#5a1c1c',
+    name: 'Page Anton', role: 'Hotelpage', kind: 'battle', casino: 'imperial', ai: 'gamble', pool: ['nachschlag', 'zocken', 'addieren'], bg: '#5a1c1c',
     passive: 'encore', passiveText: 'Zimmerservice: Seine erste Spezialkarte beendet seinen Zug nicht.',
     say: {
       start: ['Gepäck? Trinkgeld? Niederlage? Wird alles aufs Zimmer gebracht!', 'Die Herrschaften wünschen zu verlieren?'],
@@ -721,7 +730,7 @@
     }
   });
   enemy('concierge', {
-    name: 'Concierge Laurent', role: 'Concierge', kind: 'elite', casino: 3, ai: 'house', pool: COMMON.concat(['spion', 'tausch', 'nebelkerze']), bg: '#2a2a30',
+    name: 'Concierge Laurent', role: 'Concierge', kind: 'elite', casino: 'imperial', ai: 'house', pool: COMMON.concat(['spion', 'tausch', 'nebelkerze']), bg: '#2a2a30',
     passive: 'keys', passiveText: 'Generalschlüssel: Seine Spezialkarten passen auf jede Karte.',
     say: {
       start: ['Für unsere Gäste ist nichts unmöglich. Für Sie schon.', 'Ich habe zu jeder Tür einen Schlüssel. Auch zu Ihrer.'],
@@ -734,7 +743,7 @@
     }
   });
   enemy('boss-baroness', {
-    name: 'Baronin von Hohenstein', role: 'Boss im Imperial', kind: 'boss', casino: 3, ai: 'house', pool: CURSE.concat(['tausch', 'brandsatz', 'ausgleich']), bg: '#2a2430',
+    name: 'Baronin von Hohenstein', role: 'Boss im Imperial', kind: 'boss', casino: 'imperial', ai: 'house', pool: CURSE.concat(['tausch', 'brandsatz', 'ausgleich']), bg: '#2a2430',
     passive: 'baroness', passiveText: 'Alter Adel: Du beginnst verflucht (×2). Sie beginnt mit 2 Karten weniger.',
     say: {
       start: ['Man hat Sie hereingelassen? Das Personal wird nachlässig.', 'Mein Urgroßvater hat dieses Haus gewonnen. Am Kartentisch.'],
@@ -747,7 +756,7 @@
     }
   });
   enemy('croupier', {
-    name: 'Croupier Klara', role: 'Croupier', kind: 'battle', casino: 4, ai: 'counter', pool: ['stillstand', 'nebelkerze', 'spion'], bg: '#143a30',
+    name: 'Croupier Klara', role: 'Croupier', kind: 'battle', casino: 'monopol', ai: 'counter', pool: ['stillstand', 'nebelkerze', 'spion'], bg: '#143a30',
     passive: 'last-round', passiveText: 'Rien ne va plus: Sperrstunde deutlich früher.',
     say: {
       start: ['Faites vos jeux.', 'Die Bank dankt für Ihren Besuch. Im Voraus.'],
@@ -760,7 +769,7 @@
     }
   });
   enemy('vault-guard', {
-    name: 'Tresorwächter Brock', role: 'Tresorwächter', kind: 'elite', casino: 4, ai: 'greedy', pool: COMMON.concat(['fluch', 'brandsatz']), bg: '#2c3038',
+    name: 'Tresorwächter Brock', role: 'Tresorwächter', kind: 'elite', casino: 'monopol', ai: 'greedy', pool: COMMON.concat(['fluch', 'brandsatz']), bg: '#2c3038',
     passive: 'armored', passiveText: 'Panzertür: Deine ersten 2 Zieheffekte prallen an ihm ab.',
     say: {
       start: ['Hinter mir liegt das Geld. Vor mir liegst gleich du.', 'Kein Ausweis, kein Durchgang.'],
@@ -773,7 +782,7 @@
     }
   });
   enemy('boss-director', {
-    name: 'Direktor Monopol', role: 'Boss der Spielbank', kind: 'boss', casino: 4, ai: 'counter', pool: COMMON.concat(['ausgleich', 'tausch', 'brandsatz', 'nebelkerze']), bg: '#1e1e24',
+    name: 'Direktor Monopol', role: 'Boss der Spielbank', kind: 'boss', casino: 'monopol', ai: 'counter', pool: COMMON.concat(['ausgleich', 'tausch', 'brandsatz', 'nebelkerze']), bg: '#1e1e24',
     passive: 'director', passiveText: 'Hausbank: Er kennt deine Hand und hält zu Beginn 3 Joker.',
     say: {
       start: ['Ich habe Ihre Akte gelesen. Dünn. Wie Ihre Chancen.', 'In diesem Haus wird nicht gespielt. Hier wird abgerechnet.'],
@@ -786,7 +795,7 @@
     }
   });
   enemy('stoker', {
-    name: 'Heizer Ruß', role: 'Heizer', kind: 'battle', casino: 5, ai: 'pressure', pool: ['addieren', 'brandsatz', 'fluch'], bg: '#3a1c10',
+    name: 'Heizer Ruß', role: 'Heizer', kind: 'battle', casino: 'inferno', ai: 'pressure', pool: ['addieren', 'brandsatz', 'fluch'], bg: '#3a1c10',
     passive: 'amplify', passiveText: 'Volle Schaufel: Sein erster Zieheffekt zwingt dich zu 2 Karten extra.',
     say: {
       start: ['Hier unten ist es immer warm. Du gewöhnst dich dran.', 'Noch eine Schaufel. Für dich.'],
@@ -799,7 +808,7 @@
     }
   });
   enemy('siren', {
-    name: 'Die Sirene', role: 'Sängerin', kind: 'elite', casino: 5, ai: 'gamble', handBonus: 1, pool: CURSE.concat(['tausch', 'nebelkerze', 'mischmasch']), bg: '#3d1420',
+    name: 'Die Sirene', role: 'Sängerin', kind: 'elite', casino: 'inferno', ai: 'gamble', handBonus: 1, pool: CURSE.concat(['tausch', 'nebelkerze', 'mischmasch']), bg: '#3d1420',
     passive: 'smoke', passiveText: 'Sirenengesang: Dein erster Zieh-, Aussetz- oder Fluch-Effekt prallt auf dich zurück.',
     say: {
       start: ['Hör mir zu … nur ein Lied. Dein letztes~', 'Komm näher. Noch näher~'],
@@ -812,7 +821,7 @@
     }
   });
   enemy('boss-prince', {
-    name: 'Der Fürst', role: 'Boss im Inferno', kind: 'boss', casino: 5, ai: 'house', pool: CURSE.concat(['inferno', 'brandsatz', 'tausch', 'ausgleich', 'mischmasch']), bg: '#4a0e0e', chain: 2,
+    name: 'Der Fürst', role: 'Boss im Inferno', kind: 'boss', casino: 'inferno', ai: 'house', pool: CURSE.concat(['inferno', 'brandsatz', 'tausch', 'ausgleich', 'mischmasch']), bg: '#4a0e0e', chain: 2,
     passive: 'prince', passiveText: 'Höllenfeuer: Du beginnst verflucht (×3). Er legt Paare und ignoriert dein erstes Aussetzen.',
     say: {
       start: ['Willkommen ganz unten. Den Vertrag hast du längst unterschrieben.', 'Alle spielen irgendwann gegen mich. Du bist nur früh dran.'],
@@ -825,13 +834,162 @@
     }
   });
 
+  /* --- Rote Laterne: ein Nachtclub, in dem jeder weiß, was gemeint ist, und keiner es ausspricht --- */
+  enemy('hostess', {
+    name: 'Gigi', role: 'Animierdame', kind: 'battle', casino: 'laterne', ai: 'greedy', pool: ['stillstand', 'addieren', 'schutzgeld'], bg: '#4a1430',
+    passive: 'list', passiveText: 'Schampus aufs Haus: Du beginnst mit einer Karte mehr.',
+    say: {
+      start: ['Setz dich, Schatz. Die erste Flasche geht auf dich.', 'Du siehst aus, als hättest du Durst. Und Geld.'],
+      attack: ['Noch ein Gläschen?', 'Das steht alles auf deinem Deckel~'],
+      hurt: ['Na hör mal! So spricht man nicht mit einer Dame.', 'Uff. Der hat ja gar nichts getrunken.'],
+      nervous: ['Eddie schaut schon her …', 'Bestell was, schnell, sonst krieg ich Ärger!'],
+      gloat: ['Die Rechnung kommt gleich, Schatz.', 'Zahlen und lächeln. So läuft das hier.'],
+      win: ['War nett mit dir. Teuer, aber nett.'],
+      lose: ['… Du bist der Erste, der nüchtern hier rausgeht.']
+    }
+  });
+  enemy('doorwoman', {
+    name: 'Olga', role: 'Türsteherin', kind: 'elite', casino: 'laterne', ai: 'greedy', pool: COMMON.concat(['fluch', 'nebelkerze']), bg: '#2a2228',
+    passive: 'thick-skin', passiveText: 'Eiserne Olga: ignoriert dein erstes Aussetzen.',
+    say: {
+      start: ['Hände auf den Tisch. Beide.', 'Hier fasst keiner was an, was er nicht bezahlt hat. Auch keine Karten.'],
+      attack: ['Raus.', 'Benimm dich.'],
+      hurt: ['Mutig.', 'Das merk ich mir. Mit Gesicht.'],
+      nervous: ['Chef? Der hier macht Probleme.', '… Der ist ja wirklich gut.'],
+      gloat: ['Ich bring dich gleich zur Tür. Durch die Tür.', 'Letzte Warnung war vorhin.'],
+      win: ['Hausverbot.'],
+      lose: ['… Du darfst bleiben. Sag es keinem.']
+    }
+  });
+  enemy('boss-eddie', {
+    name: 'Samt-Eddie', role: 'Boss der Roten Laterne', kind: 'boss', casino: 'laterne', ai: 'house', pool: COMMON.concat(['schutzgeld', 'tausch', 'nebelkerze', 'zocken']), bg: '#3a1040',
+    passive: 'house-cut', passiveText: 'Hausanteil: Er behält die Hälfte deiner Bank und beginnt mit 2 Karten weniger.',
+    say: {
+      start: ['Alles, was in meinem Haus verdient wird, geht zur Hälfte an mich. Auch dein Glück, Freundchen.', 'Samt außen, Stahl innen. Merk dir das.'],
+      attack: ['Mit schönen Grüßen vom Haus.', 'Das ist mein Anteil.'],
+      hurt: ['Vorsicht mit dem Anzug!', 'Das wird teuer. Für dich.'],
+      nervous: ['Olga! OLGA!', 'Wir können doch über Prozente reden …'],
+      gloat: ['Du arbeitest gleich für mich. Als Garderobe.', 'Zahltag, Freundchen.'],
+      win: ['Das Haus kassiert. Immer.'],
+      lose: ['… Fünfzig Prozent vom Laden? Sechzig? Sag eine Zahl!']
+    }
+  });
+
+  /* --- Block 9: Hinterhof, Shisha-Lounge und Studio einer Rap-Crew --- */
+  enemy('rapper', {
+    name: 'Lil Zünd', role: 'Battle-Rapper', kind: 'battle', casino: 'block9', ai: 'gamble', pool: ['nachschlag', 'addieren', 'zocken'], bg: '#1c1a3a',
+    passive: 'encore', passiveText: 'Doubletime: Seine erste Spezialkarte beendet seinen Zug nicht.',
+    say: {
+      start: ['Yo, Mikrocheck. Du bist schon out, bevor der Beat droppt.', 'Block 9, Digga. Hier wird nicht gespielt, hier wird gebattlet.'],
+      attack: ['Punchline!', 'Das war nur das Intro.'],
+      hurt: ['Ey, das war ein Freestyle, das zählt nicht!', 'Okay, okay … der Part saß.'],
+      nervous: ['Bro, mach mal den Beat aus …', 'Milan! Sag was!'],
+      gloat: ['Gleich ist dein Feature vorbei.', 'Ich mach dich zur Hook.'],
+      win: ['Mic drop.'],
+      lose: ['… Respekt, Alter. Feature?']
+    }
+  });
+  enemy('producer', {
+    name: 'Milan', role: 'Produzent', kind: 'elite', casino: 'block9', ai: 'counter', handBonus: 1, pool: COMMON.concat(['mischmasch', 'zocken', 'spion']), bg: '#221c3c', chain: 2,
+    passive: 'chains', passiveText: 'Sample-Schleife: legt Paare mit gleichem Wert.',
+    say: {
+      start: ['Ich hör schon, wie du verlierst. Vier Takte, dann ist Schluss.', 'Setz dich. Aber fass nichts an.'],
+      attack: ['Loop.', 'Und nochmal von vorn.'],
+      hurt: ['Der Übergang war unsauber.', 'Hm. Den Sound kenn ich nicht.'],
+      nervous: ['Die Spur … die Spur ist weg!', 'Wer hat an meinem Regler gedreht?!'],
+      gloat: ['Ich misch dich gerade leiser.', 'Fade-out in drei, zwei …'],
+      win: ['Sauber gemastert.'],
+      lose: ['… Schick mir die Spur. Die will ich samplen.']
+    }
+  });
+  enemy('boss-label', {
+    name: 'Papa Platin', role: 'Boss von Block 9', kind: 'boss', casino: 'block9', ai: 'house', pool: CURSE.concat(['brandsatz', 'tausch', 'ausgleich', 'zocken']), bg: '#14183c',
+    passive: 'entourage', passiveText: 'Entourage: Er hält zu Beginn 3 Joker, du beginnst mit einer Karte mehr.',
+    say: {
+      start: ['Jeder hier im Block hat bei mir unterschrieben. Du kriegst auch einen Vertrag. Einen schlechten.', 'Platin hängt bei mir an der Wand und um den Hals. Was hast du?'],
+      attack: ['Das ist Business.', 'Meine Jungs regeln das.'],
+      hurt: ['Wer hat den reingelassen?!', 'Das zieh ich dir vom Vorschuss ab.'],
+      nervous: ['Die Zahlen … die Streams brechen ein!', 'Ruft den Anwalt. Den guten!'],
+      gloat: ['Du gehst gleich Platin. Im Verlieren.', 'Unterschreib hier. Mit deinem Blut oder so.'],
+      win: ['Nächstes Signing.'],
+      lose: ['… Der Block gehört dir. Die GEMA auch.']
+    }
+  });
+
+  /* --- Gäste, die in jedem Haus sitzen können: Leute mit Geld, Amt oder Ruf --- */
+  enemy('politician', {
+    name: 'Stadtrat Kröger', role: 'Stadtrat', kind: 'battle', ai: 'greedy', pool: ['schutzgeld', 'stillstand', 'hodl'], bg: '#2c3440',
+    passive: 'odds', passiveText: 'Spesenkonto: Schlägst du ihn, zahlt er 3 Mark extra.',
+    say: {
+      start: ['Ich bin dienstlich hier. Rein dienstlich!', 'Das bleibt unter uns, ja? Wählerauftrag.'],
+      attack: ['Im Namen der Bürger!', 'Das habe ich so nie gesagt.'],
+      hurt: ['Das wird ein Nachspiel im Ausschuss haben!', 'Ich berufe mich auf meine Immunität!'],
+      nervous: ['Ist das da hinten die Presse?!', 'Ich … ich war nie hier.'],
+      gloat: ['Die Mehrheit steht. Gegen Sie.', 'Abstimmung! Wer ist für mich? Ich.'],
+      win: ['Einstimmig angenommen.'],
+      lose: ['… Ich trete nicht zurück. Ich trete nur kurz raus.']
+    }
+  });
+  enemy('influencer', {
+    name: 'Lucky Luis', role: 'Zocker-Streamer', kind: 'battle', ai: 'gamble', pool: ['zocken', 'addieren', 'nachschlag'], bg: '#3a1c4a',
+    passive: 'light', passiveText: 'Clickbait: Er beginnt mit einer 7 auf der Hand.',
+    say: {
+      start: ['Was geht ab, Leute! Heute zerlegen wir live einen Random!', 'Daumen hoch, Glocke an, Gegner weg!'],
+      attack: ['CLIP DAS!', 'Chat, habt ihr das gesehen?!'],
+      hurt: ['Äh … das schneiden wir raus.', 'Lag! Das war Lag!'],
+      nervous: ['Leute, kurz Werbung …', 'Chat, was mach ich jetzt?! CHAT?!'],
+      gloat: ['Gleich gibt es den Siegestanz, bleibt dran!', 'Das wird das Thumbnail.'],
+      win: ['GG EZ! Abo nicht vergessen!'],
+      lose: ['… Stream offline. Technische Probleme.']
+    }
+  });
+  enemy('undersecretary', {
+    name: 'Dr. Amsel', role: 'Staatssekretärin', kind: 'elite', ai: 'counter', pool: COMMON.concat(['stillstand', 'nebelkerze', 'ausgleich']), bg: '#343840',
+    passive: 'upbeat', passiveText: 'Dienstweg: Du setzt zu Beginn einmal aus.',
+    say: {
+      start: ['Ihr Antrag auf einen Sieg liegt vor. Er wird abgelehnt.', 'Bitte ziehen Sie eine Nummer.'],
+      attack: ['Zuständigkeitshalber.', 'Dafür gibt es ein Formular.'],
+      hurt: ['Das ist so nicht vorgesehen.', 'Ich vermerke das in Ihrer Akte.'],
+      nervous: ['Wer hat das genehmigt?!', 'Das muss durch drei Referate!'],
+      gloat: ['Ihr Vorgang wird gleich geschlossen.', 'Bearbeitungszeit: noch zwei Züge.'],
+      win: ['Abgelehnt. Mit freundlichen Grüßen.'],
+      lose: ['… Genehmigt. Aber ich habe es nicht unterschrieben.']
+    }
+  });
+  enemy('poker-pro', {
+    name: 'Kessler', role: 'Pokerprofi „Kalte Hand“', kind: 'elite', ai: 'counter', handBonus: 1, pool: COMMON.concat(['spion', 'tausch', 'zocken']), bg: '#1c2026',
+    passive: 'sees-hand', passiveText: 'Liest dich: Kennt deine Hand und spielt gezielt dagegen.',
+    say: {
+      start: ['…', 'Deine linke Augenbraue. Zuckt.'],
+      attack: ['Call.', 'Wusste ich.'],
+      hurt: ['…', 'Interessant.'],
+      nervous: ['… Du hast keinen Tell.', 'Brille ab. Ich muss dich sehen.'],
+      gloat: ['All in.', 'Du bluffst. Schlecht.'],
+      win: ['Gutes Spiel. Für mich.'],
+      lose: ['… Zum ersten Mal seit Jahren. Danke.']
+    }
+  });
+  enemy('bluffer', {
+    name: 'Texas-Theo', role: 'Bluff-Legende', kind: 'battle', ai: 'gamble', pool: ['tausch', 'zocken', 'stillstand'], bg: '#4a3418',
+    passive: 'sleeve', passiveText: 'Alter Trick: Seine Asse passen auf jede Karte.',
+    say: {
+      start: ['Junge, ich hab schon geblufft, da gab es dich noch gar nicht.', 'Setz dich. Ich erzähl dir, wie du verlierst.'],
+      attack: ['Hast du nicht kommen sehen, was?', 'Achtundsechzig in Reno, genau so.'],
+      hurt: ['Hoppla. Der Junge kann ja was.', 'Das war früher verboten!'],
+      nervous: ['Moment, wo ist mein Zahnstocher?', 'Das … hab ich so noch nie erlebt.'],
+      gloat: ['Jetzt kommt mein Lieblingsteil.', 'Ich hab nichts auf der Hand. Oder doch?'],
+      win: ['Und so, Junge, macht man das.'],
+      lose: ['… Den Hut hast du dir verdient. Den alten.']
+    }
+  });
+
   ZU.ENEMIES = enemies;
   // Die allgemeinen Töpfe enthalten nur Figuren, die in jedem Haus sitzen können.
   ZU.BATTLE_POOL = Object.keys(enemies).filter(function (id) { return enemies[id].kind === 'battle' && !enemies[id].casino; });
   ZU.ELITE_POOL = Object.keys(enemies).filter(function (id) { return enemies[id].kind === 'elite' && !enemies[id].casino; });
   /* Eigene Figuren je Casino: { battle, elite, boss } – oder nichts im ersten Haus. */
-  ZU.CASINOS.forEach(function (casino, index) {
-    var own = Object.keys(enemies).filter(function (id) { return enemies[id].casino === index; });
+  ZU.CASINOS.forEach(function (casino) {
+    var own = Object.keys(enemies).filter(function (id) { return enemies[id].casino === casino.id; });
     if (!own.length) return;
     casino.foes = {};
     own.forEach(function (id) { casino.foes[enemies[id].kind] = id; });

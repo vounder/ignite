@@ -1035,7 +1035,8 @@
     /* Akte einer Figur: Porträt, Eigenheit und ihre Geschichte – so weit, wie man sie schon geschlagen hat. */
     function dossier(id, count) {
       var enemy = ZU.ENEMIES[id], steps = ZU.LORE_STEPS[enemy.kind], entry;
-      var home = enemy.casino ? ZU.CASINOS[enemy.casino].name : 'in jedem Haus';
+      var house = ZU.CASINOS.filter(function (casino) { return casino.id === enemy.casino; })[0];
+      var home = house ? house.name : 'in jedem Haus';
       var pages = ZU.LORE[id].map(function (text, index) {
         var open = count >= steps[index], missing = steps[index] - count;
         return h('div', 'lore-page' + (open ? '' : ' locked'), [
@@ -1622,7 +1623,11 @@
       });
     }
 
-    root.appendChild(h('div', 'screen shop', [
+    // Kulisse des Ladens: Regale, Kisten, Öllampen; warmes Licht flackert darüber.
+    var shopRoom = h('div', 'shop-room', [h('i', 'esme-glow g1'), h('i', 'esme-glow g2'), h('i', 'esme-glow g4')]);
+    shopRoom.style.backgroundImage = 'url(' + ZU.asset('manfred/shop.png') + ')';
+    root.appendChild(h('div', 'screen shop manfreds', [
+      shopRoom,
       bar.el,
       h('div', 'shop-left', [bubble, manfred, h('div', 'shop-sign', 'Manfreds Laden')]),
       esmeDoor,

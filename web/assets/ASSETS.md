@@ -26,7 +26,7 @@ Alle Bilder wurden am 11.11.2026 mit der Bildgenerierung von OpenAI über die
 Codex-CLI speziell für Zündung erzeugt, jeweils auf Chroma-Grün, und mit
 `web/tools/prepare_assets.py` freigestellt und verkleinert.
 
-### Gegner (`enemies/`, 35 Sprite-Streifen)
+### Gegner (`enemies/`, 46 Sprite-Streifen)
 
 Jeder Gegner entstand als Ausdrucks-Sheet mit 3×2 Feldern (neutral, Blinzeln,
 hämisch, wütend, geschockt, geschlagen). `prepare_assets.py --sheets` erkennt
@@ -38,6 +38,11 @@ Die 15 Hausfiguren der Casinos (12.11.2026: Mimi, Kapellmeister Bela, Der Impres
 Pfennig, Kapitänin Fortuna, Page Anton, Concierge Laurent, Baronin von Hohenstein, Croupier Klara, Tresorwächter
 Brock, Direktor Monopol, Heizer Ruß, Die Sirene, Der Fürst) entstanden einzeln mit demselben Prompt; als Stilvorlage
 diente ein fertiger Streifen (`boss-consigliere.png` bzw. `boss-dolores.png`).
+
+Dritte Serie (12.11.2026, elf Figuren): Gigi, Olga und Samt-Eddie (Rote Laterne), Lil Zünd, Milan und Papa Platin
+(Block 9) sowie Stadtrat Kröger, Lucky Luis, Dr. Amsel, Kessler und Texas-Theo für alle Häuser; dazu die Hausbilder
+`casinos/laterne.png` und `casinos/block9.png` und die Kulisse `manfred/shop.png` für Manfreds Laden. Skripte und
+Prompts: `/data/ignite/art/wave3/` und `/data/ignite/art/manfred-shop/`.
 
 Gemeinsamer Prompt:
 

@@ -193,6 +193,63 @@
     ]
   };
 
+  /* ---------- Rote Laterne, Block 9 und die Gäste, die überall sitzen ---------- */
+  ZU.LORE.hostess = [
+    'Gigi trinkt an einem Abend vierzig Gläser Champagner und ist danach nüchterner als du. In ihrem Glas ist Apfelschorle. Auf deiner Rechnung nicht.',
+    'Sie hat mit Roxy im Rialto in der zweiten Reihe getanzt, bis der Impresario die halbe Truppe entließ. Roxy ging in den Hahn, Gigi in die Laterne. Sie telefonieren jeden Sonntag und reden nie über die Arbeit.',
+    'Gigi führt Buch über jeden Gast: was er trinkt, was er verspielt, was er nach der dritten Flasche erzählt. Das Buch gehört nicht Eddie. Es geht einmal im Monat an Madame Rauch, und die zahlt besser als jede Flasche Champagner.'
+  ];
+  ZU.LORE.doorwoman = [
+    'Olga hat in zwölf Jahren niemanden zweimal bitten müssen. Sie redet leise, weil sie es sich leisten kann.',
+    'Gelernt hat sie bei Schrank an der Tür des Goldenen Hahn. Er hat ihr beigebracht, „Nein“ zu sagen. Sie hat ihm beigebracht, dabei nicht zu blinzeln. Zu Weihnachten sitzt sie mit ihm und Brock am Tisch und redet über Türen.',
+    'Olga bleibt nicht wegen Eddie. Sie bleibt wegen der Mädchen: Seit sie an der Tür steht, hat im ganzen Haus keiner mehr die Hand gehoben, auch Eddie nicht. Er glaubt, das liege an seinem guten Einfluss.'
+  ];
+  ZU.LORE['boss-eddie'] = [
+    'Samt-Eddie nennt sich Wirtschafter, weil das Wort auf keiner Polizeiwache etwas bedeutet. Er nimmt von allem die Hälfte und hält das für bescheiden.',
+    'Angefangen hat er als Laufbursche für Donna Scarlatta. Die Rote Laterne war ihr Abschiedsgeschenk, als er zu viel wusste – mit einem Vertrag vom Consigliere, in dem Paragraf sieben sehr lang ist.',
+    'Eddie zahlt seine Hälfte weiter: an Donna, an die Spielbank, an den Stadtrat. Am Monatsende bleibt ihm weniger als Gigi. Der Samtanzug ist geliehen. Nur der Goldzahn ist echt – den hat Quoten-Otto bei ihm verpfändet.'
+  ];
+  ZU.LORE.rapper = [
+    'Lil Zünd hat siebzehn Battles gewonnen und sein Abitur nicht. Er reimt auf alles außer auf „Niederlage“, das Wort kennt er noch nicht lange.',
+    'Page Anton ist sein bester Freund aus der Schule. Anton schmuggelt ihn in die Hotelbar des Imperial, Lil Zünd schreibt dafür Antons Liebesbriefe. Bisher hat niemand geantwortet.',
+    'Seinen ersten Vertrag hat er mit sechzehn unterschrieben, bei Papa Platin, ohne ihn zu lesen. Milan hat ihn gelesen. Seitdem produziert Milan nachts heimlich ein zweites Album, das Platin nicht gehört.'
+  ];
+  ZU.LORE.producer = [
+    'Milan spricht in Takten. Er hört in jedem Raum den einen Ton, der nicht stimmt, und kann danach nicht mehr schlafen.',
+    'Klavier hat er bei Fingers gelernt, im Hinterzimmer des Goldenen Hahn, für eine Schachtel Zigaretten die Stunde. Die Melodie, die Fingers jede Nacht spielt, hat Milan gesampelt. Es ist der erfolgreichste Beat, den Block 9 je hatte.',
+    'Milan kennt die acht fehlenden Takte. Er hat sie aus Versehen gefunden, beim Schneiden, rückwärts. Er traut sich nicht, sie Fingers vorzuspielen: Wenn das Lied fertig ist, hört der Alte auf zu spielen – und die Sirene kommt frei.'
+  ];
+  ZU.LORE['boss-label'] = [
+    'Papa Platin hat nie selbst gerappt. Er hat nur früh verstanden, dass man an denen verdient, die es tun. An seiner Wand hängen elf Platinplatten und kein einziges Foto der Künstler.',
+    'Das Startgeld für Block 9 kam von der Spielbank Monopol. Der Direktor wollte ein junges Publikum. Platin wollte nur das Geld und zahlt seither jeden Monat zurück, in Summen, die Zahlmeister Pfennig persönlich abholt.',
+    'Im Studio hinter dem Chefbüro liegt ein Vertrag, den nicht der Consigliere aufgesetzt hat: roter Umschlag, warme Tinte. Platin hat noch nicht unterschrieben. Er wartet ab, wie es dem Hausherrn ergeht.'
+  ];
+  ZU.LORE.politician = [
+    'Stadtrat Kröger sitzt im Ausschuss für öffentliche Ordnung und an jedem Tisch, an dem sie gestört wird. Er nennt das Bürgernähe.',
+    'Die Konzession der Fortuna, die Baugenehmigung für das neue Rialto, die Sperrstunde, die im Hahn nie gilt: alles Krögers Unterschrift. Jede hatte ihren Preis, und jeder Preis steht in Madame Rauchs Notizen.',
+    'Kröger schuldet der Spielbank mehr, als die Stadt im Jahr an Hundesteuer einnimmt. Der Direktor lässt ihn weiterspielen. Ein Stadtrat mit Schulden, sagt er, ist die sicherste Anlage, die es gibt.'
+  ];
+  ZU.LORE.influencer = [
+    'Lucky Luis streamt jeden Abend live aus einem anderen Casino. Sein Glück ist echt, sagt er. Die Einsätze zahlt ein Sponsor, dessen Namen er nicht nennen darf.',
+    'Der Sponsor ist die Spielbank Monopol. Luis gewinnt dort auffällig oft vor laufender Kamera, an einem Kessel, den Klara für ihn dreht. Sie hasst jeden einzelnen Abend davon.',
+    'Einmal hat er im Inferno gestreamt. Die Aufnahme zeigt vierzig Minuten lang nur einen roten Frack von hinten und am Ende seinen eigenen Namen auf einem Blatt Papier. Luis hat das Video gelöscht. Es hat trotzdem noch Aufrufe.'
+  ];
+  ZU.LORE.undersecretary = [
+    'Staatssekretärin Dr. Amsel hat in ihrem Leben noch nie etwas genehmigt, das nicht längst geschehen war. Sie spielt, wie sie verwaltet: langsam, gründlich und so, dass am Ende der andere schuld ist.',
+    'Sie und die Baronin von Hohenstein waren zusammen im Internat. Die Baronin hatte den Namen, Amsel die besseren Noten. Dass das Imperial trotz Hypothek nie geprüft wurde, ist kein Zufall, sondern eine vierzig Jahre alte Freundschaft.',
+    'In ihrer untersten Schublade liegt die Akte „Goldener Hahn“: hundert Jahre, keine Steuerschuld, kein Unfall, kein Verlustjahr. Sie hat den Vorgang dreimal zur Prüfung gegeben. Dreimal kam er zurück, mit einem Brandfleck am Rand.'
+  ];
+  ZU.LORE['poker-pro'] = [
+    'Kessler hat seit neun Jahren am Tisch keine Miene verzogen. Sein Arzt sagt, er könne es inzwischen gar nicht mehr.',
+    'Er war Dr. Zahls bester Student, bevor er die Universität gegen den Pokertisch tauschte. Zahl rechnet die Karten, Kessler die Menschen. Einmal im Jahr spielen sie gegeneinander, um ein Abendessen. Es steht unentschieden.',
+    'Nur einmal hat ihn jemand gelesen: eine Wahrsagerin in einem Nebenzimmer, die ihm für fünf Mark sagte, wovor er Angst hat. Er zahlte zwanzig, damit sie es niemandem erzählt. Esme nahm das Geld und erzählte es Manfred.'
+  ];
+  ZU.LORE.bluffer = [
+    'Texas-Theo war nie in Texas. Den Hut hat er einem Mann abgenommen, der behauptete, dort gewesen zu sein. Alles Weitere, sagt Theo, ist eine Frage der Haltung.',
+    'Er hat dem Schieber und Rico auf den Jahrmärkten das Bluffen beigebracht und bereut bis heute, dass nur einer von beiden zugehört hat. Welcher, sagt er nicht.',
+    'Theo hat einmal gegen den Hausherrn gespielt, vor sehr langer Zeit, und mit einem leeren Blatt beinahe gewonnen. Der Hausherr bot ihm danach einen Platz auf Lebenszeit an. Theo lehnte ab. Er ist der Einzige, der weiß, dass man dieses Haus bluffen kann.'
+  ];
+
   /* Hinter dem Tresen: Manfred und Esme. Ihre Akten öffnen sich nicht durch Siege, sondern durch Kundschaft
      (feat: Zählwerk aus js/meta.js, steps: ab wie vielen Käufen bzw. Veredelungen). */
   ZU.LORE_SHOP = {

@@ -50,18 +50,21 @@ zugehörigen Elemente blenden sich selbst aus.
   der Stapel leer und muss jemand ziehen, gewinnt, wer weniger Karten hält.
 - **Glut:** Jede gespielte Karte bringt Kartenwert × Kette. Die Kette wächst
   mit jeder Karte und fällt beim Ziehen zurück. Glut zahlt beim Sieg Mark.
-- **Gegner:** 35 Charaktere. 20 sitzen in jedem Haus – neun Tische, fünf Eliten
-  und sechs Bosse. Dazu bringt jedes Casino nach dem ersten drei eigene mit:
-  einen Tisch (eröffnet das Haus), eine Elite (zweiter Akt) und seinen Boss
-  (letzter Akt). Fast alle haben eine Eigenheit (z. B. „Ass im Ärmel" oder „Schwere
-  Hand"), dazu eigene Dialoge und animierte Porträts, die auf den Spielverlauf
-  reagieren.
-- **Casinos:** Sechs Häuser, der Reihe nach zu öffnen (ein Sieg im bisher
+- **Gegner:** 46 Charaktere. 25 sitzen in jedem Haus – zwölf Tische, sieben
+  Eliten und sechs Bosse, vom Croupier bis zum Stadtrat und zum Pokerprofi.
+  Dazu bringt jedes Casino nach dem ersten drei eigene mit: einen Tisch
+  (eröffnet das Haus), eine Elite (zweiter Akt) und seinen Boss (letzter Akt).
+  Fast alle haben eine Eigenheit, dazu eigene Dialoge, eine Akte und animierte
+  Porträts, die auf den Spielverlauf reagieren.
+- **Casinos:** Acht Häuser, der Reihe nach zu öffnen (ein Sieg im bisher
   schwersten öffnet das nächste): Zum Goldenen Hahn (3 Akte), Tanzpalast Rialto
-  (4), Dampfer Fortuna (4), Grandhotel Imperial (5), Spielbank Monopol (5), Das
-  Inferno (6). Jedes hat eine feste Hausordnung, die an allen Tischen gilt und
-  von Haus zu Haus wächst, und einen Asche-Faktor von ×1 bis ×5
-  (`ZU.CASINOS` und `ZU.RULES` in `js/data.js`).
+  (4), Rote Laterne (4), Dampfer Fortuna (4), Block 9 (5), Grandhotel Imperial
+  (5), Spielbank Monopol (5), Das Inferno (6). Das Milieu ist bewusst zeitlos:
+  Gangster der Dreißiger sitzen neben Rap-Crew und Streamer. Jedes Haus hat
+  eine feste Hausordnung, eine eigene Farbwelt, ein Bild und einen Asche-Faktor
+  von ×1 bis ×5 (`ZU.CASINOS` und `ZU.RULES` in `js/data.js`). Wird die Liste
+  umsortiert, rechnen `ZU.CASINO_VERSION` und `ZU.CASINO_REMAP` gespeicherte
+  Stände um.
 - **Run:** Je Akt drei Tische (Gegner, Elite, Boss), dazwischen
   Manfreds Laden mit einem Regal für normale Karten, einem für (seltene,
   teure) Spezialkarten, Trinkets, dem Privileg des Akts, Verbrennen,

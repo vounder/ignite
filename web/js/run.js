@@ -16,7 +16,7 @@
 
   /* Ohne Meta-Angaben (Tests, alte Spielstände) ist alles frei und nichts erschwert. */
   var NO_META = {
-    stake: 0, acts: 3, rules: [], ashMult: 1, startgeld: 0, freeReroll: false, shopBonus: 0, maxLives: ZU.MAX_LIVES, trinkets: null, specials: null,
+    stake: 0, cv: ZU.CASINO_VERSION, acts: 3, rules: [], ashMult: 1, startgeld: 0, freeReroll: false, shopBonus: 0, maxLives: ZU.MAX_LIVES, trinkets: null, specials: null,
     seals: null, esmePacks: 3, specialSlots: 99, interest: 0, trinketOffers: 0, perkDiscount: 0, bossTip: 0, burnDiscount: 0, luckyTrinket: false, nimble: false
   };
 
@@ -206,7 +206,7 @@
 
     var lines = [], base = this.baseReward(e.kind);
     lines.push({ label: ZU.KIND_LABEL[e.kind] + 'prämie', amount: base });
-    var bank = duel.enemy.passive === 'purser' ? Math.floor(duel.bank / 2) : duel.bank; // Zahlmeister Pfennig behält die Hälfte ein
+    var bank = duel.enemy.passive === 'purser' || duel.enemy.passive === 'house-cut' ? Math.floor(duel.bank / 2) : duel.bank; // Zahlmeister Pfennig behält die Hälfte ein
     if (bank > 0) lines.push({ label: bank < duel.bank ? 'Bank (halbiert)' : 'Bank', amount: bank });
     if (duel.bonusMult > 1) lines.push({ label: 'Bonusgeld ×' + duel.bonusMult, amount: (base + bank) * (duel.bonusMult - 1) });
     var left = Math.min(this.has('gold-tooth') ? 10 : 5, duel.hand.opp.length);
@@ -381,6 +381,7 @@
     this.s.shop = { cards: [], specials: [], trinkets: [], rerolls: 0, discount: this.has('false-bottom'), healed: false, burned: false, esme: { packs: [], rerolls: 0, pity: false } };
     this._stockEsme();
     if (this.has('mitgift')) this.s.money += 3;
+    if (this.rule('cover-charge')) this.s.money = Math.max(0, this.s.money - 2); // Hausregel „Eintritt"
     if (!this.s.perkOffer || this.s.perkOffer.act !== this.s.act) this._rollPerk();
     this._stockShop();
     this.s.phase = 'shop';
@@ -670,6 +671,11 @@
       if (!state || state.v !== 1 || !Array.isArray(state.collection) || !state.encounters) return null;
       if (state.phase === 'duel' || state.phase === 'payout') state.phase = 'select';
       if (state.phase === 'defeat') return null;
+      // Runs aus der Zeit mit sechs Casinos: Der Index des Hauses wandert an seinen neuen Platz.
+      if (state.meta && state.meta.cv !== ZU.CASINO_VERSION) {
+        if (ZU.CASINO_REMAP[state.meta.stake] != null) state.meta.stake = ZU.CASINO_REMAP[state.meta.stake];
+        state.meta.cv = ZU.CASINO_VERSION;
+      }
       if (state.shop && !state.shop.specials) state.shop.specials = []; // Spielstände vor dem geteilten Laden
       // Spielstände vor den Casinos: Der Einsatz wird zur passenden Hausordnung, alles andere bleibt, wie der Run begonnen hat.
       if (state.meta && !state.meta.rules) {

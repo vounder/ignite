@@ -175,7 +175,7 @@
     ASH: { battle: 1, elite: 2, boss: 5, victory: 8 },
 
     defaults: function () {
-      return { ash: 0, earned: 0, unlocked: {}, upgrades: {}, stake: 0, maxStake: 0, defeated: {}, feats: {} };
+      return { ash: 0, earned: 0, unlocked: {}, upgrades: {}, stake: 0, maxStake: 0, cv: ZU.CASINO_VERSION, defeated: {}, feats: {} };
     },
 
     /* Bringt gespeicherte oder vom Server gelieferte Daten in eine gültige Form. */
@@ -188,8 +188,14 @@
       }
       meta.ash = count(raw.ash, 1000000);
       meta.earned = count(raw.earned, 10000000);
-      meta.maxStake = count(raw.maxStake, M.STAKES.length - 1);
-      meta.stake = Math.min(count(raw.stake, M.STAKES.length - 1), meta.maxStake);
+      // Stände aus der Zeit mit sechs Casinos: Die Häuser sind umsortiert, der Index wandert mit.
+      function house(value) {
+        var n = count(value, 1000);
+        if (raw.cv !== ZU.CASINO_VERSION && ZU.CASINO_REMAP[n] != null) n = ZU.CASINO_REMAP[n];
+        return Math.min(n, M.STAKES.length - 1);
+      }
+      meta.maxStake = house(raw.maxStake);
+      meta.stake = Math.min(house(raw.stake), meta.maxStake);
       if (raw.unlocked && typeof raw.unlocked === 'object') {
         Object.keys(raw.unlocked).forEach(function (key) {
           var parts = key.split(':');
@@ -394,6 +400,7 @@
       var casino = ZU.CASINOS[meta.stake] || ZU.CASINOS[0];
       return {
         stake: meta.stake,
+        cv: ZU.CASINO_VERSION,
         acts: casino.acts,
         rules: casino.rules.slice(),
         ashMult: casino.ash * (1 + 0.1 * M.level(meta, 'aschesieb')),
