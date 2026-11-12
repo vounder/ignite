@@ -242,6 +242,10 @@ etwas lauter. Beim Boss wechselt `js/audio.js` an Ort und Stelle dorthin: Die
 neue Spur steigt stumm an der Stelle ein, an der die alte gerade spielt, und
 beide blenden kurz über.
 
+Genauso gehören `shop.mp3` und `shop-esme.mp3` zusammen: In Esmes Nebenzimmer
+läuft das Ladenstück weiter, nur entrückt – Harfe, gläserne Glocken, eine
+Melodiestimme wie ein Theremin, kaum Schlagwerk.
+
 - `tools/music/scores/*.js` – die Partituren: Akkordfolge, Melodie, Begleitung
   und Mischung je Stück. Die Melodien stammen aus den ursprünglichen Stücken
   (`godot/game/Assets/Audio/`), Tempo, Harmonien und Klang sind neu: weiche

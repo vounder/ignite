@@ -122,7 +122,8 @@
     boss: function () { tone(73, 0.9, 'sawtooth', 0.16, 0, 55); tone(110, 0.9, 'square', 0.07, 0.05, 82); },
 
     /* Musik: eine Schleife je Szene, weich überblendet. Jedes Casino hat sein Stück in zwei Stufen
-       ("game-<casino>" und "game-<casino>-boss"); zwischen diesen beiden wird an Ort und Stelle gewechselt. */
+       ("game-<casino>" und "game-<casino>-boss"), der Laden eine Fassung für Esmes Nebenzimmer ("shop-esme");
+       innerhalb eines solchen Paars wird an Ort und Stelle gewechselt. */
     music: function (name) {
       wanted = name;
       if (!unlocked) return;
@@ -158,7 +159,7 @@
     return track;
   }
 
-  function family(name) { return name.replace(/-boss$/, ''); }
+  function family(name) { return name.replace(/-(boss|esme)$/, ''); }
 
   /* Wechsel zwischen den Stufen eines Stücks (beide sind gleich lang und laufen im selben Tempo): Die neue
      Spur steigt stumm an der Stelle ein, an der die alte gerade spielt, und wird nachgeführt, bis beide
@@ -181,7 +182,7 @@
     el.volume = 0;
     place();
     var started = el.play();
-    if (started && started.catch) started.catch(function () { /* Datei fehlt: unten bleibt die alte Spur */ });
+    if (started && started.catch) started.catch(function () { /* Datei fehlt oder gesperrt: stumm weiter */ });
     handover = { track: track, from: from, timer: setInterval(function () {
       tries++;
       var ready = !el.paused && !el.seeking && el.readyState >= 3;
@@ -194,7 +195,7 @@
       }
       stopHandover();
       if (ready) { fade(track, 1, 0.2); fade(from, 0, 0.2); }
-      else { el.pause(); current = wanted = fromName; } // neue Spur kam nicht: die alte spielt weiter
+      else { fade(from, 0); start(track); } // noch nicht geladen: gewöhnlich überblenden, die neue beginnt vorn
     }, 240) };
   }
 

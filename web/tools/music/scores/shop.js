@@ -28,7 +28,7 @@
        'Bb4/1.5 A4/.5 G4/1 D4/1 | _/.5 F4/.5 Ab4/.5 G4/.5 F4/1 D4/1 | E4/2:1.9 D4/1 E4/1 | C#4/2:1.8 E4/.5 D4/.5 D4/.5 G4/.5'
   };
 
-  MU.scores.shop = function () {
+  function build(esme) {
     var seq = MU.seq, pattern = MU.pattern;
     var lead = [], vibes = [], ep = [], pad = [], bass = [], pluck = [], drums = [];
     function add(list, notes) { notes.forEach(function (n) { list.push(n); }); }
@@ -42,24 +42,36 @@
         var c = CH[cell.name], at = cell.at, len = cell.len, nextCell = cells[ci + 1];
         add(pad, seq(at, '(' + c.pad + ')/' + len + ':' + (len + 0.2), { vel: 0.7 }));
         // E-Piano: kurze Einwürfe, synkopiert
-        if (len === 4) add(ep, seq(at, '_/.5 (' + c.ep + ')/1:.35 (' + c.ep + ')*0.6/1.5:.8 (' + c.ep + ')*0.7/1:.3', { vel: 0.72 }));
+        if (esme) add(ep, seq(at, '(' + c.ep + ')/' + len + ':' + (len * 0.6), { vel: 0.5 })); // bei Esme ein weicher Akkord je Wechsel
+        else if (len === 4) add(ep, seq(at, '_/.5 (' + c.ep + ')/1:.35 (' + c.ep + ')*0.6/1.5:.8 (' + c.ep + ')*0.7/1:.3', { vel: 0.72 }));
         else if (len === 2) add(ep, seq(at, '_/.5 (' + c.ep + ')/1.5:.6', { vel: 0.7 }));
         else add(ep, seq(at, '(' + c.ep + ')/1:.5', { vel: 0.66 }));
         // Bass: im Mittelteil läuft er in Vierteln, sonst Grundton, Quinte und ein Schritt zum nächsten Akkord
         var r = MU.midi(c.bass), fifth = r + 7, third = r + (/m|sus/.test(cell.name) && !/maj/.test(cell.name) ? 3 : 4);
         var target = nextCell ? MU.midi(CH[nextCell.name].bass) : r, lean = target === r ? r + 12 : (target > r ? target - 1 : target + 1);
-        if (len === 4 && kind === 'b') add(bass, [{ t: at, d: 0.8, n: r, v: 0.85 }, { t: at + 1, d: 0.8, n: third, v: 0.65 }, { t: at + 2, d: 0.8, n: fifth, v: 0.7 }, { t: at + 3, d: 0.8, n: lean, v: 0.65 }]);
+        if (esme) add(bass, [{ t: at, d: len * 0.95, n: r, v: 0.8 }]); // ein liegender Ton je Akkord
+        else if (len === 4 && kind === 'b') add(bass, [{ t: at, d: 0.8, n: r, v: 0.85 }, { t: at + 1, d: 0.8, n: third, v: 0.65 }, { t: at + 2, d: 0.8, n: fifth, v: 0.7 }, { t: at + 3, d: 0.8, n: lean, v: 0.65 }]);
         else if (len === 4) add(bass, [{ t: at, d: 1.3, n: r, v: 0.9 }, { t: at + 1.5, d: 0.4, n: fifth, v: 0.6 }, { t: at + 2, d: 0.8, n: r + 12, v: 0.65 }, { t: at + 3, d: 0.45, n: fifth, v: 0.55 }, { t: at + 3.5, d: 0.45, n: lean, v: 0.7 }]);
         else if (len === 2) add(bass, [{ t: at, d: 1.3, n: r, v: 0.85 }, { t: at + 1.5, d: 0.4, n: fifth, v: 0.55 }]);
         else add(bass, [{ t: at, d: 0.85, n: r, v: 0.8 }]);
-        if (second && !outro && len >= 2) {
+        if (esme) { // Harfe: der Akkord perlt in Achteln auf und ab, der Spitzenton eine Oktave höher
+          var hv = c.ep.split(' ').map(function (n) { return MU.midi(n) + 12; });
+          for (var q = 0; q < len * 2; q++) {
+            var step = [0, 1, 2, 3, 2, 1, 2, 3][q % 8];
+            pluck.push({ t: at + q * 0.5, d: 0.45, n: hv[step % hv.length] + (step === 3 ? 12 : 0), v: q % 2 ? 0.45 : 0.62 });
+          }
+        } else if (second && !outro && len >= 2) {
           var v = c.ep.split(' ').map(function (n) { return MU.midi(n) + 12; });
           for (var n = 0; n < len * 2; n++) if (n % 4 !== 3) pluck.push({ t: at + n * 0.5 + 0.25, d: 0.2, n: v[[1, 0, 2, 1][n % 4] % v.length], v: 0.55 });
         }
       });
       for (var i = 0; i < form.length; i++) {
         var at = at0 + i * 4, last = outro && i === 3, rows;
-        if (intro) rows = { r: 'x..x..x...x..x..', sh: 'o.-.o.-.o.-.o.-.', k: i >= 2 ? 'x.....o.x.......' : '................' };
+        if (esme) { // kein Bossa: tiefe Handtrommel, ein Hauch Shaker, sonst Stille
+          rows = intro ? { sh: '-...-...-...-...' } : last ? { k: 'o...............', cl: '......o.........' }
+            : { k: 'o.........-.....', cl: i % 2 ? '......o.....o..o' : '......o.....o...', sh: 'o.-.-.o.-.-.o.-.' };
+          if (kind === 'b') rows.ch = '..........o.....';
+        } else if (intro) rows = { r: 'x..x..x...x..x..', sh: 'o.-.o.-.o.-.o.-.', k: i >= 2 ? 'x.....o.x.......' : '................' };
         else if (last) rows = { k: 'x.......x.......', r: 'x..x..x.........', ch: '..........o.o...', cl: '.............o.o' };
         else {
           rows = { k: 'x.....o.x.....o.', r: i % 2 ? '..x..x....x..x..' : 'x..x..x...x..x..', h: 'o.-.o.-.o.-.o.-.', sh: 'o.-oo.-oo.-oo.-o' };
@@ -67,10 +79,10 @@
           if (kind === 'b') rows.s = '....-.......o...';
         }
         add(drums, pattern(at, rows));
-        if (i === form.length - 1 && !last) drums.push({ t: at + 2, d: 2, n: 'sw', v: 0.65 });
+        if (i === form.length - 1 && !last) drums.push({ t: at + 2, d: 2, n: 'sw', v: esme ? 0.9 : 0.65 });
         if (i === 0 && s > 0 && (kind === 'b' || s === 4)) drums.push({ t: at, d: 1, n: 'rd', v: 0.6 });
       }
-      if (LINE[kind]) add(lead, seq(at0, LINE[kind], { vel: 0.8 }));
+      if (LINE[kind]) add(lead, seq(at0, LINE[kind], esme ? { vel: 0.7, transpose: 12 } : { vel: 0.8 }));
       // Vibraphon: füllt die Pausen am Ende der Viertakter, im Mittelteil lange Töne
       if (kind === 'v') add(vibes, seq(at0, intro ? '_/4 | _/2 D5/.5 F5/.5 G5/1 | _/2.5 Bb5/.5 A5/1 | _/1 E5/.5 C#5/.5 A4/1 _/1'
         : '_/1 A5/.5 F5/.5 D5/1 _/1 | _/1.5 G5/.5 F5/.5 D5/.5 Bb4/1 | _/2.5 Ab5/.5 G5/1 | F5/.5 E5/.5 C#5/1 _/2', { vel: 0.62, gate: 1 }));
@@ -80,6 +92,26 @@
       bar += form.length;
     });
 
+    if (esme) return {
+      name: 'shop-esme', bpm: 104, bars: bar, swing: 0.55, seed: 38,
+      fx: { reverbTime: 3.6, reverbSeconds: 4.2, delayBeats: 0.75, delayFeedback: 0.5, delayTone: 2200 },
+      master: { wowCents: 6, flutterCents: 0.8, drive: 1.15, threshold: -17, ratio: 2.2, air: 2.5 },
+      tracks: [
+        { name: 'drums', inst: 'drums', notes: drums, gain: -3, reverb: -10, human: 0.004, velHuman: 0.15, opts: { levels: { sh: 2.3, cl: 1.6, ch: 1.3, rd: 1.2, sw: 2.2 } } },
+        { name: 'bass', inst: 'bass', notes: bass, gain: -13.5, fx: { drive: 1.4 }, opts: { cutoff: 380, grit: 0.3, sustain: 0.95, release: 0.25 } },
+        { name: 'pad', inst: 'pad', notes: pad, gain: -10.5, reverb: -6,
+          fx: { hp: 160, phaser: { rate: 0.05, freq: 500, mix: 0.75 }, chorus: { rate: 0.35, depth: 0.004 } },
+          opts: { cutoff: 1000, q: 2.2, lfoCents: 650, lfoRate: 0.17, attack: 0.9, release: 2.4, sub: 0.2 } },
+        { name: 'ep', inst: 'ep', notes: ep, gain: -17, reverb: -8, human: 0.01, velHuman: 0.2,
+          fx: { hp: 140, lp: 3600, autopan: { rate: 2.6, depth: 0.6 }, chorus: { rate: 0.5, depth: 0.0025, mix: 0.45 } }, opts: { decay: 2.6, bark: 0.8, tine: 0.3 } },
+        { name: 'pluck', inst: 'pluck', notes: pluck, gain: -3, pan: 0.2, reverb: -7, delay: -8, human: 0.006, velHuman: 0.2, fx: { hp: 300 }, opts: { cutoff: 3300, square: 0, decay: 0.5, q: 1 } },
+        { name: 'vibes', inst: 'vibes', notes: vibes, gain: -10, pan: -0.25, reverb: -5, delay: -11, human: 0.006, velHuman: 0.15,
+          fx: { tremolo: { rate: 2.6, depth: 0.2 } }, opts: { decay: 2, partials: [[1, 1, 1], [2.76, 0.32, 0.6], [5.4, 0.18, 0.35], [8.9, 0.07, 0.2]] } },
+        { name: 'lead', inst: 'lead', notes: lead, gain: -13, reverb: -6, delay: -10, fx: { hp: 200 },
+          opts: { cutoff: 3200, q: 0.7, glide: 0.12, attack: 0.07, release: 0.18, vibCents: 34, vibRate: 5.6, vibDelay: 0.12, vibRise: 0.12, vibFrom: 0.25,
+            waves: [['sine', 0, 0.9], ['triangle', 0, 0.28]] } }
+      ]
+    };
     return {
       name: 'shop', bpm: 104, bars: bar, swing: 0.55, seed: 37,
       fx: { reverbTime: 2.2, reverbSeconds: 2.8, delayBeats: 0.75, delayFeedback: 0.36, delayTone: 2600 },
@@ -99,5 +131,11 @@
           opts: { cutoff: 2300, glide: 0.04, vibCents: 14, q: 1.8, waves: [['square', -5, 0.42], ['sawtooth', 6, 0.3], ['triangle', 0, 0.45]] } }
       ]
     };
-  };
+  }
+
+  MU.scores.shop = function () { return build(false); };
+  /* Esmes Nebenzimmer: dasselbe Stück wie im Laden, gleich lang und gleich schnell (das Spiel blendet an Ort
+     und Stelle hinüber), aber entrückt: schwebende, atmende Fläche, perlende Harfe, gläserne Glocken, eine
+     Melodiestimme wie ein Theremin, liegender Bass, statt Bossa nur eine tiefe Handtrommel und viel Hall. */
+  MU.scores['shop-esme'] = function () { return build(true); };
 })(window.MU = window.MU || {});

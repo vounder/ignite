@@ -1660,7 +1660,7 @@
   screens.esme = function (game, root) {
     var run = game.run, s = run.s, esme = s.shop.esme;
     ZU.bg.set('elite');
-    ZU.audio.music('shop');
+    ZU.audio.music('shop-esme');
     var bar = hud(game);
     var img = h('i', 'esme-img');
     img.style.backgroundImage = 'url(' + ZU.asset('esme/esme.png') + ')';
