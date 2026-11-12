@@ -965,3 +965,11 @@ body.nobg { background: radial-gradient(ellipse at 50% 85%, var(--bg-mid, #34170
 .etarget .eprize { display: inline-flex; align-items: center; gap: 5px; margin-left: 10px; color: #e6dabd; }
 .etarget .eprize .ico { width: 15px; height: 15px; }
 .p-left .rulerow { margin-top: 4px; }
+
+/* Vorschläge im Hinterzimmer */
+.br-section.picks { padding: 10px 12px 12px; border-radius: 12px; background: rgba(226,178,60,.08); border: 1px solid rgba(226,178,60,.35); }
+.br-section.picks .br-title { color: var(--brass, #e2b23c); }
+.br-tile.pick, .br-row.pick { position: relative; }
+.picktag { position: absolute; top: -7px; left: -5px; z-index: 2; font-style: normal; font-family: var(--px); font-size: 10px; letter-spacing: .5px; padding: 3px 7px 2px; border-radius: 6px; background: #e2b23c; color: #2a1a0a; box-shadow: 0 2px 0 rgba(0,0,0,.45); white-space: nowrap; }
+.picktag.save { background: #5a4630; color: #f1e2c0; }
+.br-section.picks .br-list { gap: 10px; }

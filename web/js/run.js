@@ -95,6 +95,7 @@
   /* Glutziel eines Tisches: wächst steil mit dem Akt und mit dem Casino. */
   Run.prototype.glutTarget = function (kind) {
     var g = ZU.GLUT_TARGET, raw = g[kind] * Math.pow(g.perAct, this.s.act - 1) * (1 + g.perCasino * (this.meta().legacy ? 0 : this.meta().stake || 0));
+    if (this.has('zuenglein')) raw *= 0.9;
     var step = raw < 1000 ? 10 : raw < 10000 ? 50 : raw < 100000 ? 500 : 5000;
     return Math.round(raw / step) * step;
   };
@@ -178,7 +179,9 @@
       house: this.houseRules(),
       target: this.glutTarget(e.kind),
       douse: this.douse(e),
-      grow: { burned: this.s.burnCount || 0, bosses: this.s.bossesBeaten || 0, money: this.s.money, trinkets: this.s.trinkets.length, lastChain: this.s.lastChain || 0 },
+      grow: { burned: this.s.burnCount || 0, bosses: this.s.bossesBeaten || 0, money: this.s.money, trinkets: this.s.trinkets.length, lastChain: this.s.lastChain || 0,
+        deck: this.s.collection.length, sealed: this.s.collection.filter(function (c) { return c.seal; }).length, act: this.s.act,
+        wins: this.s.stats.wins, streak: this.s.streak || 0, lastLost: !!this.s.lastLost },
       perks: this.s.perks || [],
       specialPool: this.meta().specials,
       trinkets: this.s.trinkets, collection: this.s.collection.map(function (c) { return { id: c.id, def: c.def, bind: c.bind, seal: c.seal, flaw: c.flaw }; }),
@@ -190,6 +193,8 @@
   Run.prototype.finishDuel = function (duel) {
     var s = this.s, self = this, e = this.encounter();
     s.nextId = Math.max(s.nextId, duel.nextId);
+    s.lastLost = duel.winner !== 'player';
+    s.streak = s.lastLost ? 0 : (s.streak || 0) + 1;
     s.stats.duels++;
     s.stats.played += duel.stats.played;
     s.stats.bestChain = Math.max(s.stats.bestChain, duel.maxChain);
@@ -249,6 +254,9 @@
     var doublings = burnt ? Math.floor(Math.log(ratio) / Math.LN2) : 0;
     if (burnt) lines.push({ label: 'Tisch abgefackelt', amount: share(0.5) });
     if (doublings > 0) lines.push({ label: 'Überschuss: Ziel ×' + Math.pow(2, doublings), amount: share(0.5) * doublings * (this.has('funkenregen') ? 2 : 1) });
+    if (burnt && this.has('brandpraemie')) lines.push({ label: 'Brandprämie (+50 %)', amount: share(0.5), trinket: 'brandpraemie' });
+    if (duel.wonBy === 'curfew' && this.has('nachtschicht')) lines.push({ label: 'Nachtschicht (+50 %)', amount: share(0.5), trinket: 'nachtschicht' });
+    if (this.has('trinkgeld') && s.money >= 5) lines.push({ label: 'Spendierhosen (10 % der Kasse)', amount: Math.min(base, Math.max(1, Math.round(s.money * 0.1))), trinket: 'trinkgeld' });
     if (duel.enemy.passive === 'odds') lines.push({ label: 'Wettschein', amount: share(0.3) });
     if (this.has('lucky-chip')) lines.push({ label: 'Glückschip (+20 %)', amount: share(0.2), trinket: 'lucky-chip' });
     if (e.kind !== 'battle' && this.has('kopfgeld')) lines.push({ label: 'Kopfgeld (+40 %)', amount: share(0.4), trinket: 'kopfgeld' });
@@ -507,7 +515,7 @@
     items.forEach(function (item) { sum += ZU.SEALS[item.seal].value * rule.point * (item.flaw ? rule.flaw : 1); });
     if (kind === 'double') sum *= rule.double;
     if (kind === 'bag') sum *= rule.bag;
-    return Math.max(2, this._price(Math.round(sum)));
+    return Math.max(2, this._price(Math.round(sum * (this.has('hausfreund') ? 0.75 : 1))));
   };
   /* Legt Esmes Pakete aus: Einzelsiegel, Doppelpack oder Wundertüte. Mindestens ein Paket ist makellos. */
   Run.prototype._stockEsme = function () {
@@ -585,8 +593,8 @@
   Run.prototype.cardPrice = function (index) { return this.offerPrice('cards', index); };
   Run.prototype.rerollPrice = function () {
     if (this.meta().freeReroll && this.s.shop.rerolls === 0) return 0; // Upgrade „Stammkunde"
-    if (this.has('bell')) return 2;
-    return 3 + this.s.shop.rerolls - (this.meta().freeReroll ? 1 : 0);
+    var price = this.has('bell') ? 2 : 3 + this.s.shop.rerolls - (this.meta().freeReroll ? 1 : 0);
+    return this.has('rabattmarke') ? Math.max(1, Math.ceil(price / 2)) : price;
   };
   Run.prototype.burnPrice = function () {
     if (this.has('gratisfeuer') && this.s.shop && !this.s.shop.burned) return 0;

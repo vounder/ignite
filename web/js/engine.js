@@ -63,8 +63,9 @@
     this.douse = opts.douse || []; // Stand des Runs für wachsende Trinkets: burned, bosses, money, trinkets, lastChain
     this.chain = this.chainFloor();
     if (this.has('glutspeicher')) this.chain = Math.max(this.chain, Math.ceil((this.grow.lastChain || 0) / 2));
+    if (this.has('bierdeckel') && this.grow.lastLost) this.chain = Math.max(this.chain, 4);
     this.maxChain = this.chain;
-    this.glut = 0;
+    this.glut = this.has('vorglut') ? Math.round(this.target * 0.1) : 0;
     this.active = 'player';
     this.phase = 'setup';
     this.pending = null;
@@ -429,7 +430,10 @@
         // Ziehen löscht die Kette; passt die gezogene Karte sofort, bleibt die Hälfte stehen.
         var floor = this.chainFloor(), half = Math.max(floor, Math.ceil(this.chain / 2));
         var next = this.has('slow-burner') ? (fresh.length ? this.chain : half) : fresh.length ? half : floor;
-        if (next !== this.chain) {
+        if (next < this.chain && this.has('zweite-luft') && !this.used['zweite-luft']) {
+          this.used['zweite-luft'] = true;
+          ev.push({ t: 'trinket', id: 'zweite-luft' });
+        } else if (next !== this.chain) {
           this.chain = next;
           ev.push({ t: 'chain', chain: this.chain, reset: true });
         }
@@ -560,12 +564,26 @@
       var face = def.rank === 'J' || def.rank === 'Q' || def.rank === 'K', low = def.rank === '7' || def.rank === '8' || def.rank === '9';
       var mark = this.cards[id], seal = mark.seal, flaw = mark.flaw;
       var base = def.base + (low && this.has('kleinvieh') ? 6 : 0) + (face && this.has('hofstaat') ? 5 : 0) +
-        (this.has('zunder') ? 4 : 0) + (def.special && this.has('tintenfass') ? 15 : 0);
+        (this.has('zunder') ? 4 : 0) + (def.special && this.has('tintenfass') ? 15 : 0) +
+        (def.suit === 'clubs' && this.has('kreuzfeuer') ? 8 : 0) + (def.rank === 'J' && this.has('bauernopfer') ? 10 : 0) +
+        (def.suit && ZU.SUITS[def.suit].red && this.has('rotlicht') ? 3 : 0) + (this.chain >= 4 && this.has('feuerzeug') ? 6 : 0);
       if (flaw === 'matt') base = Math.max(1, base - 4);
       // Kettenreaktion: Jenseits von ×10 zählt jede Stufe doppelt.
       var effChain = this.chain + (this.has('kettenreaktion') ? Math.max(0, this.chain - 10) : 0);
       var points = base * effChain, doubled = false, trig = [];
       if (effChain > this.chain) trig.push('kettenreaktion'); // trig: Trinkets, die bei dieser Karte gezündet haben (für die Anzeige)
+      if (def.suit === 'clubs' && this.has('kreuzfeuer')) trig.push('kreuzfeuer');
+      if (def.rank === 'J' && this.has('bauernopfer')) trig.push('bauernopfer');
+      if (this.chain >= 4 && this.has('feuerzeug')) trig.push('feuerzeug');
+      if (def.rank === '10' && this.has('volle-zehn')) { points *= 2; doubled = true; trig.push('volle-zehn'); }
+      if (this.stats.played < 3 && this.has('erster-funke')) { points *= 2; doubled = true; trig.push('erster-funke'); }
+      if (this.stats.played % 3 === 2 && this.has('vollmond')) { points *= 2; doubled = true; trig.push('vollmond'); }
+      if (this.hand.player.length >= 6 && this.has('volles-haus')) { points = Math.round(points * 1.5); trig.push('volles-haus'); }
+      if ((this.grow.money || 0) <= 5 && this.has('leere-taschen')) { points = Math.round(points * 1.6); trig.push('leere-taschen'); }
+      if (below && below.suit && def.suit && below.suit !== def.suit && this.has('farbwechsel')) { points *= 2; doubled = true; trig.push('farbwechsel'); }
+      if (def.special && this.has('heisse-ware')) { points *= 2; doubled = true; trig.push('heisse-ware'); }
+      if (this.hand.player.length <= 1 && this.has('endspurt')) { points *= 3; doubled = true; trig.push('endspurt'); }
+      if (this.has('gluecksrad') && this.rng.next() < 0.15) { points *= 3; doubled = true; trig.push('gluecksrad'); }
       if (low && this.has('kleinvieh')) trig.push('kleinvieh');
       if (face && this.has('hofstaat')) trig.push('hofstaat');
       if (def.special && this.has('tintenfass')) trig.push('tintenfass');
@@ -586,6 +604,12 @@
       if (this.has('schneeball') && this.stats.played) { pct += 0.02 * this.stats.played; trig.push('schneeball'); }
       if (this.has('wucherer') && grow.money) { pct += Math.min(3, 0.01 * grow.money); trig.push('wucherer'); }
       if (this.has('sippschaft') && grow.trinkets) { pct += 0.08 * grow.trinkets; trig.push('sippschaft'); }
+      if (this.has('glutnest') && grow.deck > 16) { pct += 0.05 * (grow.deck - 16); trig.push('glutnest'); }
+      if (this.has('minimalist') && grow.deck < 16) { pct += 0.12 * (16 - grow.deck); trig.push('minimalist'); }
+      if (this.has('siegelring') && grow.sealed) { pct += 0.15 * grow.sealed; trig.push('siegelring'); }
+      if (this.has('aktienpaket') && grow.act > 1) { pct += 0.20 * (grow.act - 1); trig.push('aktienpaket'); }
+      if (this.has('serientaeter') && grow.wins) { pct += 0.06 * grow.wins; trig.push('serientaeter'); }
+      if (this.has('gluecksstraehne') && grow.streak) { pct += 0.10 * grow.streak; trig.push('gluecksstraehne'); }
       if (pct > 0) points = Math.round(points * (1 + pct));
       this.glut += points;
       event.score = { base: base, chain: this.chain, points: points, glut: this.glut, doubled: doubled };
@@ -593,6 +617,10 @@
       if (def.special && this.has('blasebalg')) { step += 2; trig.push('blasebalg'); }
       if (seal === 'zuend') step += 1;
       if (below && def.suit && below.suit && ZU.SUITS[def.suit].red && ZU.SUITS[below.suit].red && this.has('roter-teppich')) { step += 1; trig.push('roter-teppich'); }
+      if (def.suit === 'spades' && this.has('schwarzer-peter')) { step += 1; trig.push('schwarzer-peter'); }
+      if (def.rank === 'K' && this.has('koenigsmacher')) { step += 2; trig.push('koenigsmacher'); }
+      if (def.rank === '7' && this.has('siebenmeilen')) { step += 3; trig.push('siebenmeilen'); }
+      if (below && !def.special && !below.special && Math.abs(ZU.RANKS[def.rank].order - ZU.RANKS[below.rank].order) === 1 && this.has('strasse')) { step += 2; trig.push('strasse'); }
       if (flaw === 'stumpf') step = 0;
       this._setChain(this.chain + step);
       event.score.next = this.chain;
@@ -612,8 +640,12 @@
       if (def.rank === '8' && this.douses('sand')) cooled = Math.max(low, this.chain - 2);
       if (def.rank === 'A' && this.douses('water')) cooled = Math.max(low, Math.ceil(this.chain / 2));
       if (cooled < this.chain) {
-        this.chain = cooled;
-        ev.push({ t: 'douse', id: def.rank === '8' ? 'sand' : 'water', chain: this.chain, glut: this.glut });
+        if (this.has('oelfass')) ev.push({ t: 'trinket', id: 'oelfass' });
+        else {
+          this.chain = cooled;
+          ev.push({ t: 'douse', id: def.rank === '8' ? 'sand' : 'water', chain: this.chain, glut: this.glut });
+          this._fettbrand(ev);
+        }
       }
     }
     if (actor === 'player') {
@@ -1011,6 +1043,13 @@
     ev.push({ t: 'created', defs: [defId], binds: [bind], via: 'zytokinese', source: id });
   };
 
+  /* Fettbrand: Was löschen soll, facht nach. Kann das Glutziel nicht selbst erreichen – das prüft der nächste Zug. */
+  Duel.prototype._fettbrand = function (ev) {
+    if (!this.has('fettbrand')) return;
+    this.glut += Math.round(this.target * 0.08);
+    ev.push({ t: 'trinket', id: 'fettbrand' });
+    ev.push({ t: 'glut', glut: this.glut });
+  };
   Duel.prototype.douses = function (id) { return this.target > 0 && this.douse.indexOf(id) >= 0; };
 
   /* ---------- Zugfolge ---------- */
@@ -1024,9 +1063,13 @@
     }
     if (this.douses('blanket') && !this.used.blanket && this.glut * 2 >= this.target) {
       this.used.blanket = true;
-      this.glut -= Math.round(this.glut / 4);
-      this.chain = this.chainFloor();
-      ev.push({ t: 'douse', id: 'blanket', chain: this.chain, glut: this.glut });
+      if (this.has('feuerdecke')) ev.push({ t: 'trinket', id: 'feuerdecke' });
+      else {
+        this.glut -= Math.round(this.glut / 4);
+        this.chain = this.chainFloor();
+        ev.push({ t: 'douse', id: 'blanket', chain: this.chain, glut: this.glut });
+        this._fettbrand(ev);
+      }
     }
     if (!this.hand[root].length) return this._end(root, ev);
     if (!this.hand[other(root)].length) return this._end(other(root), ev);
@@ -1070,6 +1113,11 @@
       ev.push({ t: 'skipped', actor: actor });
       if (actor === 'opp') {
         this.stats.skips++;
+        if (this.has('schadenfreude')) {
+          this._setChain(this.chain + 1);
+          ev.push({ t: 'trinket', id: 'schadenfreude' });
+          ev.push({ t: 'chain', chain: this.chain });
+        }
         if (this.has('stopwatch')) {
           this.bank += 1;
           ev.push({ t: 'trinket', id: 'stopwatch' });
@@ -1094,8 +1142,12 @@
     if (actor === 'opp') {
       this.oppTurns++;
       if (this.douses('sprinkler') && this.oppTurns % 4 === 0 && this.glut > 0) {
-        this.glut = Math.max(0, this.glut - Math.round(this.target * 0.05));
-        ev.push({ t: 'douse', id: 'sprinkler', chain: this.chain, glut: this.glut });
+        if (this.has('feuerdecke')) ev.push({ t: 'trinket', id: 'feuerdecke' });
+        else {
+          this.glut = Math.max(0, this.glut - Math.round(this.target * 0.05));
+          ev.push({ t: 'douse', id: 'sprinkler', chain: this.chain, glut: this.glut });
+          this._fettbrand(ev);
+        }
       }
       if (this.enemy.passive === 'storm' && this.oppTurns % 5 === 0) {
         ev.push({ t: 'passive', id: 'storm' });

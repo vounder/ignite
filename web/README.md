@@ -31,6 +31,10 @@ zugehörigen Elemente blenden sich selbst aus.
   „abgefackelt“ und gewinnt sofort; die Auszahlung zahlt dafür +50 % der Prämie
   und weitere +50 % je Verdopplung über dem Ziel (ohne Deckel), dazu Asche.
   Werte in `ZU.GLUT_TARGET` (`js/data.js`).
+- **Vorschläge im Hinterzimmer:** Die Reiter „Freischalten“ und „Upgrades“
+  zeigen oben drei Empfehlungen mit Rang (`Meta.suggest`): das Wertvollste, das
+  entdeckt und mit der vorhandenen Asche bezahlbar ist; reicht die Asche nicht,
+  die nächstgünstigen als Sparziel.
 - **Löschmittel:** Die Antwort der Gegner auf Glut (`ZU.DOUSE`, vergeben in
   `run.douse`): Löschsand (8 des Gegners: Kette −2), Löschwasser (Ass: Kette
   halbiert), Sprinkler (jeder 4. Gegnerzug: −5 % des Ziels an Glut), Löschdecke
@@ -41,11 +45,11 @@ zugehörigen Elemente blenden sich selbst aus.
 - **Wirtschaft in Prozent:** Prämien, Preise, Bank und Zinsdeckel wachsen je Akt
   um 15 % (`ZU.ACT_GROWTH`); Rabatte, Aufschläge und Geld-Trinkets rechnen in
   Prozent, damit sie in späten Akten noch zählen.
-- **Trinkets:** 92 Stück (darunter neun Wachstums-Trinkets, die über den Run
-  stärker werden) mit Synergie-Familien (Zieh-Druck und Flüche,
+- **Trinkets:** 128 Stück, die meisten greifen in die Glut ein (Kartenwerte,
+  Vervielfacher, Kette, Wachstum über den Run, Glutziel und Löschmittel) mit Synergie-Familien (Zieh-Druck und Flüche,
   Aussetzen, Kette und Glut, Mehrfachwahl, Spezialkarten, Kasse, Schutz). Es
   gibt keine Obergrenze; dafür kostet jedes weitere Trinket im Laden 12 %
-  mehr. Elf Trinkets sind von Anfang an im Spiel, der Rest wird im Hinterzimmer
+  mehr. 25 Trinkets sind von Anfang an im Spiel, der Rest wird im Hinterzimmer
   entdeckt und gekauft.
 - **Privilegien:** Upgrades, die den ganzen Run gelten und keinen Trinket-Platz
   belegen. Manfred bietet je Akt genau eines an; die Neue Auslage ändert daran
@@ -123,7 +127,7 @@ zugehörigen Elemente blenden sich selbst aus.
 - **Meta-Progression:** Asche gibt es sofort nach jedem Sieg (1 je Tisch, 2 je
   Elite, 5 je Boss, 8 für das ausgeräumte Casino, mal Asche-Faktor). Im
   Hinterzimmer (Hauptmenü) kauft man damit Schachteln, Trinkets, Spezialkarten
-  und dreizehn Upgrades (darunter „Flinke Finger“ für 20 Asche: jeder Run beginnt mit dem Privileg). Anfangs gibt es eine Schachtel, 11 Trinkets und 6
+  und dreizehn Upgrades (darunter „Flinke Finger“ für 20 Asche: jeder Run beginnt mit dem Privileg). Anfangs gibt es eine Schachtel, 25 Trinkets und 6
   Spezialkarten. Alles Weitere ist zunächst **verborgen** („?????“) und taucht
   erst auf, wenn eine Bedingung am Tisch erfüllt ist – etwa „Spiele 10
   Siebenen“ oder „Schlage Madame Rauch“. Manche Stücke zeigen diesen Hinweis
