@@ -72,6 +72,9 @@
       // Farbwelt: im Run die des Casinos, bei der Schachtelwahl die des gewählten Hauses, sonst neutral.
       var inRun = this.run && ['select', 'duel', 'shop', 'esme', 'reward', 'victory', 'defeat'].indexOf(name) >= 0 && !this.run.meta().legacy;
       ZU.bg.setTheme(inRun ? this.run.casino().tint : name === 'starter' ? ZU.CASINOS[ZU.Meta.get().stake].tint : null);
+      // Glutfunken: im Menü dezent, im Run von wenigen im ersten Akt bis zur vollen Glut im letzten.
+      var acts = inRun ? this.run.acts() : 1, progress = inRun ? (acts > 1 ? Math.min(1, (this.run.s.act - 1) / (acts - 1)) : 1) : 0;
+      ZU.bg.setEmber(inRun ? 0.3 + 0.7 * progress : 0.35);
       root.classList.remove('enter');
       root.innerHTML = '';
       this.profile = ZU.Profile.load();

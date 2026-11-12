@@ -1715,6 +1715,9 @@
         if (pack.sold) {
           tile.appendChild(h('div', 'soldout', 'Verkauft'));
         } else {
+          var picture = h('i', 'esme-packpic');
+          picture.style.backgroundImage = 'url(' + ZU.asset('esme/pack-' + pack.kind + '.png') + ')';
+          tile.appendChild(picture);
           tile.appendChild(h('div', 'esme-kind', KIND[pack.kind]));
           tile.appendChild(h('p', 'esme-kindtext', KIND_TEXT[pack.kind]));
           var items = h('div', 'esme-items');
@@ -1767,7 +1770,11 @@
       if (!esme.packs.length) row.appendChild(h('div', 'shelf-empty', 'Esme hat heute geschlossen.'));
     }
 
+    // Kulisse des Zimmers: Samt, Laternen und Kerzen; darüber flackert warmes Licht.
+    var room = h('div', 'esme-room', [h('i', 'esme-glow g1'), h('i', 'esme-glow g2'), h('i', 'esme-glow g3')]);
+    room.style.backgroundImage = 'url(' + ZU.asset('esme/room.png') + ')';
     root.appendChild(h('div', 'screen shop esme', [
+      room,
       bar.el,
       h('div', 'shop-left', [bubble, figure, h('div', 'shop-sign esme-sign', 'Esmes Nebenzimmer')]),
       h('div', 'esme-main', [

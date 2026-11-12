@@ -22,7 +22,7 @@
     '#else',
     'precision mediump float;',
     '#endif',
-    'uniform vec2 uRes; uniform float uTime; uniform float uPix; uniform float uHeat;',
+    'uniform vec2 uRes; uniform float uTime; uniform float uPix; uniform float uHeat; uniform float uEmber;',
     'uniform vec3 uA; uniform vec3 uB; uniform vec3 uC;',
     'float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }',
     'float noise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f*f*(3.0-2.0*f);',
@@ -46,8 +46,9 @@
     '  vec2 id = floor(ep / cell);',
     '  float h = hash(id);',
     '  float tw = 0.5 + 0.5*sin(uTime*(1.5 + h*5.0) + h*40.0);',
-    '  float ember = step(1.0 - 0.006*(0.4 + uHeat), h) * tw;',
-    '  col += mix(uC, vec3(1.0, 0.92, 0.6), 0.5) * ember * 0.85;',
+    // Glutfunken: Zahl und Helligkeit hängen an uEmber (früh im Casino wenige und matte, im letzten Akt volle Glut)
+    '  float ember = step(1.0 - 0.006*(0.4 + uHeat)*uEmber, h) * tw;',
+    '  col += mix(uC, vec3(1.0, 0.92, 0.6), 0.5) * ember * (0.4 + 0.45*uEmber);',
     '  float vig = smoothstep(1.25, 0.35, length(uv*vec2(0.82, 1.0)));',
     '  col *= 0.42 + 0.58*vig;',
     '  gl_FragColor = vec4(col, 1.0);',
@@ -55,6 +56,7 @@
   ].join('\n');
 
   var gl, canvas, uniforms = {}, cur = clone(PALETTES.menu), target = PALETTES.menu, flash = 0, enabled = true, lost = false;
+  var ember = 0.4, emberTo = 0.4; // Stärke der Glutfunken, 0 bis 1
   var scene = 'menu', theme = null; // theme: Farbwelt des Casinos, in dem gerade gespielt wird
   var THEME_WEIGHT = 0.68;
 
@@ -97,11 +99,13 @@
       for (var i = 0; i < 3; i++) cur[key][i] += (target[key][i] - cur[key][i]) * k;
     });
     cur.heat += (target.heat - cur.heat) * k;
+    ember += (emberTo - ember) * k;
     flash *= Math.pow(0.02, dt);
     gl.uniform2f(uniforms.uRes, canvas.width, canvas.height);
     gl.uniform1f(uniforms.uTime, time);
     gl.uniform1f(uniforms.uPix, 1.0);
     gl.uniform1f(uniforms.uHeat, cur.heat + flash);
+    gl.uniform1f(uniforms.uEmber, Math.min(1, ember + flash * 0.5));
     gl.uniform3fv(uniforms.uA, cur.a);
     gl.uniform3fv(uniforms.uB, cur.b);
     gl.uniform3fv(uniforms.uC, cur.c);
@@ -122,7 +126,7 @@
     var loc = gl.getAttribLocation(program, 'p');
     gl.enableVertexAttribArray(loc);
     gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
-    ['uRes', 'uTime', 'uPix', 'uHeat', 'uA', 'uB', 'uC'].forEach(function (name) {
+    ['uRes', 'uTime', 'uPix', 'uHeat', 'uEmber', 'uA', 'uB', 'uC'].forEach(function (name) {
       uniforms[name] = gl.getUniformLocation(program, name);
     });
     resize();
@@ -165,6 +169,8 @@
       document.body.style.setProperty('--bg-mid', css(target.b));
       document.body.style.setProperty('--bg-dark', css(target.a));
     },
+    /* Wie viele Glutfunken aufsteigen: 0 = kaum welche, 1 = volle Glut. */
+    setEmber: function (level) { emberTo = Math.max(0, Math.min(1, level)); },
     /* Farbwelt eines Casinos (ZU.CASINOS[i].tint) oder null für die neutrale. */
     setTheme: function (tint) {
       theme = tint || null;

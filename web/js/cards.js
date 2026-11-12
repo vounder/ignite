@@ -281,7 +281,7 @@
     ZU.SPECIAL_IDS.forEach(function (id) { urls.push(ZU.asset('special/' + id + '.png')); });
     (ZU.CASINO_ART || []).forEach(function (path) { urls.push(ZU.asset(path)); });
     ZU.SEAL_IDS.concat(['flaw']).forEach(function (id) { urls.push(ZU.asset('seals/' + id + '.png')); });
-    urls.push(ZU.asset('esme/esme.png'));
+    ['esme', 'room', 'pack-single', 'pack-double', 'pack-bag', 'tarot-back'].forEach(function (name) { urls.push(ZU.asset('esme/' + name + '.png')); });
     ZU.Meta.UPGRADE_IDS.forEach(function (id) { urls.push(ZU.asset('upgrades/' + id + '.png')); });
     ZU.BOSS_ACTS.forEach(function (act, index) {
       if (index === 0) ZU.BATTLE_POOL.concat(ZU.ELITE_POOL).forEach(function (id) { urls.push(ZU.asset('enemies/' + id + '.png')); });

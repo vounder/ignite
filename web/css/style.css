@@ -889,3 +889,22 @@ body.nobg { background: radial-gradient(ellipse at 50% 85%, var(--bg-mid, #34170
 .shop-face.f-manfred { background-size: 1200% 100%; }
 .shop-face.f-esme { background-size: 600% 100%; }
 .br-tile.closed .shop-face { filter: brightness(0) opacity(.5); }
+
+/* Esmes Zimmer: gemalte Kulisse, flackerndes Kerzenlicht, Pakete wie auf Samt gelegt */
+.esme-room { position: absolute; inset: 0; background-size: cover; background-position: center; pointer-events: none; border-radius: 0;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 88%, transparent 100%); mask-image: linear-gradient(to bottom, #000 0, #000 88%, transparent 100%); }
+.esme-glow { position: absolute; width: 360px; height: 360px; border-radius: 50%; background: radial-gradient(circle, rgba(255,190,110,.26), rgba(255,150,70,.08) 45%, transparent 70%); mix-blend-mode: screen; animation: esme-flicker 3.1s ease-in-out infinite; }
+.esme-glow.g1 { left: -60px; top: 330px; }
+.esme-glow.g2 { left: 300px; top: -120px; animation-duration: 4.3s; animation-delay: -1.2s; }
+.esme-glow.g3 { right: -90px; top: -60px; width: 420px; height: 420px; background: radial-gradient(circle, rgba(190,150,255,.2), rgba(150,110,255,.06) 45%, transparent 70%); animation-duration: 5.2s; animation-delay: -2.4s; }
+@keyframes esme-flicker { 0%, 100% { opacity: .75; transform: scale(1); } 22% { opacity: 1; transform: scale(1.04); } 41% { opacity: .62; } 63% { opacity: .95; transform: scale(1.02); } 80% { opacity: .7; } }
+@media (prefers-reduced-motion: reduce) { .esme-glow { animation: none; } }
+.shop.esme .hud, .shop.esme .shop-left, .shop.esme .esme-main, .shop.esme .shop-next { z-index: 2; }
+.esme-pack { background: linear-gradient(180deg, rgba(44,31,68,.93), rgba(22,15,36,.95)); backdrop-filter: blur(1px); }
+.esme-pack.k-bag { background: linear-gradient(180deg, rgba(61,44,20,.93), rgba(30,21,10,.95)); }
+.esme-packpic { display: block; width: 128px; height: 96px; margin-top: -4px; background-size: contain; background-repeat: no-repeat; background-position: center; image-rendering: pixelated; filter: drop-shadow(0 4px 0 rgba(0,0,0,.45)); animation: bob 3.8s ease-in-out infinite; }
+.esme-pack:nth-child(2) .esme-packpic { animation-delay: -1.3s; }
+.esme-pack:nth-child(3) .esme-packpic { animation-delay: -2.4s; }
+.esme-pack { min-height: 400px; }
+.esme-main { top: 88px; bottom: 84px; }
+.esme-title { text-shadow: 0 3px 0 rgba(0,0,0,.7), 0 0 18px rgba(183,140,255,.5); }
