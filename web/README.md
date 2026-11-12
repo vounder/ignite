@@ -68,8 +68,21 @@ zugehörigen Elemente blenden sich selbst aus.
   Streichholz und neuer Auslage. Drei Streichhölzer sind die Leben. Nach dem
   letzten Boss des Casinos geht es optional endlos in der Nachglut weiter –
   dort gibt es keine Asche mehr.
-- **Deck:** Zu Duellbeginn zieht man 7 Karten aus dem eigenen Deck; der Rest
-  wandert in den gemeinsamen Nachziehstapel.
+- **Deck:** Ein Run beginnt mit 16 zufälligen normalen Karten und den
+  Spezialkarten der Schachtel (bei „Klassisch“ und „Zündler“ eine zufällige
+  gewöhnliche). Zu Duellbeginn wird das Deck gemischt: 7 Karten kommen auf die
+  Hand, der Rest ist der eigene Nachziehstapel. Der Gegner spielt mit einem
+  eigenen Blatt (24 Karten des Hauses plus seine Spezialkarten) und zieht nur
+  von seinem Stapel. Ist ein Stapel leer, werden nur die eigenen abgelegten
+  Karten neu gemischt.
+- **Casino-Wahl:** Vor jedem Run wählt man das Haus. Alle sechs sind von Anfang
+  an zu sehen, betreten lässt sich nur, was der Reihe nach geöffnet wurde.
+- **Freigeschaltet:** Das Hauptmenü zeigt in einem Fenster, was seit dem
+  letzten Mal im Hinterzimmer aufgetaucht ist oder sich geöffnet hat; Einträge
+  lassen sich einzeln („Gesehen“) oder zusammen („Alle gesehen“) abhaken.
+- **Laden:** Gekaufte Erweiterungen und Rabatte gelten sofort – die Vitrine
+  füllt ihren dritten Platz, das Große Regal legt eine Karte aus, der
+  Doppelboden zieht schon beim nächsten Kauf.
 - **Sperrstunde:** Nach 50 Zügen gewinnt, wer weniger Karten hält.
 - **Meta-Progression:** Asche gibt es sofort nach jedem Sieg (1 je Tisch, 2 je
   Elite, 5 je Boss, 8 für das ausgeräumte Casino, mal Asche-Faktor). Im

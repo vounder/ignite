@@ -33,11 +33,17 @@
       stats: { duels: 0, wins: 0, losses: 0, bestChain: 1, bestGlut: 0, played: 0, earned: 0 }
     };
     var run = new Run(state);
-    var size = starter.size || ZU.HAND_SIZE;
-    // Start-Spezialkarten sind an ein zufälliges Symbol gebunden.
-    starter.cards.forEach(function (def) { run._add(def, run.rng.pick(ZU.SUIT_ORDER)); });
-    var pool = run.rng.shuffle(ZU.STANDARD_IDS.filter(function (id) { return starter.cards.indexOf(id) < 0; }));
-    while (state.collection.length < size) run._add(pool.pop());
+    // Startdeck: 16 normale Karten (feste der Schachtel, der Rest zufällig) plus Spezialkarten.
+    // Die sind an ein zufälliges Symbol gebunden; "special" heißt: eine zufällige gewöhnliche aus dem freien Bestand.
+    var fixed = starter.cards.filter(function (def) { return !ZU.CARDS[def].special; });
+    var pool = run.rng.shuffle(ZU.STANDARD_IDS.filter(function (id) { return fixed.indexOf(id) < 0; }));
+    fixed.forEach(function (def) { run._add(def); });
+    while (state.collection.length < ZU.DECK_SIZE) run._add(pool.pop());
+    starter.cards.filter(function (def) { return ZU.CARDS[def].special; }).forEach(function (def) { run._add(def, run.rng.pick(ZU.SUIT_ORDER)); });
+    if (starter.special) {
+      var commons = run._specialPool().filter(function (id) { return ZU.CARDS[id].rarity === 0; });
+      run._add(run.rng.pick(commons.length ? commons : ['stillstand']), run.rng.pick(ZU.SUIT_ORDER));
+    }
     if (meta.luckyTrinket) {
       // Upgrade „Glücksbringer": ein zufälliges gewöhnliches Trinket zum Start
       var commons = run._trinketPool().filter(function (id) { return ZU.TRINKETS[id].rarity === 0; });
@@ -328,6 +334,41 @@
     if (!ZU.TRINKETS[id]) throw new Error('Unbekanntes Trinket.');
     if (s.trinkets.indexOf(id) >= 0) throw new Error('Trinket bereits vorhanden.');
     s.trinkets.push(id);
+    this._shopGain(id);
+  };
+
+  /* Im Laden gekauft: Erweiterungen und Rabatte gelten sofort, nicht erst beim nächsten Besuch. */
+  Run.prototype._shopGain = function (id) {
+    var s = this.s, shop = s.shop, self = this;
+    if (!shop || s.phase !== 'shop') return;
+    if (id === 'false-bottom' && !shop.bought) shop.discount = true;
+    if (id === 'showcase') {
+      // Vitrine: Der dritte Platz füllt sich gleich.
+      var shown = shop.trinkets.map(function (offer) { return offer.id; });
+      var extra = this._weighted(this._trinketPool().filter(function (t) { return shown.indexOf(t) < 0; }),
+        function (t) { return [50, 30, 15, 5][ZU.TRINKETS[t].rarity]; }, 1)[0];
+      if (extra) shop.trinkets.push({ id: extra, price: this._price(ZU.TRINKETS[extra].price), sold: false });
+    }
+    if (id === 'shelf') {
+      // Großes Regal: Auf dem dritten Platz liegt sofort eine Spezialkarte.
+      var used = shop.specials.map(function (offer) { return offer.def; });
+      var def = this._weighted(this._specialPool().filter(function (c) { return used.indexOf(c) < 0; }),
+        function (c) { return [50, 30, 14 + 3 * Math.min(s.act, 4), 2 + Math.min(s.act, 4)][ZU.CARDS[c].rarity]; }, 1)[0];
+      if (def) {
+        var bind = ZU.rollBind(this.rng, s.act);
+        if (ZU.SUITS[bind] && this.has('grinder')) bind = ZU.SUITS[bind].red ? 'red' : 'black';
+        shop.specials.push({ def: def, bind: bind, price: this._price(ZU.cardPrice(def, bind)), sold: false });
+      }
+    }
+    if (id === 'grinder') {
+      // Schleifer: Was schon im Regal liegt, wird mindestens farbgebunden.
+      shop.specials.forEach(function (offer) {
+        if (offer.sold || !ZU.SUITS[offer.bind]) return;
+        offer.bind = ZU.SUITS[offer.bind].red ? 'red' : 'black';
+        offer.price = self._price(ZU.cardPrice(offer.def, offer.bind));
+      });
+    }
+    this._sync();
   };
 
   /* ---------- Laden ---------- */
@@ -359,6 +400,7 @@
       s.bonusLives = (s.bonusLives || 0) + 1;
       s.lives++;
     }
+    this._shopGain(offer.id);
     ZU.Meta.note({ perks: s.perks.length });
     this.save();
     return offer.id;
@@ -424,6 +466,7 @@
     if (shelf === 'specials' && !this.specialFree()) throw new Error('Kein Platz für eine weitere Spezialkarte.');
     this._pay(this.offerPrice(shelf, index));
     this.s.shop.discount = false;
+    this.s.shop.bought = true;
     offer.sold = true;
     var card = this._add(offer.def, offer.bind);
     this.save();
@@ -589,7 +632,7 @@
 
   ZU.Profile = {
     defaults: function () {
-      return { runs: 0, wins: 0, best: 0, bestAct: 0, seenHelp: false, meta: {}, brSeen: [], settings: { music: 0.5, sfx: 0.7, speed: 1, crt: true, bg: true, fullscreen: 'ask' } };
+      return { runs: 0, wins: 0, best: 0, bestAct: 0, seenHelp: false, meta: {}, brSeen: [], popSeen: [], popInit: false, settings: { music: 0.5, sfx: 0.7, speed: 1, crt: true, bg: true, fullscreen: 'ask' } };
     },
     load: function () {
       var base = ZU.Profile.defaults(), store = storage();

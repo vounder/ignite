@@ -106,7 +106,7 @@
           ? 'Dein Deck fasst ' + run.specialSlots() + ' Spezialkarten. Die gewählte Karte verschwindet, die neue nimmt ihren Platz ein.'
           : burn
             ? 'Die Karte wird dauerhaft aus deinem Deck entfernt. Ein schlankes Deck bringt deine besten Karten sicher auf die Starthand.'
-            : 'Zu Duellbeginn ziehst du ' + ZU.HAND_SIZE + ' Karten aus deinem Deck. Der Rest wird in den gemeinsamen Nachziehstapel gemischt. Spezialkarten: ' +
+            : 'Zu Duellbeginn wird dein Deck gemischt: ' + ZU.HAND_SIZE + ' Karten kommen auf die Hand, der Rest ist dein Nachziehstapel. Der Gegner zieht von seinem eigenen. Spezialkarten: ' +
               run.specialCount() + (run.specialSlots() < 90 ? ' von ' + run.specialSlots() : '') + '.'),
         grid,
         h('div', 'btnrow', [btn(burn ? 'Doch nicht' : 'Schließen', 'felt', function () { finish(null); })])
@@ -136,7 +136,7 @@
           '<h3>Der Run</h3>' +
           '<p>Jeder Akt hat drei Tische: Gegner, Elite, Boss. Dazwischen wartet <b>Manfreds Laden</b> mit Karten, Trinkets und Diensten. Das erste <b>Casino</b> hat drei Akte; wer es ausräumt, öffnet das nächste – größer, härter, mit eigener Hausordnung und mehr Asche.</p>' +
           '<p><b>Trinkets</b> sind unbegrenzt, werden aber mit jedem weiteren teurer. <b>Privilegien</b> gelten den ganzen Run; Manfred bietet je Akt genau eines an.</p>' +
-          '<p>Dein <b>Deck</b> bestimmt deine Starthand: Du ziehst zu Beginn 7 Karten daraus.</p>' +
+          '<p>Du spielst mit deinem eigenen <b>Deck</b>: Zu Beginn jedes Duells wird es gemischt, 7 Karten kommen auf die Hand, der Rest ist dein Nachziehstapel. Der Gegner zieht von seinem eigenen Stapel.</p>' +
           '<p>Eine Niederlage kostet ein <b>Streichholz</b>. Sind alle abgebrannt, endet der Run.</p>' +
           '<p>Jeder Sieg bringt sofort <b>Asche</b>. Im <b>Hinterzimmer</b> kaufst du damit Schachteln, Trinkets, Spezialkarten und Upgrades – aber erst, wenn du sie durch Taten am Tisch entdeckt hast. Dein Deck fasst nur wenige <b>Spezialkarten</b>.</p>' +
           (touch ? '<p class="dim">Was tut das? Trinkets und Anzeigen antippen. Karten, Knöpfe und Angebote dafür gedrückt halten.</p></div>'
@@ -530,9 +530,9 @@
     var buttons = h('div', 'menu-buttons');
     if (saved) buttons.appendChild(btn('Weiterspielen', 'big ember', function () { game.continueRun(saved); }));
     buttons.appendChild(btn('Neuer Run', 'big ' + (saved ? 'felt' : 'ember'), function () {
-      if (!saved) { game.go('starter'); return; }
+      if (!saved) { game.go('casino'); return; }
       confirmBox('Neuen Run beginnen?', 'Der gespeicherte Run wird dabei überschrieben.', 'Neu beginnen').then(function (yes) {
-        if (yes) game.go('starter');
+        if (yes) game.go('casino');
       });
     }));
     buttons.appendChild(h('div', 'menu-row', [
@@ -579,6 +579,7 @@
       game.saveProfile();
       setTimeout(function () { if (game.screen === 'menu' && !ZU.modal.isOpen()) helpModal(); }, 600);
     }
+    setTimeout(function () { if (game.screen === 'menu') unlockedPopup(game); }, intro ? 1400 : 450);
     return function () { slot._off(); logo.destroy(); };
   };
 
@@ -621,10 +622,11 @@
     ZU.STARTERS.forEach(function (starter, i) {
       var open = ZU.Meta.isUnlocked(meta, 'starter', starter.id);
       var preview = h('div', 'box-preview');
-      starter.cards.forEach(function (id) { preview.appendChild(ZU.cardStatic(ZU.CARDS[id], { cls: 'mini', bind: 'none' })); });
+      // Höchstens zwei Karten als Kostprobe; der Text darunter nennt den Rest.
+      starter.cards.slice(0, 2).forEach(function (id) { preview.appendChild(ZU.cardStatic(ZU.CARDS[id], { cls: 'mini', bind: 'none' })); });
       starter.trinkets.forEach(function (id) { preview.appendChild(ZU.trinketEl(id)); });
       (starter.perks || []).forEach(function (id) { preview.appendChild(ZU.perkEl(id)); });
-      if (!preview.firstChild) preview.appendChild(h('div', 'box-plain', '7 × ?'));
+      if (!starter.cards.length) preview.insertBefore(h('div', 'box-plain', ZU.DECK_SIZE + ' × ?'), preview.firstChild);
       var box = h('div', 'matchbox' + (open ? '' : ' locked'), [
         h('div', 'box-top', [h('div', 'box-name', starter.name), h('div', 'box-strip')]),
         preview,
@@ -642,33 +644,122 @@
       row.appendChild(box);
     });
 
-    // Casino-Wahl: Pfeile erscheinen, sobald mehr als ein Haus offen ist.
-    var label = h('div', 'stake-name', '');
-    var text = h('div', 'stake-text', '');
-    var down = btn('◄', 'small', function () { change(-1); });
-    var up = btn('►', 'small', function () { change(1); });
-    var rulesSlot = h('div', 'stake-rules');
-    var show = function () {
-      var stake = ZU.Meta.get().stake, casino = ZU.CASINOS[stake];
-      label.textContent = 'Casino ' + ZU.roman(stake + 1) + ' · ' + casino.name;
-      text.textContent = casino.sub + ' · ' + casinoFacts(casino);
-      rulesSlot.innerHTML = '';
-      if (casino.rules.length) rulesSlot.appendChild(ZU.houseChip(casino.rules));
-      down.disabled = stake <= 0;
-      up.disabled = stake >= meta.maxStake;
-      down.style.visibility = up.style.visibility = meta.maxStake > 0 ? '' : 'hidden';
-    };
-    var change = function (delta) { ZU.Meta.setStake(ZU.Meta.get().stake + delta); show(); };
-    var stakeRow = h('div', 'stakerow', [down, h('div', 'stake-mid', [label, text]), rulesSlot, up]);
-    show();
+    // Das Casino ist schon gewählt; hier steht nur noch, wohin es geht.
+    var casino = ZU.CASINOS[meta.stake];
+    var stakeRow = h('div', 'stakerow', [
+      h('div', 'stake-mid', [
+        h('div', 'stake-name', 'Casino ' + ZU.roman(meta.stake + 1) + ' · ' + casino.name),
+        h('div', 'stake-text', casino.sub + ' · ' + casinoFacts(casino))
+      ]),
+      casino.rules.length ? ZU.houseChip(casino.rules) : null,
+      btn('Anderes Casino', 'small', function () { game.go('casino'); })
+    ]);
 
     root.appendChild(h('div', 'screen starter', [
       h('h1', null, 'Wähle deine Schachtel'),
       stakeRow,
       row,
+      btn('Zurück', 'felt back', function () { game.go('casino'); })
+    ]));
+  };
+
+  /* ---------- Casino-Wahl: vor jedem Run ----------
+     Alle sechs Häuser sind von Anfang an zu sehen; betreten lässt sich nur, was der Reihe nach geöffnet wurde. */
+  screens.casino = function (game, root) {
+    ZU.bg.set('select');
+    var meta = ZU.Meta.get();
+    var grid = h('div', 'casino-grid');
+    ZU.CASINOS.forEach(function (casino, index) {
+      var open = index <= meta.maxStake, last = index === meta.stake;
+      var boss = casino.foes ? ZU.ENEMIES[casino.foes.boss] : null;
+      var card = h('div', 'casino-card' + (open ? ' open' : ' locked') + (last && open ? ' last' : ''), [
+        h('div', 'casino-no', ZU.roman(index + 1)),
+        h('div', 'casino-name', casino.name),
+        h('p', 'casino-sub', casino.sub + '.'),
+        h('div', 'casino-facts', [
+          h('span', null, casino.acts + ' Akte'),
+          h('span', null, 'Asche ' + ashFactor(casino)),
+          casino.rules.length ? ZU.houseChip(casino.rules) : h('span', null, 'keine Hausregeln')
+        ]),
+        h('p', 'casino-boss', boss ? 'Es gehört: ' + boss.name : 'Es gehört: dem Hausherrn oder Donna Scarlatta'),
+        open
+          ? btn(last ? 'Eintreten' : 'Eintreten', last ? 'ember' : 'felt', function () {
+            ZU.Meta.setStake(index);
+            game.go('starter');
+          })
+          : h('div', 'locked-note', [ZU.iconEl('lock', 'lockico'), 'Erst „' + ZU.CASINOS[index - 1].name + '“ ausräumen'])
+      ]);
+      card.style.animationDelay = (index * 70) + 'ms';
+      grid.appendChild(card);
+    });
+    root.appendChild(h('div', 'screen casinos', [
+      h('h1', null, 'Wähle dein Casino'),
+      h('p', 'sub', 'Wer ein Haus ausräumt, öffnet die Tür zum nächsten. Härtere Häuser zahlen mehr Asche.'),
+      grid,
       btn('Zurück', 'felt back', function () { game.toMenu(); })
     ]));
   };
+
+  /* ---------- Hauptmenü: „Freigeschaltet" ----------
+     Zeigt, was seit dem letzten Mal im Hinterzimmer aufgetaucht ist oder sich geöffnet hat.
+     Jeder Eintrag lässt sich einzeln abhaken oder alle auf einmal. */
+  function unlockedKeys(meta) {
+    var keys = ZU.Meta.openOffers(meta);
+    for (var i = 1; i <= meta.maxStake; i++) keys.push('casino:' + i);
+    return keys;
+  }
+  function unlockedEntry(key) {
+    var parts = key.split(':'), kind = parts[0], id = parts[1];
+    if (kind === 'trinket') return { visual: ZU.trinketEl(id), name: ZU.TRINKETS[id].name, kind: 'Trinket', text: ZU.TRINKETS[id].text };
+    if (kind === 'special') return { visual: ZU.cardStatic(ZU.CARDS[id], { cls: 'mini', bind: 'none', noTip: true }), name: ZU.CARDS[id].name, kind: 'Spezialkarte', text: ZU.CARDS[id].text };
+    if (kind === 'upgrade') return { visual: h('div', 'un-badge', '▲'), name: ZU.Meta.UPGRADES[id].name, kind: 'Upgrade', text: ZU.Meta.UPGRADES[id].text };
+    if (kind === 'casino') return { visual: h('div', 'un-badge', ZU.roman(Number(id) + 1)), name: ZU.CASINOS[id].name, kind: 'Casino', text: ZU.CASINOS[id].sub + '. ' + casinoFacts(ZU.CASINOS[id]) + '.', open: true };
+    var starter = ZU.STARTERS.filter(function (s) { return s.id === id; })[0];
+    var box = h('div', 'br-box');
+    box.style.background = starter.color;
+    return { visual: box, name: starter.name, kind: 'Schachtel', text: starter.text };
+  }
+  function unlockedPopup(game) {
+    var profile = ZU.Profile.load(), keys = unlockedKeys(ZU.Meta.get());
+    if (!profile.popInit) {
+      // Erster Start mit diesem Fenster: Was schon da war, gilt als bekannt.
+      profile.popInit = true;
+      profile.popSeen = keys;
+      ZU.Profile.save(profile);
+      return;
+    }
+    var seen = profile.popSeen || [], pending = keys.filter(function (key) { return seen.indexOf(key) < 0; });
+    if (!pending.length || ZU.modal.isOpen()) return;
+    var entry, list = h('div', 'un-list');
+    function mark(done) {
+      var fresh = ZU.Profile.load();
+      fresh.popSeen = (fresh.popSeen || []).concat(done.filter(function (key) { return (fresh.popSeen || []).indexOf(key) < 0; }));
+      ZU.Profile.save(fresh);
+      pending = pending.filter(function (key) { return done.indexOf(key) < 0; });
+      if (!pending.length) ZU.modal.close(entry);
+    }
+    pending.forEach(function (key) {
+      var item = unlockedEntry(key);
+      var row = h('div', 'un-row', [
+        h('div', 'un-visual', [item.visual]),
+        h('div', 'un-main', [
+          h('div', 'un-name', [item.name, h('span', 'un-kind', item.kind)]),
+          h('p', null, item.text),
+          h('p', 'un-where', item.open ? 'Die Tür steht offen.' : 'Steht im Hinterzimmer zum Kauf.')
+        ]),
+        btn('Gesehen', 'small felt', function () { row.remove(); mark([key]); })
+      ]);
+      list.appendChild(row);
+    });
+    entry = ZU.modal.open([
+      h('h2', null, 'Freigeschaltet'),
+      list,
+      h('div', 'btnrow', [
+        btn('Zum Hinterzimmer', 'felt', function () { mark(pending.slice()); game.go('backroom'); }),
+        btn(pending.length > 1 ? 'Alle gesehen' : 'Gesehen', 'ember', function () { mark(pending.slice()); })
+      ])
+    ], { cls: 'unlocked', locked: true });
+  }
 
   /* ---------- Hinterzimmer: Asche ausgeben ---------- */
   screens.backroom = function (game, root) {
@@ -770,12 +861,12 @@
     /* Casinos: der Reihe nach zu öffnen. Von verschlossenen Häusern ist nur bekannt, dass es sie gibt. */
     function renderStake(meta) {
       var rows = ZU.CASINOS.map(function (casino, index) {
-        var open = index <= meta.maxStake, active = index === meta.stake, next = index === meta.maxStake + 1;
+        var open = index <= meta.maxStake, active = index === meta.stake;
         return h('div', 'br-row stake' + (open ? '' : ' closed') + (active ? ' active' : ''), [
           h('div', 'br-stakeno', ZU.roman(index + 1)),
           h('div', 'br-rowmain', [
-            h('div', 'br-rowname', open ? casino.name : '?????'),
-            h('p', null, open ? casino.sub + '. ' + casinoFacts(casino) + '.' : next ? 'Räume „' + ZU.CASINOS[index - 1].name + '“ aus, um die Tür zu öffnen.' : '?????'),
+            h('div', 'br-rowname', casino.name),
+            h('p', null, open ? casino.sub + '. ' + casinoFacts(casino) + '.' : 'Verschlossen: Räume erst „' + ZU.CASINOS[index - 1].name + '“ aus.'),
             open && casino.rules.length ? h('div', 'br-rules', casino.rules.map(function (id) {
               var chip = h('span', 'rulechip', ZU.RULES[id].name);
               ZU.tip.bind(chip, '<b>' + ZU.RULES[id].name + '</b><p>' + ZU.RULES[id].text + '</p>');
@@ -1369,7 +1460,7 @@
       accountCta(),
       h('div', 'btnrow', [
         btn('Hauptmenü', 'felt', function () { game.toMenu(); }),
-        btn('Neuer Run', 'big ember', function () { game.go('starter'); })
+        btn('Neuer Run', 'big ember', function () { game.go('casino'); })
       ])
     ]));
     setTimeout(function () {

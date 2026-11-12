@@ -2,13 +2,15 @@
 (function (ZU) {
   'use strict';
 
-  ZU.VERSION = '1.2.0'; // im Hauptmenü unten rechts angezeigt
+  ZU.VERSION = '1.3.0'; // im Hauptmenü unten rechts angezeigt
   /* Build-Kennung: wird an alle Asset-Adressen gehängt, damit Browser und CDN nach einem Update frische
      Dateien holen. Nicht von Hand ändern: web/tools/stamp_version.py setzt den Wert. */
-  ZU.BUILD = '8b23990f32';
+  ZU.BUILD = '8b0ddb67a0';
   ZU.asset = function (path) { return 'assets/' + path + '?v=' + ZU.BUILD; };
 
   ZU.HAND_SIZE = 7;
+  ZU.DECK_SIZE = 16; // normale Karten im Startdeck; dazu kommen die Spezialkarten der Schachtel
+  ZU.OPP_DECK = 24; // normale Karten im Blatt des Gegners
   ZU.MAX_LIVES = 3;
   ZU.OPP_HAND = 8; // Starthand der Gegner
   ZU.TURN_LIMIT = 50; // Sperrstunde: danach gewinnt, wer weniger Karten hält
@@ -816,10 +818,10 @@
 
   /* ---------- Startschachteln ---------- */
   ZU.STARTERS = [
-    { id: 'classic', name: 'Klassisch', money: 10, text: '7 zufällige Karten und das meiste Startgeld. Solide.', cards: [], trinkets: [], color: '#2f7d5b' },
-    { id: 'igniter', name: 'Zündler', money: 5, text: '7 Karten, darunter zwei 7en. Dazu das Privileg Flinke Finger: Gleiche Werte gehen zusammen raus.', cards: ['hearts-7', 'spades-7'], trinkets: [], perks: ['nimble-fingers'], color: '#f08a24' },
-    { id: 'cheater', name: 'Falschspieler', money: 5, text: '6 Karten plus Tausch und Zocken, beide an ein Symbol gebunden.', cards: ['tausch', 'zocken'], trinkets: [], size: 8, color: '#a3271f' },
-    { id: 'alchemist', name: 'Alchemist', money: 4, text: '6 Karten plus Zytokinese und HODL, beide an ein Symbol gebunden.', cards: ['zytokinese', 'hodl'], trinkets: [], size: 8, color: '#2a8c8c' }
+    { id: 'classic', name: 'Klassisch', money: 10, text: '16 zufällige Karten, eine zufällige Spezialkarte und das meiste Startgeld. Solide.', cards: [], special: true, trinkets: [], color: '#2f7d5b' },
+    { id: 'igniter', name: 'Zündler', money: 5, text: '16 Karten, darunter vier 7en, und eine zufällige Spezialkarte. Dazu das Privileg Flinke Finger: Gleiche Werte gehen zusammen raus.', cards: ['hearts-7', 'spades-7', 'diamonds-7', 'clubs-7'], special: true, trinkets: [], perks: ['nimble-fingers'], color: '#f08a24' },
+    { id: 'cheater', name: 'Falschspieler', money: 5, text: '16 Karten plus Tausch und Zocken, beide an ein Symbol gebunden.', cards: ['tausch', 'zocken'], trinkets: [], color: '#a3271f' },
+    { id: 'alchemist', name: 'Alchemist', money: 4, text: '16 Karten plus Zytokinese und HODL, beide an ein Symbol gebunden.', cards: ['zytokinese', 'hodl'], trinkets: [], color: '#2a8c8c' }
   ];
 
   ZU.roman = function (n) {
