@@ -132,7 +132,7 @@
     house.length = ZU.OPP_DECK;
 
     var counts = ZU.enemySpecials(this.kind, this.act);
-    var stockSpecials = counts.stock;
+    var stockSpecials = counts.stock + (this.rule('hype') ? 2 : 0);
 
     var tableIndex = -1;
     for (var i = 0; i < house.length; i++) {
@@ -152,9 +152,9 @@
     ev.push({ t: 'table', id: tableId });
 
     var oppSize = ZU.OPP_HAND + (this.kind === 'battle' ? 1 : 0) + (this.enemy.handBonus || 0) -
-      (this.enemy.passive === 'head-start' || this.enemy.passive === 'baroness' ? 2 : this.enemy.passive === 'house' ? 1 : 0);
+      (this.enemy.passive === 'head-start' || this.enemy.passive === 'baroness' || this.enemy.passive === 'house-cut' ? 2 : this.enemy.passive === 'house' ? 1 : 0);
     oppSize = Math.max(4, oppSize + (this.mods.oppHand || 0) - (this.rule('house-edge') ? 1 : 0)) + (this.has('klebefinger') ? 1 : 0);
-    if (this.enemy.passive === 'jewels' || this.enemy.passive === 'director') counts.hand = 3;
+    if (this.enemy.passive === 'jewels' || this.enemy.passive === 'director' || this.enemy.passive === 'entourage') counts.hand = 3;
     var oppOpening = [];
     for (var h = 0; h < counts.hand && oppOpening.length < oppSize; h++) {
       oppOpening.push(this._register(rng.pick(this.enemy.pool), 'enemy', false, null, ZU.rollBind(rng, this.act)));
@@ -190,7 +190,7 @@
       ev.push({ t: 'passive', id: this.enemy.passive });
       ev.push(this._statusEvent());
     }
-    if (this.enemy.passive === 'donna' || this.enemy.passive === 'list') {
+    if (this.enemy.passive === 'donna' || this.enemy.passive === 'list' || this.enemy.passive === 'entourage') {
       ev.push({ t: 'passive', id: this.enemy.passive });
       this._drawInto('player', this.enemy.passive === 'donna' ? 2 : 1, 'deal', ev, false);
     }

@@ -908,3 +908,10 @@ body.nobg { background: radial-gradient(ellipse at 50% 85%, var(--bg-mid, #34170
 .esme-pack { min-height: 400px; }
 .esme-main { top: 88px; bottom: 84px; }
 .esme-title { text-shadow: 0 3px 0 rgba(0,0,0,.7), 0 0 18px rgba(183,140,255,.5); }
+
+/* Manfreds Laden: gemalte Kulisse mit warmem Lampenlicht, wie Esmes Zimmer */
+.shop-room { position: absolute; inset: 0; background-size: cover; background-position: center; pointer-events: none;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 88%, transparent 100%); mask-image: linear-gradient(to bottom, #000 0, #000 88%, transparent 100%); }
+.esme-glow.g4 { right: -60px; top: 380px; animation-duration: 3.7s; animation-delay: -0.8s; }
+.shop.manfreds .hud, .shop.manfreds .shop-left, .shop.manfreds .shop-main, .shop.manfreds .shop-next, .shop.manfreds .esme-door { z-index: 2; }
+.shop.manfreds .shelf { backdrop-filter: blur(1px); }
