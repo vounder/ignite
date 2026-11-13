@@ -88,6 +88,14 @@
      ein Symbol = dessen Stilwelt, eine Farbe = zwei Welten schräg geteilt, frei = schwarzer Lack mit Gold.
      'none' zeigt den neutralen Hausrahmen ohne Wimpel. */
   /* mark: { seal, flaw } einer veredelten normalen Karte – erscheint als Siegel unten links, der Makel daneben. */
+  /* Folie: ein schimmernder Überzug für seltene Spezialkarten und veredelte Karten. Der Streifenverlauf darin
+     wandert mit der Neigung der Karte (Sprite.render bzw. ZU.tilt), dazu zieht ab und zu ein Glanzlicht darüber. */
+  function foilEl(kind) {
+    var el = h('div', 'foil f-' + kind, [h('i')]);
+    el.style.setProperty('--fd', (-Math.random() * 7).toFixed(2) + 's');
+    return el;
+  }
+
   ZU.cardFace = function (def, bind, mark) {
     var el;
     if (def.special) {
@@ -103,6 +111,7 @@
       el.appendChild(art);
       if (bind !== 'none') el.appendChild(bindBadge(bind));
       el.appendChild(h('div', 'sp-tag', def.tag));
+      if (def.rarity >= 2) el.appendChild(foilEl('r' + def.rarity));
       el.appendChild(h('div', 'shine'));
       return el;
     }
@@ -114,6 +123,7 @@
       seal.style.backgroundImage = 'url(' + ZU.asset('seals/' + mark.seal + '.png') + ')';
       el.appendChild(seal);
       el.classList.add('sealed');
+      el.insertBefore(foilEl('seal s-' + mark.seal), seal); // das Siegel selbst bleibt über der Folie lesbar
     }
     if (mark && mark.flaw && ZU.FLAWS[mark.flaw]) {
       var flaw = h('i', 'card-flaw');
@@ -383,6 +393,7 @@
     this.badgeEl = h('div', 'spr-badge');
     this.el = h('div', 'spr', [this.shadowEl, this.tiltEl, this.badgeEl]);
     this.el._sprite = this;
+    this.foilEl = this.flipEl.querySelector('.foil i');
     layer.appendChild(this.el);
     this._applied = {};
     this.render();
@@ -461,6 +472,14 @@
 
     var flipDeg = (ZU.clamp(this.flip, -0.15, 1.15) * 180).toFixed(1);
     if (flipDeg !== a.flip) { this.flipEl.style.transform = 'rotateY(' + flipDeg + 'deg)'; a.flip = flipDeg; }
+
+    if (this.foilEl) {
+      // Die Folie reagiert auf Neigung, Drehung und Lage auf dem Tisch – wie Licht, das über die Karte wandert.
+      var fx = ZU.clamp(this.tiltY * 3 + (this.r + swayR + lean) * 2.4 + (this.x - 640) * 0.06, -96, 96);
+      var fy = ZU.clamp(-this.tiltX * 3 + swayY * 3 + (this.y - 360) * 0.05 - this.lift * 0.5, -96, 96);
+      var foil = 'translate(' + fx.toFixed(0) + 'px,' + fy.toFixed(0) + 'px)';
+      if (foil !== a.foil) { this.foilEl.style.transform = a.foil = foil; }
+    }
 
     var depth = 6 + this.lift * 0.9 + (this.s - 1) * 60;
     var shadow = 'translate(' + (depth * 0.55 - this.tiltY * 0.3).toFixed(1) + 'px,' + (depth + this.lift).toFixed(1) + 'px)';

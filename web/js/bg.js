@@ -57,6 +57,7 @@
 
   var gl, canvas, uniforms = {}, cur = clone(PALETTES.menu), target = PALETTES.menu, flash = 0, enabled = true, lost = false;
   var ember = 0.4, emberTo = 0.4; // Stärke der Glutfunken, 0 bis 1
+  var glow = 0, glowTo = 0; // zusätzliche Hitze im Duell: wie nah das Glutziel ist, 0 bis 1
   var scene = 'menu', theme = null; // theme: Farbwelt des Casinos, in dem gerade gespielt wird
   var THEME_WEIGHT = 0.68;
 
@@ -100,12 +101,13 @@
     });
     cur.heat += (target.heat - cur.heat) * k;
     ember += (emberTo - ember) * k;
+    glow += (glowTo - glow) * (1 - Math.pow(0.08, dt));
     flash *= Math.pow(0.02, dt);
     gl.uniform2f(uniforms.uRes, canvas.width, canvas.height);
     gl.uniform1f(uniforms.uTime, time);
     gl.uniform1f(uniforms.uPix, 1.0);
-    gl.uniform1f(uniforms.uHeat, cur.heat + flash);
-    gl.uniform1f(uniforms.uEmber, Math.min(1, ember + flash * 0.5));
+    gl.uniform1f(uniforms.uHeat, cur.heat + flash + glow * 0.75);
+    gl.uniform1f(uniforms.uEmber, Math.min(1.6, ember + flash * 0.5 + glow * 0.8));
     gl.uniform3fv(uniforms.uA, cur.a);
     gl.uniform3fv(uniforms.uB, cur.b);
     gl.uniform3fv(uniforms.uC, cur.c);
@@ -171,6 +173,8 @@
     },
     /* Wie viele Glutfunken aufsteigen: 0 = kaum welche, 1 = volle Glut. */
     setEmber: function (level) { emberTo = Math.max(0, Math.min(1, level)); },
+    /* Zusätzliche Hitze im Duell (Glut ÷ Glutziel): Der Rauch glüht auf, mehr Funken steigen. */
+    setGlow: function (level) { glowTo = Math.max(0, Math.min(1.2, level)); },
     /* Farbwelt eines Casinos (ZU.CASINOS[i].tint) oder null für die neutrale. */
     setTheme: function (tint) {
       theme = tint || null;

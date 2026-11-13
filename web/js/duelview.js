@@ -153,7 +153,12 @@
     this.bubble = h('div', 'bubble');
     this.stageDim = h('div', 'stagedim');
 
+    // Feuer: Flammen über der Glutanzeige und – ab der halben Strecke zum Glutziel – am unteren Tischrand.
+    this.boardFire = ZU.fire(62, 30, 4, 'board-fire');
+    this.tableFire = ZU.fire(194, 44, 4);
     this.root.appendChild(h('div', 'tablefelt'));
+    this.root.appendChild(h('div', 'tablefire', [this.tableFire.el]));
+    this.root.appendChild(this.boardFire.el);
     this.root.appendChild(left);
     this.root.appendChild(right);
     this.root.appendChild(this.board);
@@ -175,6 +180,9 @@
   DuelView.prototype.destroy = function () {
     this.destroyed = true;
     ZU.offFrame(this._update);
+    this.boardFire.destroy();
+    this.tableFire.destroy();
+    ZU.bg.setGlow(0);
     window.removeEventListener('keydown', this._keys);
     ZU.tip.hide();
   };
@@ -305,6 +313,8 @@
     } else {
       sp.setZ(++this.pileZ);
       sp.moveTo(PILE.x + ZU.rand(-9, 9), PILE.y + ZU.rand(-6, 6), ZU.rand(-13, 13), 1);
+      if (this.pile.length) this.pile[this.pile.length - 1].sway = 0;
+      sp.sway = 0.3; // die oberste Karte liegt nicht tot da
       this.pile.push(sp);
       while (this.pile.length > 6) this.kill(this.pile.shift());
     }
@@ -449,27 +459,122 @@
       sp.setZ(self.pileZ);
       sp.punch(ev.score ? 2.6 + Math.min(4, ev.score.chain * 0.35) : 2.4);
       ZU.audio.place();
-      if (ev.score) {
-        var sc = ev.score, hot = Math.min(1, sc.chain / 8);
-        ZU.audio.score(sc.chain);
-        fx.pop(PILE.x + ZU.rand(-20, 20), PILE.y - 96, '+' + ZU.fmt(sc.points), 'score' + (sc.chain >= 5 ? ' hot' : ''));
-        fx.burst(PILE.x, PILE.y, { n: 6 + sc.chain * 3, speed: 200 + sc.chain * 30 });
-        fx.count(self.glutEl, sc.glut, 380);
-        self.setTarget(sc.glut);
-        fx.punch(self.glutEl);
-        self.setChain(sc.next, true);
-        if (sc.chain >= 4) { fx.shake(2 + sc.chain * 0.9); ZU.bg.flash(0.08 + hot * 0.3); }
-        if (sc.chain >= 5) self.react('shocked', 900);
-      } else {
-        fx.burst(PILE.x, PILE.y, { n: 5, speed: 140, colors: ['#e9d8b0', '#b9aa86', '#7d7360'] });
-      }
-      return wait(ev.score ? Math.max(170, 300 - ev.score.chain * 14) : 330);
-    }).then(function () {
-      // Trinkets, die bei dieser Karte gezündet haben, melden sich nacheinander.
-      var chain = Promise.resolve();
-      (ev.trig || []).forEach(function (id) { chain = chain.then(function () { return self.destroyed ? null : self.trinketFx(id, true); }); });
-      return chain;
+      if (ev.score) return self.scoreSeq(ev, sp);
+      fx.burst(PILE.x, PILE.y, { n: 5, speed: 140, colors: ['#e9d8b0', '#b9aa86', '#7d7360'] });
+      return wait(330);
     });
+  };
+
+  /* Die Rechnung einer gelegten Karte, Schritt für Schritt über dem Ablagestapel:
+     Grundwert → Kette schlägt ein → jedes Trinket zuckt und verändert die Zahl → die Summe fliegt in die Glut.
+     Je mehr Schritte, desto schneller der Takt; der Ton steigt mit jedem Schritt. */
+  DuelView.prototype.scoreSeq = function (ev, sp) {
+    var self = this, sc = ev.score, steps = sc.steps || [], eff = sc.eff || sc.chain, adds = sc.adds || [];
+    var cx = PILE.x, cy = PILE.y - 116, tone = 0, used = {};
+    var target = this.duel.target || 600;
+    var num = h('b', null, ''), tag = h('i', null, '');
+    var calc = h('div', 'calc', [num, tag]);
+    calc.style.left = cx + 'px';
+    calc.style.top = cy + 'px';
+    this.root.appendChild(calc);
+    var pace = Math.max(64, 150 - steps.length * 10);
+
+    function show(value, label) {
+      num.textContent = ZU.fmt(value);
+      var hot = Math.min(1, value / (target * 0.22));
+      calc.style.setProperty('--hot', hot.toFixed(2));
+      calc.classList.toggle('hot', hot >= 0.4);
+      calc.classList.toggle('blazing', hot >= 0.85);
+      fx.punch(num);
+      if (label) { tag.textContent = label; fx.punch(tag, 'tagpop'); }
+      ZU.audio.step(tone++);
+    }
+    /* Ein Trinket meldet sich: Es zuckt, zeigt seinen Faktor und schickt einen Funken zur Zahl. */
+    function spark(id, label, ms) {
+      used[id] = true;
+      var el = self.trinketEls[id];
+      if (!el) return null;
+      var spec = TRINKET_FX[id] || ['pile', ['#fff3c4', '#ffd75e', '#e2b23c']], p = ZU.stagePos(el);
+      fx.punch(el, 'trigger');
+      if (label) fx.pop(p.x, p.y - 34, label, 'gold small', 800);
+      return fx.comet(p.x, p.y, cx + 26, cy, { ms: ms, colors: spec[1], size: 6 });
+    }
+
+    var chain = Promise.resolve().then(function () {
+      show(sc.base);
+      adds.forEach(function (id) { spark(id, null, 120); });
+      return wait(adds.length ? 130 : 70);
+    });
+    if (eff > 1) {
+      chain = chain.then(function () {
+        if (self.destroyed) return null;
+        var from = ZU.stagePos(self.chainEl);
+        fx.punch(self.chainEl);
+        if (eff > sc.chain) spark('kettenreaktion', null, 120);
+        return fx.comet(from.x - 20, from.y, cx + 26, cy, { ms: 100, colors: ['#fff3c4', '#ffd75e', '#ff7b3a'], size: 7, arc: 34 }).then(function () {
+          show(sc.base * eff, '×' + eff);
+          fx.flash(cx, cy, { r: 40 + Math.min(40, eff * 4), alpha: 0.7 });
+          return wait(pace * 0.6);
+        });
+      });
+    }
+    steps.forEach(function (st) {
+      chain = chain.then(function () {
+        if (self.destroyed) return null;
+        var factor = st.pct != null ? '+' + Math.round(st.pct * 100) + ' %' : '×' + String(st.f).replace('.', ',');
+        var ids = st.ids || (st.id ? [st.id] : []);
+        var flights = ids.map(function (id) { return spark(id, factor, 110); }).filter(Boolean);
+        var arrive;
+        if (flights.length) arrive = flights[0];
+        else if (st.seal) { fx.flash(sp.x - 30, sp.y + 44, { r: 54, color: '#ff9f3a' }); ZU.audio.ignite(); arrive = wait(70); }
+        else arrive = wait(50);
+        return arrive.then(function () {
+          show(st.v, (st.seal ? 'Glutsiegel ' : st.label ? st.label + ' ' : '') + factor);
+          if (st.f >= 2) fx.flash(cx, cy, { r: 50, alpha: 0.6 });
+          return wait(pace);
+        });
+      });
+    });
+    return chain.then(function () {
+      if (self.destroyed) { calc.remove(); return null; }
+      // Die Summe fliegt in die Glutanzeige.
+      var to = ZU.stagePos(self.glutEl);
+      calc.classList.add('fly');
+      calc.style.transitionDuration = (170 / ZU.speed) + 'ms';
+      calc.style.transform = 'translate(' + (to.x - cx).toFixed(0) + 'px,' + (to.y - cy).toFixed(0) + 'px) scale(.45)';
+      fx.comet(cx, cy, to.x, to.y, { ms: 170, size: 8, trail: 3, arc: 30 });
+      return wait(170);
+    }).then(function () {
+      calc.remove();
+      if (self.destroyed) return null;
+      self.scoreLand(sc);
+      return wait(Math.max(90, 150 - sc.chain * 8));
+    }).then(function () {
+      // Übrige Trinkets dieser Karte (sie treiben die Kette, nicht die Glut) melden sich nacheinander.
+      var rest = Promise.resolve();
+      (ev.trig || []).forEach(function (id) {
+        if (used[id]) return;
+        rest = rest.then(function () { return self.destroyed ? null : self.trinketFx(id, true); });
+      });
+      return rest;
+    });
+  };
+
+  /* Die Summe schlägt in der Glutanzeige ein: Je größer der Brocken, desto härter der Treffer. */
+  DuelView.prototype.scoreLand = function (sc) {
+    var g = ZU.stagePos(this.glutEl), target = this.duel.target || 600;
+    var share = Math.min(1, sc.points / target), hot = Math.min(1, sc.chain / 8);
+    ZU.audio.score(sc.chain);
+    fx.count(this.glutEl, sc.glut, 380);
+    this.setTarget(sc.glut);
+    fx.punch(this.glutEl);
+    this.setChain(sc.next, true);
+    fx.flash(g.x, g.y, { r: 60 + share * 160, alpha: 0.75 });
+    fx.burst(g.x, g.y, { n: 8 + Math.round(share * 40) + sc.chain * 2, speed: 200 + sc.chain * 26 + share * 260, size: share > 0.15 ? 7 : 0 });
+    this.boardFire.kick(0.15 + share * 1.4 + hot * 0.2);
+    if (sc.chain >= 4 || share >= 0.08) { fx.shake(2 + sc.chain * 0.8 + share * 22); ZU.bg.flash(0.08 + hot * 0.3 + share * 0.6); }
+    if (share >= 0.1 || sc.chain >= 7) { fx.hitstop(45 + share * 160); fx.zoom(0.012 + share * 0.05); }
+    if (sc.chain >= 5 || share >= 0.2) this.react('shocked', 900);
   };
 
   /* Füllstand des Glutziels; kurz vor dem Ziel glüht der Balken. */
@@ -480,6 +585,17 @@
     this.targetFill.style.width = (part * 100).toFixed(1) + '%';
     this.targetEl.classList.toggle('near', part >= 0.75 && part < 1);
     this.targetEl.classList.toggle('done', part >= 1);
+    this.setHeat(part);
+  };
+  /* Wie nah das Glutziel ist, soll man dem ganzen Tisch ansehen: Flammen über der Glutanzeige, ab der Hälfte
+     Feuer am Tischrand, dazu glüht der Hintergrund auf. Löschmittel drücken das alles sichtbar wieder herunter. */
+  DuelView.prototype.setHeat = function (part) {
+    this.heat = part;
+    this.root.style.setProperty('--heat', part.toFixed(3));
+    this.root.classList.toggle('warm', part >= 0.5);
+    this.boardFire.set(part < 0.08 ? 0 : 0.22 + part * 0.78);
+    this.tableFire.set(part < 0.5 ? 0 : 0.12 + (part - 0.5) * 1.5);
+    ZU.bg.setGlow(part);
   };
   /* Löschmittel des Gegners: Kette und Glut sinken sichtbar, Dampf steigt auf. */
   DuelView.prototype.on_douse = function (ev) {
@@ -509,6 +625,14 @@
     ZU.audio.win();
     ZU.bg.flash(1);
     fx.shake(14);
+    fx.hitstop(120);
+    fx.zoom(0.05);
+    this.setHeat(1);
+    this.boardFire.set(1.5);
+    this.tableFire.set(1.35);
+    this.tableFire.kick(1);
+    this.root.classList.add('ablaze');
+    fx.flash(CENTER, 420, { r: 520, life: 0.6, color: '#ff9f3a', alpha: 0.8 });
     this.react('shocked', 2400);
     ZU.audio.voice(this.duel.enemy.id, 'shocked');
     for (var i = 0; i < 7; i++) {
@@ -523,20 +647,10 @@
   };
 
   /* ---------- Effekte: Siegel, Makel und Trinkets ---------- */
-  /* Funkenspur von A nach B: kleine Stöße entlang der Strecke, zeitlich versetzt. */
+  /* Funkenspur von A nach B: ein Komet, der Funken hinter sich herzieht. */
   DuelView.prototype.trail = function (ax, ay, bx, by, colors, ms, opts) {
-    var self = this, steps = 7;
     opts = opts || {};
-    for (var i = 0; i <= steps; i++) {
-      (function (k) {
-        setTimeout(function () {
-          if (self.destroyed) return;
-          var arc = opts.arc ? Math.sin(k * Math.PI) * opts.arc : 0;
-          fx.burst(ax + (bx - ax) * k, ay + (by - ay) * k - arc, { n: opts.n || 3, speed: opts.speed || 70, life: 0.5, size: opts.size || 5, colors: colors });
-        }, (ms || 220) * k / ZU.speed);
-      })(i / steps);
-    }
-    return wait(ms || 220);
+    return fx.comet(ax, ay, bx, by, { ms: ms || 220, colors: colors, arc: opts.arc || 0, size: opts.size || 6, trail: Math.max(2, Math.round((opts.n || 3) * 0.8)) });
   };
   DuelView.prototype.ring = function (x, y, colors, n) {
     for (var i = 0; i < (n || 14); i++) {
@@ -559,13 +673,11 @@
     var x = sp ? sp.x : PILE.x, y = sp ? sp.y : PILE.y, to;
     switch (ev.seal) {
       case 'glut':
-        fx.burst(x, y, { n: 46, speed: 420, life: 1.1, colors: ['#fff3c4', '#ffd75e', '#f08a24', '#d2452f'] });
-        fx.burst(x, y + 30, { n: 16, speed: 160, grav: -420, life: 0.9, colors: ['#ffd75e', '#f08a24'] });
-        fx.pop(x, y - 120, 'Glutsiegel ×2', 'score hot');
-        ZU.audio.ignite();
-        ZU.bg.flash(0.35);
-        fx.shake(4);
-        return wait(360);
+        // Die Verdopplung selbst steht schon in der Rechnung über dem Stapel; hier lodert nur noch die Karte nach.
+        fx.burst(x, y, { n: 34, speed: 380, life: 1.1, colors: ['#fff3c4', '#ffd75e', '#f08a24', '#d2452f'] });
+        fx.burst(x, y + 30, { n: 14, speed: 160, grav: -420, life: 0.9, colors: ['#ffd75e', '#f08a24'] });
+        ZU.bg.flash(0.3);
+        return wait(160);
       case 'zuend':
         to = this.spot('chain');
         ZU.audio.match();
@@ -1341,17 +1453,61 @@
       ZU.bg.flash(1);
       fx.shake(16);
       for (var i = 0; i < 6; i++) fx.burst(ZU.rand(300, 980), ZU.rand(200, 520), { n: 26, speed: 420, life: 1.4 });
+      fx.hitstop(110);
+      fx.zoom(0.04);
+      this.boardFire.kick(1);
       this.oHand.forEach(function (sp) { sp.face(true); sp.kick(ZU.rand(-500, 500), ZU.rand(-200, 300), ZU.rand(-600, 600)); });
+      this.burnHand(this.oHand, 520);
       done = fx.banner('Zündung!', 'win', 1500);
     } else {
       ZU.audio.lose();
       ZU.bg.set('lose');
       fx.shake(8);
+      this.setHeat(0);
       this.pHand.forEach(function (sp) { sp.kick(ZU.rand(-300, 300), ZU.rand(100, 400), ZU.rand(-400, 400)); });
+      this.burnHand(this.pHand, 380);
       fx.smoke(CENTER, HAND_Y - 40, 30);
       done = fx.banner('Ausgebrannt', 'lose', 1500);
     }
     return done.then(function () { if (!self.destroyed) self.game.duelFinished(self); });
+  };
+
+  /* Die Karten des Verlierers gehen in Flammen auf, eine nach der anderen. */
+  DuelView.prototype.burnHand = function (list, delay) {
+    var self = this;
+    list.slice().forEach(function (sp, i) {
+      setTimeout(function () {
+        if (self.destroyed || sp.dead) return;
+        sp.sway = 0;
+        if (i % 2 === 0) ZU.audio.burn();
+        fx.burn(sp.el, { ms: 700, quiet: list.length > 8 && i % 2 === 1 });
+      }, (delay + i * 70) / ZU.speed);
+    });
+  };
+
+  /* Abgang: Die Karten wandern verdeckt zurück auf ihre Stapel, die Tafeln gleiten hinaus. Erst danach
+     baut das Spiel den nächsten Bildschirm auf (ZU.game.go) – so gibt es keinen harten Schnitt. */
+  DuelView.prototype.leave = function () {
+    var self = this, list = Object.keys(this.sprites).map(function (key) { return self.sprites[key]; });
+    this.busy = true;
+    this.root.classList.add('leaving');
+    this.setHeat(0);
+    this.promptEl.classList.remove('on');
+    this.bubble.classList.remove('on');
+    list.forEach(function (sp, i) {
+      var to = self.oHand.indexOf(sp) >= 0 ? OSTOCK : STOCK;
+      sp.sway = 0;
+      sp.tlift = 0;
+      sp.unpointer();
+      sp.el.style.pointerEvents = 'none';
+      setTimeout(function () {
+        sp.face(false);
+        sp.moveTo(to.x, to.y, 0, to === OSTOCK ? 0.6 : 1);
+        sp.setZ(250 + i);
+      }, i * 18);
+    });
+    if (list.length) ZU.audio.shuffle();
+    return new Promise(function (resolve) { setTimeout(resolve, 330 + Math.min(200, list.length * 18)); });
   };
 
   ZU.DuelView = DuelView;

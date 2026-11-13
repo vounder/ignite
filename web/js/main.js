@@ -16,6 +16,7 @@
       ZU.initStage();
       ZU.bg.init();
       this.applySettings();
+      setTimeout(function () { ZU.fx.prepare(); }, 1500); // Brandmasken vorab erzeugen, sobald der Vorspann läuft
       var self = this;
       window.addEventListener('pointerdown', function () { ZU.audio.unlock(); }, { once: false, passive: true });
       window.addEventListener('keydown', function (ev) {
@@ -108,6 +109,32 @@
     /* Wechselt den Bildschirm. Fehlen dafür noch Bilder, wartet ein Schleier bzw. der Ladebildschirm darauf.
        cover: Schleier in jedem Fall kurz zeigen (Übergang, der langsamen Geräten Zeit verschafft). */
     go: function (name, cover) {
+      var self = this;
+      // Erst räumt der alte Bildschirm ab (Karten zurück auf den Stapel, Tafeln gleiten hinaus), dann kommt der neue.
+      this._next = [name, cover];
+      if (this._leaving) return; // läuft schon ein Abgang, gilt einfach das zuletzt genannte Ziel
+      var out = this.leaveScreen();
+      if (!out) { this._next = null; this.enter(name, cover); return; }
+      this._leaving = true;
+      out.then(function () {
+        var next = self._next;
+        self._leaving = false;
+        self._next = null;
+        if (next) self.enter(next[0], next[1]);
+      });
+    },
+
+    /* Abgang des aktuellen Bildschirms; liefert ein Versprechen oder null, wenn nichts abzuräumen ist. */
+    leaveScreen: function () {
+      var root = this.root;
+      if (!this.screen || !root.firstChild) return null;
+      if (this.view && this.view.leave && !this.view.destroyed) return this.view.leave();
+      root.classList.remove('enter');
+      root.classList.add('leave');
+      return new Promise(function (resolve) { setTimeout(resolve, 150); });
+    },
+
+    enter: function (name, cover) {
       var self = this, need = this.needs(name);
       var missing = need.some(function (url) { return !ZU.isLoaded(url); });
       if (!missing && !cover) { this.show(name); return; }
@@ -135,7 +162,7 @@
       // Glutfunken: im Menü dezent, im Run von wenigen im ersten Akt bis zur vollen Glut im letzten.
       var acts = inRun ? this.run.acts() : 1, progress = inRun ? (acts > 1 ? Math.min(1, (this.run.s.act - 1) / (acts - 1)) : 1) : 0;
       ZU.bg.setEmber(inRun ? 0.3 + 0.7 * progress : 0.35);
-      root.classList.remove('enter');
+      root.classList.remove('enter', 'leave');
       root.innerHTML = '';
       this.profile = ZU.Profile.load();
       if (name === 'duel') {
@@ -152,6 +179,9 @@
       }
       void root.offsetWidth;
       root.classList.add('enter');
+      // Die Auftritte gelten nur für den Aufbau: Was später nachgerendert wird (Angebote im Laden), soll nicht erneut hereinfahren.
+      var token = (this._enterToken = (this._enterToken || 0) + 1), self = this;
+      setTimeout(function () { if (self._enterToken === token) root.classList.remove('enter'); }, 1100);
     },
 
     toMenu: function () { this.go('menu'); },

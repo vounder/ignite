@@ -158,6 +158,12 @@
       tone(f * 2, 0.12, 'sine', 0.1, 0.01);
       noise(0.05, 5200, 2, 0.07);
     },
+    /* Rechenschritt der Wertung: ein kurzer Klick, der mit jedem Schritt höher wird. */
+    step: function (index) {
+      var f = 660 * semis(SCALE[Math.min(SCALE.length - 1, Math.max(0, index))]);
+      tone(f, 0.05, 'square', 0.05);
+      tone(f * 2, 0.04, 'sine', 0.05, 0.005);
+    },
     chip: function () { tone(2700, 0.05, 'sine', 0.12); tone(3500, 0.07, 'sine', 0.1, 0.035); },
     coin: function (step) {
       var f = 1150 * semis(Math.min(12, step || 0));
