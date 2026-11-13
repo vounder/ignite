@@ -26,19 +26,29 @@
     var starter = ZU.STARTERS.filter(function (s) { return s.id === starterId; })[0] || ZU.STARTERS[0];
     var state = {
       v: 1, seed: seed >>> 0, rng: seed >>> 0, starter: starter.id,
-      act: 1, table: 0, lives: meta.maxLives, money: starter.money + meta.startgeld, score: 0, nextId: 1,
+      act: 1, table: 0, lives: Math.max(1, meta.maxLives + (starter.lives || 0)), money: starter.money + meta.startgeld, score: 0, nextId: 1,
       meta: meta, ash: 0, ashPaid: 0,
-      collection: [], trinkets: starter.trinkets.slice(), perks: (starter.perks || []).slice(), perkOffer: null, kniffe: (starter.kniffe || []).map(function (k) { return { id: k.id, level: k.level }; }), bonusLives: 0, phase: 'select',
+      collection: [], trinkets: starter.trinkets.slice(), perks: (starter.perks || []).slice(), perkOffer: null, kniffe: (starter.kniffe || []).map(function (k) { return { id: k.id, level: k.level }; }),
+      bonusLives: Math.max(1, meta.maxLives + (starter.lives || 0)) - meta.maxLives, phase: 'select',
       encounters: [], seen: [], shop: null, reward: null, burnCount: 0, endless: false,
       stats: { duels: 0, wins: 0, losses: 0, bestChain: 1, bestGlut: 0, played: 0, earned: 0 }
     };
     var run = new Run(state);
-    // Startdeck: 16 normale Karten (feste der Schachtel, der Rest zufällig) plus Spezialkarten.
+    // Startdeck: normale Karten (feste der Schachtel, der Rest zufällig; manche Schachteln kennen nur zwei Symbole
+    // oder sind kleiner bzw. größer als 16) plus Spezialkarten.
     // Die sind an ein zufälliges Symbol gebunden; "special" heißt: eine zufällige gewöhnliche aus dem freien Bestand.
+    var size = starter.size || ZU.DECK_SIZE;
     var fixed = starter.cards.filter(function (def) { return !ZU.CARDS[def].special; });
-    var pool = run.rng.shuffle(ZU.STANDARD_IDS.filter(function (id) { return fixed.indexOf(id) < 0; }));
+    var pool = run.rng.shuffle(ZU.STANDARD_IDS.filter(function (id) {
+      return fixed.indexOf(id) < 0 && (!starter.suits || starter.suits.indexOf(ZU.CARDS[id].suit) >= 0);
+    }));
     fixed.forEach(function (def) { run._add(def); });
-    while (state.collection.length < ZU.DECK_SIZE) run._add(pool.pop());
+    while (state.collection.length < size && pool.length) run._add(pool.pop());
+    if (starter.seals) {
+      // Veredelte Karten der Schachtel: je Siegel eine andere zufällige Karte
+      var plain = run.rng.shuffle(state.collection.slice());
+      starter.seals.forEach(function (seal) { var card = plain.pop(); if (card && ZU.SEALS[seal]) card.seal = seal; });
+    }
     starter.cards.filter(function (def) { return ZU.CARDS[def].special; }).forEach(function (def) { run._add(def, run.rng.pick(ZU.SUIT_ORDER)); });
     if (starter.special) {
       var commons = run._specialPool().filter(function (id) { return ZU.CARDS[id].rarity === 0; });
@@ -869,7 +879,7 @@
 
   ZU.Profile = {
     defaults: function () {
-      return { runs: 0, wins: 0, best: 0, bestAct: 0, seenHelp: false, meta: {}, brSeen: [], popSeen: [], popInit: false, avatar: {}, settings: { music: 0.5, sfx: 0.7, voice: 0.7, speed: 1, crt: true, bg: true, fullscreen: 'ask' } };
+      return { runs: 0, wins: 0, best: 0, bestAct: 0, seenHelp: false, meta: {}, brSeen: [], popSeen: [], popInit: false, avatar: {}, deck: 'classic', settings: { music: 0.5, sfx: 0.7, voice: 0.7, speed: 1, crt: true, bg: true, fullscreen: 'ask' } };
     },
     load: function () {
       var base = ZU.Profile.defaults(), store = storage();

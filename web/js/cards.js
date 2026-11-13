@@ -124,8 +124,18 @@
     return el;
   };
 
-  ZU.cardBack = function () {
-    return h('div', 'card back', [h('div', 'back-inner', [h('div', 'back-emblem')])]);
+  /* Rückseite: Die eigenen Karten tragen das Etikett der gewählten Schachtel (deck = deren Kennung),
+     alle anderen die Hausrückseite. */
+  ZU.cardBack = function (deck) {
+    var el = h('div', 'card back');
+    el.style.backgroundImage = 'url(' + (deck ? ZU.deckArt(deck, 'back') : ZU.asset('decks/house-back.png')) + ')';
+    return el;
+  };
+  /* Schachtel einer Startschachtel als Bild; cls bestimmt die Größe. */
+  ZU.boxEl = function (id, cls) {
+    var el = h('div', 'deckbox' + (cls ? ' ' + cls : ''));
+    el.style.backgroundImage = 'url(' + ZU.deckArt(id, 'box') + ')';
+    return el;
   };
 
   /* Statische Karte für Laden, Deck und Belohnungen (kippt zur Maus). */
@@ -353,7 +363,8 @@
   ZU.CARD_W = CW;
   ZU.CARD_H = CH;
 
-  function Sprite(card, layer, x, y) {
+  /* deck: Kennung der Schachtel, deren Rückseite die Karte trägt (leer = Hausrückseite). */
+  function Sprite(card, layer, x, y, deck) {
     this.id = card.id;
     this.def = ZU.CARDS[card.def];
     this.bind = card.bind;
@@ -377,7 +388,7 @@
 
     this.seal = card.seal || null;
     this.flaw = card.flaw || null;
-    this.flipEl = h('div', 'spr-flip', [ZU.cardFace(this.def, card.bind, card), ZU.cardBack()]);
+    this.flipEl = h('div', 'spr-flip', [ZU.cardFace(this.def, card.bind, card), ZU.cardBack(deck)]);
     this.tiltEl = h('div', 'spr-tilt', [this.flipEl]);
     this.shadowEl = h('div', 'spr-shadow');
     this.badgeEl = h('div', 'spr-badge');

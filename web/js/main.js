@@ -74,10 +74,14 @@
       var run = this.run, urls = [], self = this;
       function add(path) { urls.push(ZU.asset(path)); }
       if (name === 'casino') ZU.CASINO_ART.forEach(add);
+      if (name === 'starter') ZU.STARTERS.forEach(function (starter) { add('decks/' + starter.id + '-box.png'); });
+      if (name === 'starter') urls.push(ZU.deckArt(ZU.STARTER[this.starterPick || this.profile.deck] ? this.starterPick || this.profile.deck : 'classic', 'back'));
+      if (name === 'duel' && run) add('decks/house-back.png');
       if (name === 'avatar' || name === 'duel') ZU.avatar.urls(ZU.avatar.clean(this.profile.avatar, ZU.Meta.get())).forEach(function (u) { urls.push(u); });
       if (name === 'backroom') { add('backroom/room.png'); add('backroom/veil.png'); }
       if (!run || ['select', 'duel', 'shop', 'esme', 'reward'].indexOf(name) < 0) return urls;
       urls.push(ZU.cardAtlas());
+      urls.push(ZU.deckArt(run.s.starter, 'back'));
       run.s.trinkets.forEach(function (id) { add('trinkets/' + id + '.png'); });
       (run.s.kniffe || []).forEach(function (k) { add('kniffe/' + k.id + '.png'); });
       if (run.s.kniffOffer && run.s.kniffOffer.id) add('kniffe/' + run.s.kniffOffer.id + '.png');
@@ -160,6 +164,11 @@
       var seed = (Date.now() ^ Math.floor(Math.random() * 0x7fffffff)) >>> 0;
       this.run = ZU.Run.start(starterId, seed, ZU.Meta.runOptions());
       this.run.save();
+      // Die zuletzt gespielte Schachtel liegt beim nächsten Mal wieder im Schaukasten.
+      var profile = ZU.Profile.load();
+      profile.deck = this.run.s.starter;
+      ZU.Profile.save(profile);
+      this.profile = profile;
       var self = this;
       // Der Schleier ist zugleich Übergang: Dahinter laden die Gegner des ersten Akts.
       self.go('select', true);

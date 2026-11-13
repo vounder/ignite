@@ -115,6 +115,13 @@ Esme (`esme/esme.png`, sechs Bilder zu 384 Pixel: ruhig, Blinzeln, gierig, gener
 Siegel (`seals/`, sieben Siegel und der Makel, 64×64) entstanden am 12.11.2026 auf dieselbe Weise; Skripte und
 Prompts liegen unter `/data/ignite/art/esme/`. `upgrades/tarot.png` ist das Irrlicht-Siegel, vergrößert.
 
+Schachteln (`decks/`, 13.11.2026): je Startschachtel eine Kartenrückseite (`<id>-back.png`, 208×292) und die
+Schachtel selbst (`<id>-box.png`, 480×320, freigestellt), dazu die Hausrückseite der Gegner (`house-back.png`).
+Erst entstand die Rückseite (Stilvorlage: drei Kartenvorderseiten aus `cards/faces.png`), dann die Schachtel mit
+dieser Rückseite als Vorlage für das Etikett. Motive und Farben stehen in `/data/ignite/art/decks/decks.tsv`,
+die Prompts in `gen.sh`, das Freistellen und Verkleinern in `build.py` (Aufruf mit dem Pfad des Arbeitsverzeichnisses);
+`shots.cjs` fotografiert Schachtelwahl, Hinterzimmer und Duell.
+
 Upgrades (`upgrades/`, 13 Stück, 12.11.2026): je ein Symbol für die dauerhaften Upgrades im Hinterzimmer,
 erzeugt wie die Trinkets (Bögen auf Chroma-Grün, Skripte unter `/data/ignite/art/upgrades/`).
 

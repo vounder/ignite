@@ -117,7 +117,8 @@
 
     // Tischmitte
     this.layer = h('div', 'cards-layer');
-    this.stockEl = h('div', 'stockpile', [ZU.cardBack(), ZU.cardBack(), ZU.cardBack()]);
+    var deck = run.s.starter;
+    this.stockEl = h('div', 'stockpile', [ZU.cardBack(deck), ZU.cardBack(deck), ZU.cardBack(deck)]);
     this.stockNum = h('div', 'stocknum', '0');
     this.stockEl.appendChild(this.stockNum);
     this.stockEl.style.left = (STOCK.x - ZU.CARD_W / 2) + 'px';
@@ -189,7 +190,8 @@
   /* ---------- Sprites und Layout ---------- */
   DuelView.prototype.spawn = function (id, x, y) {
     var self = this, card = this.duel.cards[id];
-    var sp = new ZU.Sprite(card, this.layer, x, y);
+    // Eigene Karten zeigen die Rückseite der Schachtel, die des Gegners die des Hauses.
+    var sp = new ZU.Sprite(card, this.layer, x, y, card.owner === 'player' ? this.run.s.starter : null);
     this.sprites[id] = sp;
     sp.el.addEventListener('pointerenter', function () { self.onHover(sp, true); });
     sp.el.addEventListener('pointerleave', function () { self.onHover(sp, false); });

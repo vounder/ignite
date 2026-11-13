@@ -123,7 +123,7 @@ function shop(run, rnd) {
       assert.ok(!ZU.CARDS[offer.def].special, 'Spezialkarte im Regal für normale Karten');
       if (!offer.sold && s.money >= run.cardPrice(i) && rnd.next() < 0.08) run.buyCard(i);
     });
-    if (s.lives < ZU.MAX_LIVES && !s.shop.healed && s.money >= run.healPrice()) run.heal();
+    if (s.lives < run.maxLives() && !s.shop.healed && s.money >= run.healPrice()) run.heal();
     // Esmes Nebenzimmer: Pakete prüfen und gelegentlich kaufen
     s.shop.esme.packs.forEach((pack, i) => {
       assert.ok(pack.price >= 2 && pack.items.length === { single: 1, double: 2, bag: 3 }[pack.kind]);
@@ -297,12 +297,24 @@ for (let n = 0; n < RUNS; n++) {
   ZU.Profile._memory = null;
 }
 
-// Startdeck: 16 normale Karten plus die Spezialkarten der Schachtel; jede Seite zieht vom eigenen Stapel.
+// Startdeck: die normalen Karten der Schachtel (meist 16) plus ihre Spezialkarten; jede Seite zieht vom eigenen Stapel.
 ZU.STARTERS.forEach(starter => {
   const run = ZU.Run.start(starter.id, 900, ZU.Meta.runOptions(ZU.Meta.defaults()));
   const specials = run.s.collection.filter(c => ZU.CARDS[c.def].special);
-  assert.strictEqual(run.s.collection.length - specials.length, ZU.DECK_SIZE, starter.id + ': 16 normale Karten');
-  assert.strictEqual(specials.length, starter.special ? 1 : starter.cards.filter(d => ZU.CARDS[d].special).length, starter.id + ': Spezialkarten');
+  const normal = run.s.collection.filter(c => !ZU.CARDS[c.def].special);
+  assert.strictEqual(normal.length, starter.size || ZU.DECK_SIZE, starter.id + ': Zahl der normalen Karten');
+  assert.strictEqual(new Set(normal.map(c => c.def)).size, normal.length, starter.id + ': keine Karte doppelt');
+  assert.strictEqual(specials.length, (starter.special ? 1 : 0) + starter.cards.filter(d => ZU.CARDS[d].special).length, starter.id + ': Spezialkarten');
+  assert.ok(specials.length <= ZU.SPECIAL_SLOTS, starter.id + ': Spezialkarten passen ins Deck');
+  starter.cards.forEach(def => assert.ok(run.s.collection.some(c => c.def === def), starter.id + ': feste Karte ' + def));
+  if (starter.suits) assert.ok(normal.every(c => starter.suits.includes(ZU.CARDS[c.def].suit)), starter.id + ': nur die Symbole der Schachtel');
+  assert.deepStrictEqual(run.s.collection.filter(c => c.seal).map(c => c.seal).sort(), (starter.seals || []).slice().sort(), starter.id + ': Siegel');
+  assert.ok(run.s.collection.every(c => !c.seal || !ZU.CARDS[c.def].special), starter.id + ': Siegel nur auf normalen Karten');
+  assert.strictEqual(run.s.lives, ZU.MAX_LIVES + (starter.lives || 0), starter.id + ': Streichhölzer');
+  assert.strictEqual(run.maxLives(), run.s.lives, starter.id + ': die Schachtel ist voll');
+  starter.trinkets.forEach(id => assert.ok(ZU.TRINKETS[id], starter.id + ': Trinket ' + id));
+  (starter.kniffe || []).forEach(k => assert.ok(ZU.KNIFFE[k.id], starter.id + ': Kniff ' + k.id));
+  assert.ok(ZU.Meta.REQ['starter:' + starter.id] || starter.id === 'classic', starter.id + ': Bedingung fürs Hinterzimmer');
   const duel = run.newDuel();
   duel.start();
   const own = new Set(run.s.collection.map(c => c.id));
