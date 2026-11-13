@@ -1,6 +1,8 @@
 /* Zündung – die eigene Figur: ein Brustbild aus übereinandergelegten Ebenen (assets/avatar/*.png, je 192×192).
    Reihenfolge: Körper (eingefärbt), Tattoos, Outfit, Gesicht (je Ausdruck), Haare (eingefärbt), Hut.
-   Körper und Haare liegen in Graustufen vor und werden beim Zeichnen mit der gewählten Farbe multipliziert.
+   Körper, Gesichtsschatten und Haare liegen in fünf Graustufen vor (16 Kontur, 96 tiefer Schatten, 152 Schatten,
+   208 Grundton, 248 Glanzlicht); beim Zeichnen wird jede Stufe durch die Farbe einer Rampe ersetzt (ramp), damit
+   Schatten wie bei den Gegnerporträts in den Farbton kippen statt nur dunkler zu werden.
    Teile werden nicht gekauft, sondern erspielt: req = [Zählwerk, Schwelle, Hinweis] wie im Hinterzimmer. */
 (function (ZU) {
   'use strict';
@@ -8,45 +10,102 @@
 
   var PARTS = {
     skin: [
-      { id: 'porzellan', name: 'Porzellan', color: '#f6dcc6' }, { id: 'sand', name: 'Sand', color: '#eec39a' },
-      { id: 'honig', name: 'Honig', color: '#d9a066' }, { id: 'bronze', name: 'Bronze', color: '#b97a4a' },
-      { id: 'kastanie', name: 'Kastanie', color: '#8a5632' }, { id: 'ebenholz', name: 'Ebenholz', color: '#5e3a22' }
+      { id: 'porzellan', name: 'Porzellan', color: '#fcc8a4', ramp: ['#3a1410', '#d07a5a', '#eaa07c', '#fcc8a4', '#ffe8d0'] },
+      { id: 'sand', name: 'Sand', color: '#fcb070', ramp: ['#38100c', '#d86a3c', '#ea8a50', '#fcb070', '#fdd8a4'] },
+      { id: 'honig', name: 'Honig', color: '#fc9d52', ramp: ['#370c09', '#d75a2b', '#e47339', '#fc9d52', '#fdc88a'] },
+      { id: 'bronze', name: 'Bronze', color: '#de7e3e', ramp: ['#300a08', '#a8401e', '#c45c2a', '#de7e3e', '#f4a868'] },
+      { id: 'kastanie', name: 'Kastanie', color: '#b0562a', ramp: ['#260806', '#6e2814', '#8e3c1c', '#b0562a', '#d27e48'] },
+      { id: 'ebenholz', name: 'Ebenholz', color: '#783620', ramp: ['#1a0606', '#3e160e', '#5a2414', '#783620', '#a05834'] }
     ],
     hair: [
-      { id: 'none', name: 'Glatze' },
       { id: 'hair-1', name: 'Seitenscheitel' },
+      { id: 'hair-4', name: 'Stoppelschnitt', req: ['duels', 1, 'Gewinne ein Duell.'] },
+      { id: 'hair-6', name: 'Bob mit Pony', req: ['duels', 2, 'Gewinne 2 Duelle.'] },
+      { id: 'none', name: 'Glatze', req: ['burned', 3, 'Verbrenne 3 Karten.'] },
       { id: 'hair-2', name: 'Lockenkopf', req: ['duels', 5, 'Gewinne 5 Duelle.'] },
-      { id: 'hair-3', name: 'Lange Mähne', req: ['chain', 8, 'Erreiche eine Kette von ×8.'] }
+      { id: 'hair-7', name: 'Pferdeschwanz', req: ['played', 150, 'Spiele 150 Karten.'] },
+      { id: 'hair-3', name: 'Lange Mähne', req: ['chain', 8, 'Erreiche eine Kette von ×8.'] },
+      { id: 'hair-5', name: 'Tolle', req: ['sevens', 25, 'Spiele 25 Siebenen.'] },
+      { id: 'hair-8', name: 'Afro', req: ['duels', 15, 'Gewinne 15 Duelle.'] },
+      { id: 'hair-9', name: 'Flechtzöpfe mit Dutt', req: ['kniffe', 3, 'Lerne oder stufe 3 Kniffe.'] },
+      { id: 'hair-10', name: 'Undercut mit Zopf', req: ['fast', 3, 'Gewinne 3 Duelle in höchstens 16 Zügen.'] },
+      { id: 'hair-11', name: 'Glamourwellen', req: ['casino', 1, 'Räume das erste Casino aus.'] },
+      { id: 'hair-12', name: 'Irokese', req: ['burnt', 10, 'Fackle 10 Tische ab.'] }
     ],
     hairColor: [
-      { id: 'schwarz', name: 'Schwarz', color: '#3a2c26' }, { id: 'braun', name: 'Braun', color: '#8a5a34' }, { id: 'blond', name: 'Blond', color: '#e2b65a' },
-      { id: 'rot', name: 'Rot', color: '#c2472a', req: ['burnt', 3, 'Fackle 3 Tische ab.'] },
-      { id: 'grau', name: 'Silbergrau', color: '#b9b4ac', req: ['duels', 25, 'Gewinne 25 Duelle.'] },
-      { id: 'weiss', name: 'Schlohweiß', color: '#f1ece2', req: ['casino', 2, 'Räume 2 Casinos aus.'] },
-      { id: 'tuerkis', name: 'Türkis', color: '#4fc2ae', req: ['kniffe', 5, 'Lerne oder stufe 5 Kniffe.'] },
-      { id: 'glut', name: 'Glutorange', color: '#ff8a2a', req: ['overkill', 2, 'Übertriff ein Glutziel um das Doppelte.'] }
+      { id: 'schwarz', name: 'Schwarz', color: '#40343a', ramp: ['#0c080c', '#181218', '#2a2028', '#40343a', '#74626a'] },
+      { id: 'braun', name: 'Braun', color: '#8e5a28', ramp: ['#24100a', '#40200e', '#683a18', '#8e5a28', '#c08a48'] },
+      { id: 'blond', name: 'Blond', color: '#f6b848', ramp: ['#3a1a08', '#a85a18', '#d88a28', '#f6b848', '#ffe08a'] },
+      { id: 'rot', name: 'Rot', color: '#e44a22', ramp: ['#30060a', '#7a1010', '#b8241a', '#e44a22', '#ff8a40'], req: ['burnt', 3, 'Fackle 3 Tische ab.'] },
+      { id: 'grau', name: 'Silbergrau', color: '#b8b6ba', ramp: ['#1c1a22', '#56545e', '#8a8892', '#b8b6ba', '#e8e6e4'], req: ['duels', 25, 'Gewinne 25 Duelle.'] },
+      { id: 'weiss', name: 'Schlohweiß', color: '#f0ece8', ramp: ['#2a2630', '#9a94a2', '#cac6cc', '#f0ece8', '#ffffff'], req: ['casino', 2, 'Räume 2 Casinos aus.'] },
+      { id: 'tuerkis', name: 'Türkis', color: '#3cc2a8', ramp: ['#081e1e', '#0e4a44', '#1a8274', '#3cc2a8', '#a0f4dc'], req: ['kniffe', 5, 'Lerne oder stufe 5 Kniffe.'] },
+      { id: 'glut', name: 'Glutorange', color: '#ff8a1e', ramp: ['#300a04', '#a02808', '#e0500e', '#ff8a1e', '#ffd060'], req: ['overkill', 2, 'Übertriff ein Glutziel um das Doppelte.'] }
+    ],
+    beard: [
+      { id: 'none', name: 'Glatt rasiert' },
+      { id: 'beard-4', name: 'Dreitagebart', req: ['duels', 4, 'Gewinne 4 Duelle.'] },
+      { id: 'beard-1', name: 'Zwirbelbart', req: ['duels', 8, 'Gewinne 8 Duelle.'] },
+      { id: 'beard-2', name: 'Kinnbart', req: ['specials', 20, 'Spiele 20 Spezialkarten.'] },
+      { id: 'beard-5', name: 'Koteletten', req: ['eights', 25, 'Spiele 25 Achten.'] },
+      { id: 'beard-3', name: 'Vollbart', req: ['duels', 30, 'Gewinne 30 Duelle.'] }
     ],
     outfit: [
       { id: 'outfit-2', name: 'Unterhemd' },
+      { id: 'outfit-5', name: 'Kapuzenpulli', req: ['played', 60, 'Spiele 60 Karten.'] },
       { id: 'outfit-1', name: 'Hemd und Weste', req: ['duels', 3, 'Gewinne 3 Duelle.'] },
-      { id: 'outfit-3', name: 'Burgunder Anzug', req: ['casino', 1, 'Räume das erste Casino aus.'] }
+      { id: 'outfit-4', name: 'Lederjacke', req: ['duels', 12, 'Gewinne 12 Duelle.'] },
+      { id: 'outfit-6', name: 'Hawaiihemd', req: ['bank', 10, 'Kassiere in einem Duell eine Bank von 10 Mark.'] },
+      { id: 'outfit-10', name: 'Trainingsjacke', req: ['losses', 5, 'Verliere 5 Duelle.'] },
+      { id: 'outfit-13', name: 'Croupier-Weste', req: ['bought', 25, 'Kaufe 25-mal bei Manfred.'] },
+      { id: 'outfit-9', name: 'Rollkragen mit Goldkette', req: ['money', 60, 'Halte 60 Mark in der Kasse.'] },
+      { id: 'outfit-3', name: 'Burgunder Anzug', req: ['casino', 1, 'Räume das erste Casino aus.'] },
+      { id: 'outfit-8', name: 'Paillettenkleid', req: ['sealed', 6, 'Lass bei Esme 6 Karten veredeln.'] },
+      { id: 'outfit-12', name: 'Nadelstreifen', req: ['casino', 2, 'Räume 2 Casinos aus.'] },
+      { id: 'outfit-11', name: 'Pelzkragenmantel', req: ['casino', 4, 'Räume 4 Casinos aus.'] },
+      { id: 'outfit-7', name: 'Smoking', req: ['casino', 6, 'Räume 6 Casinos aus.'] }
     ],
     hat: [
       { id: 'none', name: 'Ohne Hut' },
+      { id: 'hat-4', name: 'Baseballkappe', req: ['duels', 6, 'Gewinne 6 Duelle.'] },
       { id: 'hat-2', name: 'Schiebermütze', req: ['duels', 10, 'Gewinne 10 Duelle.'] },
-      { id: 'hat-1', name: 'Fedora', req: ['foe:boss', 3, 'Schlage 3 Bosse.'] }
+      { id: 'hat-7', name: 'Strickmütze', req: ['curfew', 3, 'Gewinne 3 Duelle zur Sperrstunde.'] },
+      { id: 'hat-5', name: 'Bandana', req: ['curses', 15, 'Lass Gegner 15-mal unter einem Fluch ziehen.'] },
+      { id: 'hat-6', name: 'Croupier-Schirm', req: ['skips', 20, 'Lass Gegner 20-mal aussetzen.'] },
+      { id: 'hat-1', name: 'Fedora', req: ['foe:boss', 3, 'Schlage 3 Bosse.'] },
+      { id: 'hat-9', name: 'Cowboyhut', req: ['foe:bluffer', 2, 'Schlage Texas-Theo zweimal.'] },
+      { id: 'hat-3', name: 'Zylinder', req: ['casino', 3, 'Räume 3 Casinos aus.'] },
+      { id: 'hat-8', name: 'Krone', req: ['casino', 8, 'Räume alle 8 Casinos aus.'] }
+    ],
+    acc: [
+      { id: 'acc-1', name: 'Nickelbrille', req: ['specials', 8, 'Spiele 8 Spezialkarten.'] },
+      { id: 'acc-4', name: 'Goldkreolen', req: ['duels', 9, 'Gewinne 9 Duelle.'] },
+      { id: 'acc-3', name: 'Zigarre', req: ['burned', 10, 'Verbrenne 10 Karten.'] },
+      { id: 'acc-2', name: 'Pilotenbrille', req: ['flawless', 1, 'Räume ein Casino aus, ohne ein Streichholz zu verlieren.'] },
+      { id: 'acc-7', name: 'Perlenkette', req: ['money', 40, 'Halte 40 Mark in der Kasse.'] },
+      { id: 'acc-6', name: 'Monokel', req: ['foe:boss', 8, 'Schlage 8 Bosse.'] },
+      { id: 'acc-5', name: 'Augenklappe', req: ['losses', 10, 'Verliere 10 Duelle.'] }
     ],
     tattoo: [
       { id: 'tattoo-1', name: 'Flamme am Hals', req: ['burnt', 5, 'Fackle 5 Tische ab.'] },
       { id: 'tattoo-2', name: 'Pik-Ass auf der Brust', req: ['aces', 25, 'Spiele 25 Asse.'] },
-      { id: 'tattoo-3', name: 'Farbenband an der Schulter', req: ['chain', 10, 'Erreiche eine Kette von ×10.'] }
+      { id: 'tattoo-3', name: 'Farbenband an der Schulter', req: ['chain', 10, 'Erreiche eine Kette von ×10.'] },
+      { id: 'tattoo-4', name: 'Würfel am Hals', req: ['specials', 40, 'Spiele 40 Spezialkarten.'] },
+      { id: 'tattoo-5', name: 'Flammen am Schlüsselbein', req: ['burnt', 15, 'Fackle 15 Tische ab.'] },
+      { id: 'tattoo-6', name: 'Rose an der Schulter', req: ['sealed', 10, 'Lass bei Esme 10 Karten veredeln.'] },
+      { id: 'tattoo-7', name: 'Pik unter dem Auge', req: ['losses', 15, 'Verliere 15 Duelle.'] },
+      { id: 'tattoo-8', name: 'Farbenkette um den Hals', req: ['pairs', 30, 'Lege 30-mal mehrere Karten auf einmal.'] },
+      { id: 'tattoo-9', name: 'Schlange an der Schulter', req: ['curses', 30, 'Lass Gegner 30-mal unter einem Fluch ziehen.'] },
+      { id: 'tattoo-10', name: 'Glückssieben', req: ['sevens', 77, 'Spiele 77 Siebenen.'] }
     ]
   };
-  var TABS = [['skin', 'Haut'], ['hair', 'Frisur'], ['hairColor', 'Haarfarbe'], ['outfit', 'Outfit'], ['hat', 'Hut'], ['tattoo', 'Tattoos']];
-  var DEFAULT = { skin: 'sand', hair: 'hair-1', hairColor: 'braun', outfit: 'outfit-2', hat: 'none', tattoo: [] };
+  var TABS = [['skin', 'Haut'], ['hair', 'Frisur'], ['hairColor', 'Haarfarbe'], ['beard', 'Bart'], ['outfit', 'Outfit'], ['hat', 'Hut'], ['acc', 'Extras'], ['tattoo', 'Tattoos']];
+  var MULTI = { tattoo: true, acc: true }; // hiervon lassen sich mehrere zugleich tragen
+  var DEFAULT = { skin: 'sand', hair: 'hair-1', hairColor: 'braun', beard: 'none', outfit: 'outfit-2', hat: 'none', acc: [], tattoo: [] };
 
   function find(kind, id) { return PARTS[kind].filter(function (p) { return p.id === id; })[0]; }
   function feat(meta, key) {
+    if (key.indexOf('foe:') === 0 && key !== 'foe:boss') return (meta.defeated || {})[key.slice(4)] || 0;
     if (key === 'foe:boss') return Object.keys(meta.defeated || {}).reduce(function (n, id) { return n + (ZU.ENEMIES[id] && ZU.ENEMIES[id].kind === 'boss' ? meta.defeated[id] : 0); }, 0);
     return ZU.Meta.feat(meta, key);
   }
@@ -56,13 +115,15 @@
   function clean(raw, meta) {
     raw = raw && typeof raw === 'object' ? raw : {};
     var out = {};
-    ['skin', 'hair', 'hairColor', 'outfit', 'hat'].forEach(function (kind) {
+    ['skin', 'hair', 'hairColor', 'beard', 'outfit', 'hat'].forEach(function (kind) {
       var part = find(kind, raw[kind]);
       out[kind] = part && (!meta || unlocked(meta, part)) ? part.id : DEFAULT[kind];
     });
-    out.tattoo = (Array.isArray(raw.tattoo) ? raw.tattoo : []).filter(function (id, i, all) {
-      var part = find('tattoo', id);
-      return part && all.indexOf(id) === i && (!meta || unlocked(meta, part));
+    Object.keys(MULTI).forEach(function (kind) {
+      out[kind] = (Array.isArray(raw[kind]) ? raw[kind] : []).filter(function (id, i, all) {
+        var part = find(kind, id);
+        return part && all.indexOf(id) === i && (!meta || unlocked(meta, part));
+      });
     });
     return out;
   }
@@ -79,43 +140,71 @@
     return item;
   }
   function flush() { var list = waiting; waiting = []; list.forEach(function (fn) { fn(); }); }
+  /* Ebenen von unten nach oben: [Bild, Rampe oder null, Maske oder null]. */
+  var FACE_INK = { 'tattoo-7': true };          // sitzt im Gesicht: nach den Gesichtsschatten, vor den Zügen
+  var UNDER_HAIR = { 'acc-7': true };           // Kette: unter langem Haar
+  var HAIR_OFF = { 'hair-8': { 'hat-2': true, 'hat-3': true, 'hat-4': true, 'hat-7': true } }; // Afro passt unter diese Hüte nicht
   function layers(cfg, mood) {
-    var list = [['body-a', find('skin', cfg.skin).color]];
-    cfg.tattoo.forEach(function (id) { list.push([id]); });
+    var skin = find('skin', cfg.skin).ramp, hairRamp = find('hairColor', cfg.hairColor).ramp, list = [['body-a', skin]];
+    cfg.tattoo.forEach(function (id) { if (!FACE_INK[id]) list.push([id]); });
     list.push([cfg.outfit]);
+    list.push(['face-' + mood + '-skin', skin]);
+    cfg.tattoo.forEach(function (id) { if (FACE_INK[id]) list.push([id]); });
     list.push(['face-' + mood]);
+    if (cfg.beard !== 'none') list.push([cfg.beard, hairRamp]);
+    cfg.acc.forEach(function (id) { if (UNDER_HAIR[id]) list.push([id]); });
     // Unter einem Hut verschwindet das Haar dort, wo die Hutmaske deckt (assets/avatar/<hut>-hairmask.png).
-    if (cfg.hair !== 'none') list.push([cfg.hair, find('hairColor', cfg.hairColor).color, cfg.hat !== 'none' ? cfg.hat + '-hairmask' : null]);
+    var hidden = cfg.hat !== 'none' && HAIR_OFF[cfg.hair] && HAIR_OFF[cfg.hair][cfg.hat];
+    if (cfg.hair !== 'none' && !hidden) list.push([cfg.hair, hairRamp, cfg.hat !== 'none' ? cfg.hat + '-hairmask' : null]);
+    cfg.acc.forEach(function (id) { if (!UNDER_HAIR[id]) list.push([id]); });
     if (cfg.hat !== 'none') list.push([cfg.hat]);
     return list;
   }
+  /* Graustufen-Ebene in die Farben einer Rampe umsetzen; das Ergebnis wird je Bild und Rampe aufgehoben. */
+  var tinted = {};
+  function rgb(hex) { return [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)]; }
+  function ramped(name, img, ramp) {
+    var key = name + '|' + ramp.join(''), done = tinted[key];
+    if (done) return done;
+    var c = document.createElement('canvas');
+    c.width = c.height = SIZE;
+    var x = c.getContext('2d');
+    x.drawImage(img, 0, 0, SIZE, SIZE);
+    try {
+      var data = x.getImageData(0, 0, SIZE, SIZE), px = data.data, cols = ramp.map(rgb);
+      for (var i = 0; i < px.length; i += 4) {
+        if (!px[i + 3]) continue;
+        var l = px[i], col = cols[l < 56 ? 0 : l < 124 ? 1 : l < 180 ? 2 : l < 228 ? 3 : 4];
+        px[i] = col[0]; px[i + 1] = col[1]; px[i + 2] = col[2];
+      }
+      x.putImageData(data, 0, 0);
+    } catch (e) { /* ohne Pixelzugriff bleibt die Ebene grau */ }
+    tinted[key] = c;
+    return c;
+  }
   var scratch = null;
-  /* Zeichnet eine Ebene; mit Farbe wird das Graustufenbild multipliziert und auf seine eigene Form beschnitten. */
-  function drawLayer(ctx, img, color, mask) {
-    if (!color) { ctx.drawImage(img, 0, 0, SIZE, SIZE); return; }
+  function drawLayer(ctx, name, img, ramp, mask) {
+    var src = ramp ? ramped(name, img, ramp) : img;
+    if (!mask) { ctx.drawImage(src, 0, 0, SIZE, SIZE); return; }
     scratch = scratch || document.createElement('canvas');
     scratch.width = scratch.height = SIZE;
     var s = scratch.getContext('2d');
     s.globalCompositeOperation = 'source-over';
     s.clearRect(0, 0, SIZE, SIZE);
-    s.drawImage(img, 0, 0, SIZE, SIZE);
-    s.globalCompositeOperation = 'multiply';
-    s.fillStyle = color;
-    s.fillRect(0, 0, SIZE, SIZE);
-    s.globalCompositeOperation = 'destination-in';
-    s.drawImage(img, 0, 0, SIZE, SIZE);
-    if (mask) { s.globalCompositeOperation = 'destination-out'; s.drawImage(mask, 0, 0, SIZE, SIZE); }
+    s.drawImage(src, 0, 0, SIZE, SIZE);
+    s.globalCompositeOperation = 'destination-out';
+    s.drawImage(mask, 0, 0, SIZE, SIZE);
     ctx.drawImage(scratch, 0, 0);
   }
   function paint(canvas, cfg, mood) {
     var list = layers(cfg, mood), items = list.map(function (l) { return image(l[0]); });
     var masks = list.map(function (l) { return l[2] ? image(l[2]) : null; });
-    if (masks.some(function (it) { return it && !it.ok && !it.bad; })) items.push({ ok: false, bad: false });
-    if (items.some(function (it) { return !it.ok && !it.bad; })) { waiting.push(function () { if (canvas._want === mood + JSON.stringify(cfg)) paint(canvas, cfg, mood); }); return; }
+    var pending = items.concat(masks).some(function (it) { return it && !it.ok && !it.bad; });
+    if (pending) { waiting.push(function () { if (canvas._want === mood + JSON.stringify(cfg)) paint(canvas, cfg, mood); }); return; }
     var ctx = canvas.getContext('2d');
     ctx.imageSmoothingEnabled = false;
     ctx.clearRect(0, 0, SIZE, SIZE);
-    list.forEach(function (l, i) { if (items[i].ok) drawLayer(ctx, items[i].img, l[1], masks[i] && masks[i].ok ? masks[i].img : null); });
+    list.forEach(function (l, i) { if (items[i].ok) drawLayer(ctx, l[0], items[i].img, l[1], masks[i] && masks[i].ok ? masks[i].img : null); });
   }
 
   /* Porträt der eigenen Figur mit denselben Griffen wie ZU.portraitEl: setMood(mood, ms), setBase(mood), setConfig(cfg). */
@@ -161,11 +250,11 @@
       game.saveProfile();
       preview.setConfig(cfg);
     }
-    function chosen(kind, id) { return kind === 'tattoo' ? cfg.tattoo.indexOf(id) >= 0 : cfg[kind] === id; }
+    function chosen(kind, id) { return MULTI[kind] ? cfg[kind].indexOf(id) >= 0 : cfg[kind] === id; }
     function choose(kind, id) {
-      if (kind === 'tattoo') {
-        var at = cfg.tattoo.indexOf(id);
-        if (at >= 0) cfg.tattoo.splice(at, 1); else cfg.tattoo.push(id);
+      if (MULTI[kind]) {
+        var at = cfg[kind].indexOf(id);
+        if (at >= 0) cfg[kind].splice(at, 1); else cfg[kind].push(id);
       } else cfg[kind] = id;
       ZU.audio.select(true);
       save();
@@ -174,7 +263,9 @@
     function sample(kind, part) {
       if (kind === 'skin' || kind === 'hairColor') { var sw = h('i', 'av-swatch'); sw.style.background = part.color; return sw; }
       var copy = JSON.parse(JSON.stringify(cfg));
-      if (kind === 'tattoo') { copy.tattoo = [part.id]; copy.outfit = 'outfit-2'; copy.hat = 'none'; } else copy[kind] = part.id;
+      if (kind === 'tattoo') { copy.tattoo = [part.id]; copy.outfit = 'outfit-2'; copy.hat = 'none'; }
+      else if (MULTI[kind]) copy[kind] = [part.id];
+      else copy[kind] = part.id;
       return el(copy, 'av-mini');
     }
     function render() {
@@ -195,6 +286,7 @@
         grid.appendChild(tile);
       });
       info.textContent = tab === 'tattoo' ? 'Tattoos lassen sich kombinieren. Unter manchem Outfit sind sie nicht zu sehen.'
+        : tab === 'acc' ? 'Extras lassen sich kombinieren.'
         : 'Neue Teile erspielst du dir – sie kosten keine Asche. Unter ????? steht, was dafür zu tun ist.';
     }
     render();
