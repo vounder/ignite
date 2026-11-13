@@ -41,9 +41,10 @@ zugehörigen Elemente blenden sich selbst aus.
   Häme, Ärger, Schreck, Sieg, Niederlage) – verzerrt wie aus einem Funkgerät. Eigener
   Regler „Stimmen“ in den Einstellungen (0 = aus).
 - **Eigene Figur:** Im Hauptmenü unter „Deine Figur“ stellt man ein Brustbild aus Ebenen zusammen
-  (`js/avatar.js`, `assets/avatar/`): Haut, Frisur, Haarfarbe, Outfit, Hut, Tattoos. Ein paar Teile sind
-  von Anfang an da, die übrigen werden erspielt (`req` wie im Hinterzimmer, ohne Asche). Die Figur sitzt
-  im Duell links unten und reagiert mit sechs Gesichtsausdrücken. Gespeichert wird sie im Browser-Profil.
+  (`js/avatar.js`, `assets/avatar/`): 6 Hauttöne, 13 Frisuren, 8 Haarfarben, 5 Bärte, 13 Outfits, 9 Hüte, 7 Extras,
+  10 Tattoos, gezeichnet im Stil der Gegnerporträts. Am Anfang sind nur eine Frisur, die drei Standard-Haarfarben
+  und das Unterhemd frei; alles Weitere wird erspielt (`req` wie im Hinterzimmer, ohne Asche). Die Figur sitzt im
+  Duell links unten und reagiert mit sechs Gesichtsausdrücken. Gespeichert wird sie im Browser-Profil.
 - **Löschmittel:** Die Antwort der Gegner auf Glut (`ZU.DOUSE`, vergeben in
   `run.douse`): Löschsand (8 des Gegners: Kette −2), Löschwasser (Ass: Kette
   halbiert), Sprinkler (jeder 4. Gegnerzug: −5 % des Ziels an Glut), Löschdecke
