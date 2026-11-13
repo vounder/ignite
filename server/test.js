@@ -93,6 +93,18 @@ async function waitFor(check, ms) {
   assert.match(r.headers.get('content-type'), /^text\/javascript/);
   assert.strictEqual(r.headers.get('cache-control'), 'no-cache', 'die App-Hülle wird bei jedem Start geprüft');
   assert.strictEqual((await anon('GET', '/tools/prepare_assets.py')).status, 404, 'Werkzeuge sind nicht öffentlich');
+  // Dateiliste für Offline-Ablage und Android-App
+  r = await anon('GET', '/files.json');
+  assert.strictEqual(r.status, 200);
+  assert.match(r.data.build, /^[0-9a-f]{12}$/);
+  assert.match(r.data.files['index.html'][0], /^[0-9a-f]{64}$/);
+  assert.strictEqual(r.data.files['index.html'][1], fs.statSync(path.join(__dirname, '..', 'web', 'index.html')).size);
+  assert.ok(r.data.files['js/main.js'] && r.data.files['assets/icons/icon-192.png']);
+  assert.ok(!Object.keys(r.data.files).some(name => /^(tools|tests)\/|\.md$|^sw\.js$|^files\.json$/.test(name)), 'nur, was zum Spiel gehört');
+  assert.strictEqual(r.data.bytes, Object.values(r.data.files).reduce((sum, entry) => sum + entry[1], 0));
+  assert.strictEqual(r.headers.get('cache-control'), 'no-cache');
+  assert.strictEqual((await anon('GET', '/files.json', undefined, { 'If-None-Match': r.headers.get('etag') })).status, 304);
+  assert.strictEqual((await anon('GET', '/app/android.json')).status, 404, 'ohne APP_DIR kein App-Download');
   assert.strictEqual((await anon('GET', '/tests/sim.js')).status, 404);
   assert.strictEqual((await anon('GET', '/..%2fserver%2fserver.js')).status, 404, 'kein Ausbruch aus web/');
   assert.strictEqual((await anon('GET', '/%2e%2e/server/server.js')).status, 404);
@@ -190,6 +202,16 @@ async function waitFor(check, ms) {
   assert.strictEqual((await a('GET', '/api/me')).status, 401, 'alte Sitzungen sind danach ungültig');
   assert.strictEqual((await a('POST', '/api/login', { username: 'Zuendler', password: 'streichholz1' })).data.error, 'bad_login');
   assert.strictEqual((await a('POST', '/api/login', { username: 'Zuendler', password: 'neuespasswort' })).status, 200);
+
+  // --- Runs mit Kennung zählen nur einmal (Nachreichen aus der Offline-App) ---
+  const before = (await a('GET', '/api/me')).data.stats;
+  r = await a('POST', '/api/run', { won: true, score: 10, act: 1, id: 'lz3k9x1a-abcdefgh12' });
+  assert.strictEqual(r.data.stats.runs, before.runs + 1);
+  r = await a('POST', '/api/run', { won: true, score: 10, act: 1, id: 'lz3k9x1a-abcdefgh12' });
+  assert.strictEqual(r.status, 200);
+  assert.deepStrictEqual(r.data.stats, Object.assign({}, before, { runs: before.runs + 1, wins: before.wins + 1 }), 'dieselbe Meldung zählt nicht doppelt');
+  r = await a('POST', '/api/run', { won: false, score: 10, act: 1, id: 'lz3k9x1b-abcdefgh12' });
+  assert.strictEqual(r.data.stats.runs, before.runs + 2);
 
   // --- Konto löschen ---
   assert.strictEqual((await a('POST', '/api/account/delete', { password: 'falsch-falsch' })).data.error, 'bad_login');

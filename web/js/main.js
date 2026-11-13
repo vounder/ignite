@@ -30,7 +30,8 @@
       });
       // Erst der Vorspann, dabei lädt alles, was der Titel zeigt; reicht die Zeit nicht, folgt der Ladebalken.
       var core = ZU.TITLE_ART.map(function (path) { return ZU.asset(path); }).concat([ZU.cardAtlas()]);
-      ZU.boot.start(core).then(function () { self.start(); });
+      var pending = ZU.offline.begin(this);
+      ZU.boot.start(core).then(function () { return ZU.boot.update(pending); }).then(function () { self.start(); });
     },
 
     /* Nach Vorspann und Laden: Titel zeigen, den Rest im Hintergrund holen. */
