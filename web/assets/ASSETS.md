@@ -230,8 +230,11 @@ die Funkgerät-Verzerrung entstehen erst beim Abspielen (`js/audio.js`).
 
 Ebenen je 192×192 auf gemeinsamer Leinwand, ohne Versatz zu stapeln, im Stil der Gegnerporträts (Vorbild: `enemies/influencer.png`):
 `body-a` · `tattoo-*` · `outfit-*` · `face-<Ausdruck>-skin` · `face-<Ausdruck>` · `beard-*` · `hair-*` · `acc-*` · `hat-*`
-(Ausnahmen in `layers()` in `js/avatar.js`: Gesichts-Tattoo, Kette unter dem Haar, Afro unter manchen Hüten); `hat-N-hairmask` löscht das Haar unter dem Hut.
+(Ausnahmen in `layers()` in `js/avatar.js`: Gesichts-Tattoos, Kette, Schal und Boa unter dem Haar, manche Frisuren unter manchen Hüten); `hat-N-hairmask` löscht das Haar unter dem Hut
+(leer bei offenen Stücken wie Hörnern, Heiligenschein, Stirnband und Diadem).
 `body-a`, `face-*-skin`, `hair-*` und `beard-*` sind Graustufen mit genau fünf Stufen (16 Kontur, 96 tiefer Schatten, 152 Schatten, 208 Grundton,
 248 Glanzlicht); das Spiel ersetzt jede Stufe durch die Farbe einer Rampe (`ramp` in `js/avatar.js`). Die Gesichtsschatten sind
 Differenzen zum Körper und brauchen ihn darunter. Entstanden über eine magentafarbene Schablone des Körpers, auf die jedes Teil
-einzeln gezeichnet und danach registriert wird. Skripte, Prompts und Prüfbilder: `/data/ignite/art/avatar/v2/` (erste Fassung in `v1/`).
+einzeln gezeichnet und danach registriert wird. Skripte, Prompts und Prüfbilder: `/data/ignite/art/avatar/v2/` (erste Fassung in `v1/`);
+die vierte Runde mit 75 Teilen (`hair-13…26`, `beard-6…11`, `outfit-14…30`, `hat-10…23`, `acc-8…22`, `tattoo-11…19`) liegt in `v4/`
+(`mkparts.py` → `parts4.tsv`, `batch.sh`, `cut.py`, `check.py`).
