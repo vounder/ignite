@@ -228,8 +228,9 @@ die Funkgerät-Verzerrung entstehen erst beim Abspielen (`js/audio.js`).
 
 ### Eigene Figur (`avatar/`)
 
-Ebenen je 192×192 auf gemeinsamer Leinwand, ohne Versatz zu stapeln: `body-a` (Graustufen, wird mit der Hautfarbe
-multipliziert), `tattoo-*`, `outfit-*`, `face-<Ausdruck>` (Augen, Brauen, Mund), `hair-*` (Graustufen, eingefärbt),
-`hat-*`; `hat-N-hairmask` löscht das Haar unter dem Hut. Entstanden über eine magentafarbene Schablone des Körpers,
-auf die jedes Teil einzeln gezeichnet und danach registriert wird. Skripte, Prompts und Prüfbild:
-`/data/ignite/art/avatar/` (`gen.sh`, `build_items.py`, `check.png`).
+Ebenen je 192×192 auf gemeinsamer Leinwand, ohne Versatz zu stapeln, im Stil der Gegnerporträts (Vorbild: `enemies/influencer.png`):
+`body-a` · `tattoo-*` · `outfit-*` · `face-<Ausdruck>-skin` · `face-<Ausdruck>` · `hair-*` · `hat-*`; `hat-N-hairmask` löscht das Haar unter dem Hut.
+`body-a`, `face-*-skin` und `hair-*` sind Graustufen mit genau fünf Stufen (16 Kontur, 96 tiefer Schatten, 152 Schatten, 208 Grundton,
+248 Glanzlicht); das Spiel ersetzt jede Stufe durch die Farbe einer Rampe (`ramp` in `js/avatar.js`). Die Gesichtsschatten sind
+Differenzen zum Körper und brauchen ihn darunter. Entstanden über eine magentafarbene Schablone des Körpers, auf die jedes Teil
+einzeln gezeichnet und danach registriert wird. Skripte, Prompts und Prüfbilder: `/data/ignite/art/avatar/v2/` (erste Fassung in `v1/`).

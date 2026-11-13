@@ -1,6 +1,8 @@
 /* Zündung – die eigene Figur: ein Brustbild aus übereinandergelegten Ebenen (assets/avatar/*.png, je 192×192).
    Reihenfolge: Körper (eingefärbt), Tattoos, Outfit, Gesicht (je Ausdruck), Haare (eingefärbt), Hut.
-   Körper und Haare liegen in Graustufen vor und werden beim Zeichnen mit der gewählten Farbe multipliziert.
+   Körper, Gesichtsschatten und Haare liegen in fünf Graustufen vor (16 Kontur, 96 tiefer Schatten, 152 Schatten,
+   208 Grundton, 248 Glanzlicht); beim Zeichnen wird jede Stufe durch die Farbe einer Rampe ersetzt (ramp), damit
+   Schatten wie bei den Gegnerporträts in den Farbton kippen statt nur dunkler zu werden.
    Teile werden nicht gekauft, sondern erspielt: req = [Zählwerk, Schwelle, Hinweis] wie im Hinterzimmer. */
 (function (ZU) {
   'use strict';
@@ -8,9 +10,12 @@
 
   var PARTS = {
     skin: [
-      { id: 'porzellan', name: 'Porzellan', color: '#f6dcc6' }, { id: 'sand', name: 'Sand', color: '#eec39a' },
-      { id: 'honig', name: 'Honig', color: '#d9a066' }, { id: 'bronze', name: 'Bronze', color: '#b97a4a' },
-      { id: 'kastanie', name: 'Kastanie', color: '#8a5632' }, { id: 'ebenholz', name: 'Ebenholz', color: '#5e3a22' }
+      { id: 'porzellan', name: 'Porzellan', color: '#fcc8a4', ramp: ['#3a1410', '#d07a5a', '#eaa07c', '#fcc8a4', '#ffe8d0'] },
+      { id: 'sand', name: 'Sand', color: '#fcb070', ramp: ['#38100c', '#d86a3c', '#ea8a50', '#fcb070', '#fdd8a4'] },
+      { id: 'honig', name: 'Honig', color: '#fc9d52', ramp: ['#370c09', '#d75a2b', '#e47339', '#fc9d52', '#fdc88a'] },
+      { id: 'bronze', name: 'Bronze', color: '#de7e3e', ramp: ['#300a08', '#a8401e', '#c45c2a', '#de7e3e', '#f4a868'] },
+      { id: 'kastanie', name: 'Kastanie', color: '#b0562a', ramp: ['#260806', '#6e2814', '#8e3c1c', '#b0562a', '#d27e48'] },
+      { id: 'ebenholz', name: 'Ebenholz', color: '#783620', ramp: ['#1a0606', '#3e160e', '#5a2414', '#783620', '#a05834'] }
     ],
     hair: [
       { id: 'none', name: 'Glatze' },
@@ -19,12 +24,14 @@
       { id: 'hair-3', name: 'Lange Mähne', req: ['chain', 8, 'Erreiche eine Kette von ×8.'] }
     ],
     hairColor: [
-      { id: 'schwarz', name: 'Schwarz', color: '#3a2c26' }, { id: 'braun', name: 'Braun', color: '#8a5a34' }, { id: 'blond', name: 'Blond', color: '#e2b65a' },
-      { id: 'rot', name: 'Rot', color: '#c2472a', req: ['burnt', 3, 'Fackle 3 Tische ab.'] },
-      { id: 'grau', name: 'Silbergrau', color: '#b9b4ac', req: ['duels', 25, 'Gewinne 25 Duelle.'] },
-      { id: 'weiss', name: 'Schlohweiß', color: '#f1ece2', req: ['casino', 2, 'Räume 2 Casinos aus.'] },
-      { id: 'tuerkis', name: 'Türkis', color: '#4fc2ae', req: ['kniffe', 5, 'Lerne oder stufe 5 Kniffe.'] },
-      { id: 'glut', name: 'Glutorange', color: '#ff8a2a', req: ['overkill', 2, 'Übertriff ein Glutziel um das Doppelte.'] }
+      { id: 'schwarz', name: 'Schwarz', color: '#40343a', ramp: ['#0c080c', '#181218', '#2a2028', '#40343a', '#74626a'] },
+      { id: 'braun', name: 'Braun', color: '#a33d16', ramp: ['#2e080d', '#420c0e', '#741d11', '#a33d16', '#dc7021'] },
+      { id: 'blond', name: 'Blond', color: '#f6b848', ramp: ['#3a1a08', '#a85a18', '#d88a28', '#f6b848', '#ffe08a'] },
+      { id: 'rot', name: 'Rot', color: '#e44a22', ramp: ['#30060a', '#7a1010', '#b8241a', '#e44a22', '#ff8a40'], req: ['burnt', 3, 'Fackle 3 Tische ab.'] },
+      { id: 'grau', name: 'Silbergrau', color: '#b8b6ba', ramp: ['#1c1a22', '#56545e', '#8a8892', '#b8b6ba', '#e8e6e4'], req: ['duels', 25, 'Gewinne 25 Duelle.'] },
+      { id: 'weiss', name: 'Schlohweiß', color: '#f0ece8', ramp: ['#2a2630', '#9a94a2', '#cac6cc', '#f0ece8', '#ffffff'], req: ['casino', 2, 'Räume 2 Casinos aus.'] },
+      { id: 'tuerkis', name: 'Türkis', color: '#3cc2a8', ramp: ['#081e1e', '#0e4a44', '#1a8274', '#3cc2a8', '#a0f4dc'], req: ['kniffe', 5, 'Lerne oder stufe 5 Kniffe.'] },
+      { id: 'glut', name: 'Glutorange', color: '#ff8a1e', ramp: ['#300a04', '#a02808', '#e0500e', '#ff8a1e', '#ffd060'], req: ['overkill', 2, 'Übertriff ein Glutziel um das Doppelte.'] }
     ],
     outfit: [
       { id: 'outfit-2', name: 'Unterhemd' },
@@ -79,43 +86,63 @@
     return item;
   }
   function flush() { var list = waiting; waiting = []; list.forEach(function (fn) { fn(); }); }
+  /* Ebenen von unten nach oben: [Bild, Rampe oder null, Maske oder null]. */
   function layers(cfg, mood) {
-    var list = [['body-a', find('skin', cfg.skin).color]];
+    var skin = find('skin', cfg.skin).ramp, list = [['body-a', skin]];
     cfg.tattoo.forEach(function (id) { list.push([id]); });
     list.push([cfg.outfit]);
+    list.push(['face-' + mood + '-skin', skin]);
     list.push(['face-' + mood]);
     // Unter einem Hut verschwindet das Haar dort, wo die Hutmaske deckt (assets/avatar/<hut>-hairmask.png).
-    if (cfg.hair !== 'none') list.push([cfg.hair, find('hairColor', cfg.hairColor).color, cfg.hat !== 'none' ? cfg.hat + '-hairmask' : null]);
+    if (cfg.hair !== 'none') list.push([cfg.hair, find('hairColor', cfg.hairColor).ramp, cfg.hat !== 'none' ? cfg.hat + '-hairmask' : null]);
     if (cfg.hat !== 'none') list.push([cfg.hat]);
     return list;
   }
+  /* Graustufen-Ebene in die Farben einer Rampe umsetzen; das Ergebnis wird je Bild und Rampe aufgehoben. */
+  var tinted = {};
+  function rgb(hex) { return [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)]; }
+  function ramped(name, img, ramp) {
+    var key = name + '|' + ramp.join(''), done = tinted[key];
+    if (done) return done;
+    var c = document.createElement('canvas');
+    c.width = c.height = SIZE;
+    var x = c.getContext('2d');
+    x.drawImage(img, 0, 0, SIZE, SIZE);
+    try {
+      var data = x.getImageData(0, 0, SIZE, SIZE), px = data.data, cols = ramp.map(rgb);
+      for (var i = 0; i < px.length; i += 4) {
+        if (!px[i + 3]) continue;
+        var l = px[i], col = cols[l < 56 ? 0 : l < 124 ? 1 : l < 180 ? 2 : l < 228 ? 3 : 4];
+        px[i] = col[0]; px[i + 1] = col[1]; px[i + 2] = col[2];
+      }
+      x.putImageData(data, 0, 0);
+    } catch (e) { /* ohne Pixelzugriff bleibt die Ebene grau */ }
+    tinted[key] = c;
+    return c;
+  }
   var scratch = null;
-  /* Zeichnet eine Ebene; mit Farbe wird das Graustufenbild multipliziert und auf seine eigene Form beschnitten. */
-  function drawLayer(ctx, img, color, mask) {
-    if (!color) { ctx.drawImage(img, 0, 0, SIZE, SIZE); return; }
+  function drawLayer(ctx, name, img, ramp, mask) {
+    var src = ramp ? ramped(name, img, ramp) : img;
+    if (!mask) { ctx.drawImage(src, 0, 0, SIZE, SIZE); return; }
     scratch = scratch || document.createElement('canvas');
     scratch.width = scratch.height = SIZE;
     var s = scratch.getContext('2d');
     s.globalCompositeOperation = 'source-over';
     s.clearRect(0, 0, SIZE, SIZE);
-    s.drawImage(img, 0, 0, SIZE, SIZE);
-    s.globalCompositeOperation = 'multiply';
-    s.fillStyle = color;
-    s.fillRect(0, 0, SIZE, SIZE);
-    s.globalCompositeOperation = 'destination-in';
-    s.drawImage(img, 0, 0, SIZE, SIZE);
-    if (mask) { s.globalCompositeOperation = 'destination-out'; s.drawImage(mask, 0, 0, SIZE, SIZE); }
+    s.drawImage(src, 0, 0, SIZE, SIZE);
+    s.globalCompositeOperation = 'destination-out';
+    s.drawImage(mask, 0, 0, SIZE, SIZE);
     ctx.drawImage(scratch, 0, 0);
   }
   function paint(canvas, cfg, mood) {
     var list = layers(cfg, mood), items = list.map(function (l) { return image(l[0]); });
     var masks = list.map(function (l) { return l[2] ? image(l[2]) : null; });
-    if (masks.some(function (it) { return it && !it.ok && !it.bad; })) items.push({ ok: false, bad: false });
-    if (items.some(function (it) { return !it.ok && !it.bad; })) { waiting.push(function () { if (canvas._want === mood + JSON.stringify(cfg)) paint(canvas, cfg, mood); }); return; }
+    var pending = items.concat(masks).some(function (it) { return it && !it.ok && !it.bad; });
+    if (pending) { waiting.push(function () { if (canvas._want === mood + JSON.stringify(cfg)) paint(canvas, cfg, mood); }); return; }
     var ctx = canvas.getContext('2d');
     ctx.imageSmoothingEnabled = false;
     ctx.clearRect(0, 0, SIZE, SIZE);
-    list.forEach(function (l, i) { if (items[i].ok) drawLayer(ctx, items[i].img, l[1], masks[i] && masks[i].ok ? masks[i].img : null); });
+    list.forEach(function (l, i) { if (items[i].ok) drawLayer(ctx, l[0], items[i].img, l[1], masks[i] && masks[i].ok ? masks[i].img : null); });
   }
 
   /* Porträt der eigenen Figur mit denselben Griffen wie ZU.portraitEl: setMood(mood, ms), setBase(mood), setConfig(cfg). */
