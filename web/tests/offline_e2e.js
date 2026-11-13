@@ -184,6 +184,15 @@ function copyWeb(target) {
   await menu(mobile.page);
   await mobile.page.waitForFunction(() => ZU.app.android(), null, { timeout: 10000 });
   assert.deepStrictEqual(await mobile.page.evaluate(() => ZU.app.android()), { name: '1.0.0', url: 'app/zuendung-1.0.0.apk', size: 58 * 1048576, update: false });
+  // vor dem Download die Rückfrage: „Nicht jetzt“ lädt nichts, „Herunterladen“ holt die APK
+  await mobile.page.evaluate(() => { const ask = document.querySelector('.appask'); if (ask) ask.remove(); ZU.app.askAndroid(); });
+  assert.match(await mobile.page.textContent('.appask-card'), /Offline-Version laden\?.*58\sMB.*Zum Installieren/s);
+  await mobile.page.click('.appask-actions .btn.felt');
+  assert.strictEqual(await mobile.page.locator('.appask').count(), 0);
+  await mobile.page.evaluate(() => ZU.app.askAndroid());
+  const [download] = await Promise.all([mobile.page.waitForEvent('download'), mobile.page.click('.appask-actions .btn.ember')]);
+  assert.strictEqual(download.suggestedFilename(), 'zuendung-1.0.0.apk');
+  assert.strictEqual(await mobile.page.locator('.appask').count(), 0);
   const apk = await fetch(base + 'app/zuendung-1.0.0.apk');
   assert.strictEqual(apk.headers.get('content-type'), 'application/vnd.android.package-archive');
   assert.match(apk.headers.get('content-disposition'), /attachment/);

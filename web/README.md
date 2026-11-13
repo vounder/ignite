@@ -216,6 +216,8 @@ liegt (rund 55 MB), und holt neue Fassungen von selbst:
   [`../android/README.md`](../android/README.md). Auf Android-Geräten bieten die
   Start-Abfrage und die Einstellungen den Download an, sobald der Server eine
   App bereithält (`APP_DIR`, siehe [`../server/README.md`](../server/README.md)).
+  Vor dem Download fragt das Spiel kurz nach („Offline-Version laden?“) und
+  nennt in einem Satz, wie die Installation abläuft.
 
 So funktioniert es (`js/offline.js`, `sw.js`):
 

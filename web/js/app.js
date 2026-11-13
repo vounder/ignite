@@ -39,8 +39,35 @@
     /* Die Android-App zum Herunterladen: im Browser auf Android-Geräten das Angebot, in der App nur eine
        neuere Fassung der App selbst (update: true). null, solange der Server keine anbietet. */
     android: function () { return android; },
+    /* Fragt vor dem Download kurz nach, ob die Offline-Fassung gewünscht ist, und sagt in einem Satz, wie die
+       Installation abläuft. Ein Update der schon installierten App lädt ohne Rückfrage. */
+    askAndroid: function () {
+      if (!android) return;
+      if (android.update) { app.downloadAndroid(); return; }
+      var h = ZU.h, btn = ZU.btn, size = app.androidSize();
+      var wrap = h('div', 'appask', null, { role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Offline-Version laden' });
+      function close() {
+        window.removeEventListener('keydown', onKey, true);
+        wrap.remove();
+      }
+      function onKey(ev) {
+        ev.stopPropagation();
+        if (ev.code === 'Escape') close();
+      }
+      wrap.appendChild(h('div', 'appask-card', [
+        h('h2', null, 'Offline-Version laden?'),
+        h('p', 'appask-app', 'Die Android-App bringt das ganze Spiel mit' + (size ? ' (' + size + ')' : '') + ' und läuft auch ohne Internet. Updates holt sie von selbst.'),
+        h('div', 'appask-actions', [
+          btn('Herunterladen', 'ember', function () { close(); app.downloadAndroid(); }),
+          btn('Nicht jetzt', 'felt', close)
+        ]),
+        h('p', 'appask-hint', 'Zum Installieren die geladene Datei öffnen. Android fragt dabei einmal nach der Erlaubnis.')
+      ]));
+      window.addEventListener('keydown', onKey, true);
+      document.body.appendChild(wrap);
+    },
     /* Öffnet den Download; in der App über den Browser des Geräts. */
-    androidSize: function () { return android && android.size ? Math.round(android.size / 1048576) + ' MB' : ''; },
+    androidSize: function () { return android && android.size ? Math.round(android.size / 1048576) + '\u00a0MB' : ''; },
     downloadAndroid: function () {
       if (!android) return;
       var url = new URL(android.url, location.href).href;
@@ -166,7 +193,7 @@
     function render() {
       var full = app.canFullscreen(), install = app.canInstall(), ios = !install && app.isIOS();
       var apk = app.android(), actions = [];
-      if (apk) actions.push(btn('Android-App laden', 'ember', function () { done(); app.downloadAndroid(); }));
+      if (apk) actions.push(btn('Offline-Version (App)', 'ember', function () { done(); app.askAndroid(); }));
       if (install) actions.push(btn('Als App installieren', 'ember', function () { done(); app.install(); }));
       if (full) actions.push(btn('Vollbild', 'ember', function () { done(); app.enterFullscreen(); }));
       actions.push(btn(full || install ? 'Nicht jetzt' : 'Alles klar', full || install ? 'felt' : 'ember', function () { done(); }));
@@ -177,7 +204,6 @@
         h('h2', null, full ? 'Im Vollbild spielen?' : 'Als App spielen?'),
         full ? h('p', null, 'Mehr Platz für den Tisch, ohne Browserleisten. Das lässt sich jederzeit in den Einstellungen ändern.') : null,
         hint ? h('p', full ? 'appask-app' : null, (full ? 'Oder ' : 'Zündung läuft auch ') + hint) : null,
-        apk ? h('p', 'appask-app', 'Die Android-App' + (app.androidSize() ? ' (' + app.androidSize() + ')' : '') + ' bringt das ganze Spiel mit und läuft auch ohne Internet.') : null,
         h('div', 'appask-actions', actions)
       ]));
     }

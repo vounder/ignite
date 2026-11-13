@@ -313,7 +313,7 @@
     if (apk) {
       rows.push(h('div', 'setrow', [h('span', null, apk.update ? 'App-Update' : 'Android-App'), h('div', 'setctl', [
         h('span', 'set-note', apk.update ? 'Version ' + apk.name : app.androidSize()),
-        btn('Herunterladen', 'small' + (apk.update ? ' ember' : ''), function () { app.downloadAndroid(); })
+        btn('Herunterladen', 'small' + (apk.update ? ' ember' : ''), function () { app.askAndroid(); })
       ])]));
     }
     var buttons = [btn(inRun ? 'Weiterspielen' : 'Schließen', 'ember', function () { ZU.modal.close(entry); })];
