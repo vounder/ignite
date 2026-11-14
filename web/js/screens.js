@@ -166,7 +166,7 @@
           '<div><h3>Das Duell</h3>' +
           '<p>Mau-Mau gegen den Dealer: Lege eine Karte mit <b>gleicher Farbe</b> oder <b>gleichem Wert</b> auf den Stapel. Wer zuerst keine Karten mehr hat, gewinnt.</p>' +
           '<p>Ein <b>' + (touch ? 'Tipp' : 'Klick') + '</b> auf eine passende Handkarte spielt sie sofort.</p>' +
-          '<p><b>Kniffe:</b> Ein Kniff erlaubt, mehrere Karten in einem Zug zu legen – etwa alle 8en (Achterpasch) oder mehrere Pik (Pik-Lauf). Jeder Zug folgt genau einem Kniff; seine Stufe begrenzt die Zahl der Karten (2, 3, beliebig). Kniffe und Stufen gibt es bei Manfred und als Boss-Beute. Was zusammenpasst, leuchtet auf, sobald du eine Karte anwählst.</p>' +
+          '<p><b>Kniffe:</b> Ein Kniff erlaubt, mehrere Karten in einem Zug zu legen – etwa alle 8en (Achterpasch) oder mehrere Pik (Pik-Lauf). Jeder Zug folgt genau einem Kniff; seine Stufe begrenzt die Zahl der Karten (2, 3, beliebig). Kniffe gibt es nur im Hinterzimmer: Dort schaltest du sie mit Asche frei, stufst sie auf und rüstest aus, was du in den Run mitnimmst. Was zusammenpasst, leuchtet auf, sobald du eine Karte anwählst.</p>' +
           '<p><b>Die 7:</b> Der Gegner zieht 1 Karte.</p>' +
           '<p><b>Spezialkarten</b> sind gebunden: an ein Symbol, an Rot oder Schwarz – oder gar nicht (Joker). Sie passen nur auf ihre Symbole und geben sie danach vor. Je weiter der Run, desto freier die Karten.</p>' +
           '<p><b>Löschmittel</b> sind die Antwort der Gegner auf deine Glut: Löschsand und Löschwasser drücken die Kette, Sprinkler und Löschdecke kosten Glut. Welche gelten, steht blau am Tisch.</p>' +
@@ -817,7 +817,7 @@
 
   /* Was in einer Schachtel steckt, als Reihe kleiner Bilder: feste Karten (je Wert eine als Beispiel),
      die zufällige Spezialkarte, Siegel, Kniffe und Trinkets. */
-  function starterContents(starter) {
+  function starterContents(starter, equipped) {
     var row = h('div', 'st-contents'), seenRank = {};
     // Das Blatt selbst: ein Päckchen mit der Rückseite der Schachtel und der Zahl der normalen Karten
     var pack = h('div', 'st-pack', [ZU.cardBack(starter.id), h('i', 'st-count', '×' + (starter.size || ZU.DECK_SIZE))]);
@@ -840,7 +840,13 @@
       if (seals[id] > 1) el.appendChild(h('i', 'st-count', '×' + seals[id]));
       row.appendChild(el);
     });
-    (starter.kniffe || []).forEach(function (k) { row.appendChild(ZU.kniffEl(k.id, k.level)); });
+    // Kniffe: was die Schachtel mitbringt und was im Hinterzimmer ausgerüstet ist (bei Gleichstand zählt die höhere Stufe)
+    var kniffe = (starter.kniffe || []).map(function (k) { return { id: k.id, level: k.level }; });
+    (equipped || []).forEach(function (k) {
+      var have = kniffe.filter(function (x) { return x.id === k.id; })[0];
+      if (have) have.level = Math.max(have.level, k.level); else kniffe.push(k);
+    });
+    kniffe.forEach(function (k) { row.appendChild(ZU.kniffEl(k.id, k.level)); });
     starter.trinkets.forEach(function (id) { row.appendChild(ZU.trinketEl(id)); });
     (starter.perks || []).forEach(function (id) { row.appendChild(ZU.perkEl(id)); });
     return row;
@@ -900,7 +906,7 @@
         h('div', 'st-name', starter.name),
         h('div', 'st-size', starterSize(starter)),
         text,
-        starterContents(starter),
+        starterContents(starter, options.kniffe),
         h('div', 'st-stats', [
           h('div', 'box-money', [ZU.iconEl('coin', 'coin'), h('b', null, String(starter.money + options.startgeld)), h('span', 'unit', 'Mark')]),
           matches
@@ -1066,6 +1072,7 @@
     if (kind === 'special') return { visual: ZU.cardStatic(ZU.CARDS[id], { cls: 'mini', bind: 'none', noTip: true }), name: ZU.CARDS[id].name, kind: 'Spezialkarte', text: ZU.CARDS[id].text };
     if (kind === 'seal') return { visual: ZU.sealEl(id), name: ZU.SEALS[id].name, kind: 'Veredelung', text: ZU.SEALS[id].text };
     if (kind === 'upgrade') return { visual: ZU.upgradeEl(id), name: ZU.Meta.UPGRADES[id].name, kind: 'Upgrade', text: ZU.Meta.UPGRADES[id].text };
+    if (kind === 'kniff') return { visual: ZU.kniffEl(id, ZU.KNIFFE[id].start), name: ZU.KNIFFE[id].name, kind: 'Kniff', text: ZU.KNIFFE[id].text };
     if (kind === 'casino') return { visual: h('div', 'un-badge', ZU.roman(Number(id) + 1)), name: ZU.CASINOS[id].name, kind: 'Casino', text: ZU.CASINOS[id].sub + '. ' + casinoFacts(ZU.CASINOS[id]) + '.', open: true };
     var starter = ZU.STARTER[id];
     return { visual: ZU.boxEl(id, 'br-box'), name: starter.name, kind: 'Schachtel', text: starter.text };
@@ -1190,7 +1197,7 @@
       if (kind === 'upgrade') return !ZU.Meta.level(meta, id) && ZU.Meta.req('upgrade', id) && seenBefore.indexOf('upgrade:' + id) < 0;
       return seenBefore.indexOf(kind + ':' + id) < 0;
     }
-    function buy(kind, id) { return kind === 'upgrade' ? ZU.Meta.upgrade(id) : ZU.Meta.unlock(kind, id); }
+    function buy(kind, id) { return kind === 'upgrade' ? ZU.Meta.upgrade(id) : kind === 'kniff' ? ZU.Meta.buyKniff(id) : ZU.Meta.unlock(kind, id); }
     function pricetag(meta, price) {
       return h('div', 'br-price' + (meta.ash < price ? ' poor' : ''), [ZU.iconEl('ash', 'ashico'), h('span', null, String(price))]);
     }
@@ -1203,6 +1210,7 @@
 
     /* Eine Kachel im Regal: im Spiel, entdeckt (kaufbar) oder verhüllt. Antippen legt das Stück in den Schaukasten. */
     function tile(meta, kind, id, pick, rank) {
+      if (kind === 'kniff') return kniffTile(meta, id, pick, rank);
       var state = stateOf(meta, kind, id), fresh = state === 'closed' && isFresh(meta, kind, id);
       var el = h('div', 'br-tile ' + state + (fresh ? ' fresh' : '') + (picked(kind, id) ? ' sel' : ''), [
         fresh ? h('i', 'newtag', 'Neu') : null,
@@ -1221,6 +1229,7 @@
     /* Schaukasten rechts: das gewählte Stück groß, mit Wirkung, Preis und Kaufknopf. */
     function renderDetail(meta, kind, id) {
       detail.innerHTML = '';
+      if (kind === 'kniff') { kniffDetail(meta, id); return; }
       if (!kind) { detail.appendChild(h('p', 'br-dhint', 'Wähle ein Stück aus dem Regal.')); return; }
       var state = stateOf(meta, kind, id), data = state === 'hidden' ? null : info(kind, id);
       var show = h('div', 'br-show k-' + kind + (state === 'hidden' ? ' hidden' : ''), [state === 'hidden' ? veil() : visual(kind, id)]);
@@ -1286,7 +1295,7 @@
         var ids = idsOf(pair[0]), have = ids.filter(function (id) { return ZU.Meta.isUnlocked(meta, pair[0], id); }).length;
         return [pair[0], pair[1] + ' ' + have + '/' + ids.length];
       }));
-      entries.push(['kniff', 'Kniffe']);
+      entries.push(['kniff', 'Kniffe ' + Object.keys(meta.kniffe).length + '/' + ZU.KNIFF_IDS.length]);
       var bar = subTabs(entries, sub, function (key) { game.backroomSub = key; game.backroomPick = null; render(); });
       if (sub !== 'picks' && sub !== 'kniff') bar.appendChild(btn(only ? 'Nur Kaufbares ✓' : 'Nur Kaufbares', 'small br-only' + (only ? ' on' : ''), function () { game.backroomOnly = !only; game.backroomPick = null; render(); }));
       content.appendChild(bar);
@@ -1312,31 +1321,85 @@
       renderDetail(meta, chosen && chosen[0], chosen && chosen[1]);
     }
 
-    /* Kniffe kauft man nicht mit Asche: Ausgeräumte Casinos bringen neue in die Runs. Hier steht, welche schon dabei sind. */
+    /* Kniffe gibt es nur hier: mit Asche freischalten, aufstufen und ausrüsten. Der nächste Run nimmt mit, was ausgerüstet ist. */
+    function kniffTile(meta, id, pick, rank) {
+      var spec = ZU.KNIFFE[id], level = ZU.Meta.kniffLevel(meta, id), found = ZU.Meta.kniffFound(meta, id), cost = ZU.Meta.kniffCost(meta, id);
+      var worn = ZU.Meta.isEquipped(meta, id), fresh = found && !level && isFresh(meta, 'kniff', id);
+      var badge = found ? ZU.kniffEl(id, level || spec.start) : veil();
+      badge._tip = null; // was er tut, steht im Schaukasten
+      var el = h('div', 'br-tile ' + (!found ? 'hidden' : level ? 'open' : 'closed') + (worn ? ' worn' : '') + (fresh ? ' fresh' : '') + (picked('kniff', id) ? ' sel' : ''), [
+        fresh ? h('i', 'newtag', 'Neu') : null,
+        badge,
+        h('div', 'br-name', found ? spec.name : '?????'),
+        !found ? h('div', 'br-open dim', 'Nach Casino ' + ZU.roman(spec.tier))
+          : !level || (pick && cost != null) ? pricetag(meta, cost)
+            : h('div', 'br-open' + (worn ? '' : ' dim'), worn ? 'Ausgerüstet' : 'Abgelegt')
+      ]);
+      if (pick) {
+        var note = h('p', 'br-ptext');
+        note.textContent = level ? 'Stufe ' + (level + 1) + ': ' + limitText(level + 1) + '.' : spec.text;
+        el.insertBefore(note, el.lastChild);
+        el.appendChild(h('i', 'picktag' + (pick.afford ? '' : ' save'), pick.afford ? 'Platz ' + rank : 'Sparziel'));
+      }
+      el.addEventListener('click', function () { select('kniff', id); });
+      return el;
+    }
+    function limitText(level) { return ZU.KNIFF_LIMIT[level] >= 99 ? 'beliebig viele Karten' : 'höchstens ' + ZU.KNIFF_LIMIT[level] + ' Karten'; }
+    function kniffDetail(meta, id) {
+      var spec = ZU.KNIFFE[id], level = ZU.Meta.kniffLevel(meta, id), found = ZU.Meta.kniffFound(meta, id);
+      var show = h('div', 'br-show k-kniff' + (found ? '' : ' hidden'), [found ? ZU.kniffEl(id, level || spec.start) : veil()]);
+      var card = h('div', 'br-dcard');
+      detail.appendChild(show);
+      detail.appendChild(card);
+      if (!found) {
+        card.appendChild(h('h2', null, '?????'));
+        card.appendChild(h('div', 'br-dkind', 'Kniff · mehrere Karten in einem Zug'));
+        card.appendChild(h('p', 'br-dtext', 'Dieser Kniff steht hier zum Kauf, sobald du „' + ZU.CASINOS[spec.tier - 1].name + '“ ausgeräumt hast.'));
+        return;
+      }
+      var slots = ZU.Meta.kniffSlots(meta), used = meta.loadout.length, worn = ZU.Meta.isEquipped(meta, id), cost = ZU.Meta.kniffCost(meta, id);
+      card.appendChild(h('h2', null, spec.name));
+      card.appendChild(h('div', 'br-dkind', 'Kniff · mehrere Karten in einem Zug'));
+      card.appendChild(h('p', 'br-dtext', spec.text + (level ? ' Deine Stufe erlaubt ' + limitText(level) + '.' : ' Beginnt auf Stufe ' + spec.start + ' (' + limitText(spec.start) + ').')));
+      var pips = h('div', 'br-pips');
+      for (var i = 1; i <= 3; i++) pips.appendChild(h('i', i <= level ? 'on' : ''));
+      card.appendChild(h('div', 'br-dlevel', [level ? 'Stufe ' + level + ' von 3' : 'Noch nicht freigeschaltet', pips]));
+      function act(button, result) {
+        if (result.ok) {
+          ZU.audio.win();
+          var p = ZU.stagePos(show);
+          fx.burst(p.x, p.y, { n: 40, speed: 360, life: 1.2, colors: ['#fff3c4', '#ffd75e', '#3aa58f'] });
+          render(true);
+        } else { ZU.audio.error(); fx.punch(button, 'shake'); }
+      }
+      if (cost != null) {
+        var missing = cost - meta.ash;
+        var b = btn([ZU.iconEl('ash', 'ashico'), h('span', null, (level ? 'Stufe ' + (level + 1) + ' · ' : 'Freischalten · ') + cost)], 'big ember br-buy' + (missing > 0 ? ' poor' : ''), function () { act(b, ZU.Meta.buyKniff(id)); });
+        card.appendChild(b);
+        card.appendChild(h('div', 'br-dnote', missing > 0 ? 'Dir fehlen ' + missing + ' Asche.' : level ? 'Stufe ' + (level + 1) + ': ' + limitText(level + 1) + '.' : used < slots ? 'Wird gleich ausgerüstet.' : 'Deine Plätze sind belegt – zum Ausrüsten musst du einen anderen ablegen.'));
+      } else card.appendChild(h('div', 'br-dstate', 'Voll ausgebaut'));
+      if (level) {
+        var full = !worn && used >= slots;
+        var e = btn(worn ? 'Ablegen' : 'Ausrüsten', 'felt br-equip' + (full ? ' poor' : ''), function () {
+          var result = ZU.Meta.equipKniff(id, !worn);
+          if (result.ok) { ZU.audio.select(true); render(true); } else { ZU.audio.error(); fx.punch(e, 'shake'); }
+        });
+        card.appendChild(e);
+        card.appendChild(h('div', 'br-dnote', worn ? 'Ausgerüstet (' + used + '/' + slots + '). Gilt ab dem nächsten Run.'
+          : full ? 'Plätze ' + used + '/' + slots + ' belegt – erst einen anderen ablegen.' : 'Platz frei (' + used + '/' + slots + '). Gilt ab dem nächsten Run.'));
+      }
+    }
     function renderKniffe(meta) {
-      var cur = game.backroomPick && game.backroomPick.indexOf('kniff:') === 0 ? game.backroomPick.slice(6) : ZU.KNIFF_IDS[0];
-      if (!ZU.KNIFFE[cur]) cur = ZU.KNIFF_IDS[0];
-      game.backroomPick = 'kniff:' + cur;
-      content.appendChild(h('div', 'br-section', [h('div', 'br-grid big', ZU.KNIFF_IDS.map(function (id) {
-        var spec = ZU.KNIFFE[id], open = spec.tier <= meta.maxStake;
-        var el = h('div', 'br-tile ' + (open ? 'open' : 'hidden') + (id === cur ? ' sel' : ''), [
-          open ? ZU.kniffEl(id, spec.start) : veil(),
-          h('div', 'br-name', open ? spec.name : '?????'),
-          h('div', 'br-open' + (open ? '' : ' dim'), open ? 'In deinen Runs' : 'Nach Casino ' + ZU.roman(spec.tier))
-        ]);
-        el.addEventListener('click', function () { game.backroomPick = 'kniff:' + id; ZU.audio.select(true); render(true); });
-        return el;
-      }))]));
-      detail.innerHTML = '';
-      var s = ZU.KNIFFE[cur], ok = s.tier <= meta.maxStake;
-      detail.appendChild(h('div', 'br-show k-kniff' + (ok ? '' : ' hidden'), [ok ? ZU.kniffEl(cur, s.start) : veil()]));
-      detail.appendChild(h('div', 'br-dcard', [
-        h('h2', null, ok ? s.name : '?????'),
-        h('div', 'br-dkind', 'Kniff · mehrere Karten in einem Zug'),
-        h('p', 'br-dtext', ok ? s.text + ' Beginnt auf Stufe ' + s.start + ' (höchstens ' + ZU.KNIFF_LIMIT[s.start] + ' Karten); bei Manfred und als Boss-Beute steigt die Stufe bis 3 (beliebig viele).'
-          : 'Dieser Kniff taucht in deinen Runs auf, sobald du „' + ZU.CASINOS[s.tier - 1].name + '“ ausgeräumt hast.'),
-        h('div', ok ? 'br-dstate' : 'br-dnote', ok ? 'Kann dir bei Manfred begegnen' : 'Kniffe kosten keine Asche.')
+      // Ausgerüstete zuerst, dann freigeschaltete, dann Kaufbares; Verhülltes ans Ende.
+      function rank(id) { return ZU.Meta.isEquipped(meta, id) ? 0 : ZU.Meta.kniffLevel(meta, id) ? 1 : ZU.Meta.kniffFound(meta, id) ? 2 : 3; }
+      var ids = ZU.KNIFF_IDS.map(function (id, i) { return [id, i]; }).sort(function (a, b) { return rank(a[0]) - rank(b[0]) || a[1] - b[1]; }).map(function (x) { return x[0]; });
+      var chosen = settle(meta, ids.map(function (id) { return ['kniff', id]; }));
+      var slots = ZU.Meta.kniffSlots(meta);
+      content.appendChild(h('div', 'br-section', [
+        h('div', 'br-title', 'Ausgerüstet ' + meta.loadout.length + '/' + slots + ' · Kniffe gibt es nur hier, nicht bei Manfred'),
+        h('div', 'br-grid big', ids.map(function (id) { return kniffTile(meta, id); }))
       ]));
+      renderDetail(meta, 'kniff', chosen[1]);
     }
 
     function renderUpgrade(meta) {
@@ -1666,11 +1729,6 @@
       h('p', 'sub', reward.type === 'trinket' ? 'Trinkets wirken für den Rest des Runs.'
         : run.specialFree() ? 'Die Karte wandert dauerhaft in dein Deck.' : 'Dein Deck ist voll (' + run.specialSlots() + ' Spezialkarten): Die neue Karte ersetzt eine alte.'),
       row,
-      reward.kniff ? btn('Lieber Kniff aufstufen: ' + ZU.KNIFFE[reward.kniff].name, 'ember', function () {
-        run.rewardKniff();
-        ZU.audio.win();
-        leave();
-      }) : null,
       btn('Lieber ' + reward.skip + ' Mark nehmen', 'felt', function () {
         run.chooseReward(null);
         ZU.audio.coin(3);
@@ -1942,29 +2000,6 @@
         }));
       } else {
         perkBox.appendChild(h('div', 'shelf-empty', perkOffer && perkOffer.id ? 'Gekauft. Das nächste Privileg gibt es im nächsten Akt.' : 'Alle Privilegien vergeben.'));
-      }
-
-      // Kniff des Ladens: ein neuer Kniff oder die nächste Stufe eines eigenen
-      var kn = s.kniffOffer;
-      if (kn && kn.id && !kn.sold) {
-        var knIcon = ZU.kniffEl(kn.id, kn.level);
-        services.appendChild(h('div', 'service kniff', [
-          knIcon,
-          h('div', 'svc-body', [
-            h('div', 'svc-name', (kn.fresh ? 'Kniff: ' : 'Aufstufen: ') + ZU.KNIFFE[kn.id].name),
-            h('p', null, ZU.kniffText(kn.id, kn.level))
-          ]),
-          priceBtn(kn.price, 'gold', function () {
-            run.buyKniff();
-            ZU.audio.win();
-            mf.act('bigbuy');
-            say('buy');
-            var p = ZU.stagePos(knIcon);
-            fx.burst(p.x, p.y, { n: 30, speed: 320, life: 1.1, colors: ['#fff3c4', '#ffd75e', '#3aa58f'] });
-            fx.flyTo(knIcon, bar.slots, 480);
-            render();
-          })
-        ]));
       }
 
       // Dienste: jeder mit eigenem Gesicht

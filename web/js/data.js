@@ -8,7 +8,7 @@
   ZU.CASINO_REMAP = [0, 1, 3, 5, 6, 7]; // alter Index (sechs Häuser) → neuer Index (acht Häuser) // im Hauptmenü unten rechts angezeigt
   /* Build-Kennung: wird an alle Asset-Adressen gehängt, damit Browser und CDN nach einem Update frische
      Dateien holen. Nicht von Hand ändern: web/tools/stamp_version.py setzt den Wert. */
-  ZU.BUILD = 'ad12b810e3';
+  ZU.BUILD = 'b0f57187d8';
   ZU.asset = function (path) { return 'assets/' + path + '?v=' + ZU.BUILD; };
 
   ZU.HAND_SIZE = 7;
@@ -416,8 +416,12 @@
   /* ---------- Kniffe ----------
      Ein Kniff ist eine Regel, welche normalen Karten in einem Zug zusammen gelegt werden dürfen. Ein Zug folgt genau
      einem Kniff. Die Stufe begrenzt die Zahl der Karten (ZU.KNIFF_LIMIT); Aufstufen macht die Züge länger.
-     tier: ab wie vielen ausgeräumten Casinos der Kniff in Runs auftaucht. */
+     Kniffe gibt es nur im Hinterzimmer: Man schaltet sie mit Asche frei, stuft sie dort auf und rüstet so viele aus,
+     wie man Plätze hat. Im Run kommt keiner dazu.
+     tier: ab wie vielen ausgeräumten Casinos der Kniff im Hinterzimmer zu haben ist; price: Asche fürs Freischalten.
+     Jede weitere Stufe kostet den Preis mal ZU.KNIFF_LEVEL_COST. */
   ZU.KNIFF_LIMIT = [0, 2, 3, 99];
+  ZU.KNIFF_LEVEL_COST = [0, 0, 1.2, 2];
   ZU.KNIFFE = {
     'pasch-7': { name: 'Siebenerpasch', glyph: '7·7', kind: 'rank', ranks: ['7'], start: 2, price: 8, tier: 0, text: 'Mehrere 7en gehen in einem Zug raus.' },
     'pasch-8': { name: 'Achterpasch', glyph: '8·8', kind: 'rank', ranks: ['8'], start: 2, price: 8, tier: 0, text: 'Mehrere 8en gehen in einem Zug raus.' },

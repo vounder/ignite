@@ -17,7 +17,7 @@
   /* Ohne Meta-Angaben (Tests, alte Spielstände) ist alles frei und nichts erschwert. */
   var NO_META = {
     stake: 0, cv: ZU.CASINO_VERSION, acts: 3, rules: [], ashMult: 1, startgeld: 0, freeReroll: false, shopBonus: 0, maxLives: ZU.MAX_LIVES, trinkets: null, specials: null,
-    seals: null, esmePacks: 3, specialSlots: 99, interest: 0, trinketOffers: 0, perkDiscount: 0, bossTip: 0, burnDiscount: 0, luckyTrinket: false, kniffTier: 9, kniffSlots: 2, startKniff: false
+    seals: null, esmePacks: 3, specialSlots: 99, interest: 0, trinketOffers: 0, perkDiscount: 0, bossTip: 0, burnDiscount: 0, luckyTrinket: false, kniffSlots: 2, kniffe: []
   };
 
   /* meta: Ergebnis von ZU.Meta.runOptions() – Einsatz, Upgrades und freigeschaltete Inhalte. */
@@ -54,11 +54,13 @@
       var commons = run._specialPool().filter(function (id) { return ZU.CARDS[id].rarity === 0; });
       run._add(run.rng.pick(commons.length ? commons : ['stillstand']), run.rng.pick(ZU.SUIT_ORDER));
     }
-    if (meta.startKniff && !state.kniffe.length) {
-      // Upgrade „Kniff im Ärmel": ein zufälliger enger Kniff zum Start
-      var narrow = run.kniffPool().filter(function (id) { return ZU.KNIFFE[id].tier === 0; });
-      if (narrow.length) { var kid = run.rng.pick(narrow); state.kniffe.push({ id: kid, level: ZU.KNIFFE[kid].start }); }
-    }
+    // Ausgerüstete Kniffe aus dem Hinterzimmer; bringt die Schachtel denselben mit, gilt die höhere Stufe.
+    (meta.kniffe || []).forEach(function (k) {
+      if (!ZU.KNIFFE[k.id]) return;
+      var have = state.kniffe.filter(function (x) { return x.id === k.id; })[0];
+      if (have) have.level = Math.max(have.level, k.level);
+      else state.kniffe.push({ id: k.id, level: k.level });
+    });
     if (meta.luckyTrinket) {
       // Upgrade „Glücksbringer": ein zufälliges gewöhnliches Trinket zum Start
       var commons = run._trinketPool().filter(function (id) { return ZU.TRINKETS[id].rarity === 0; });
@@ -128,61 +130,6 @@
   /* ---------- Kniffe ---------- */
   Run.prototype.kniffSlots = function () { return this.meta().kniffSlots || 1; };
   Run.prototype.kniffe = function () { return this.s.kniffe || (this.s.kniffe = []); };
-  /* Kniffe, die in diesem Run noch auftauchen können: nach ausgeräumten Casinos gestaffelt, ohne die eigenen. */
-  Run.prototype.kniffPool = function () {
-    var owned = this.kniffe().map(function (k) { return k.id; }), tier = this.meta().kniffTier == null ? 9 : this.meta().kniffTier;
-    return ZU.KNIFF_IDS.filter(function (id) { return ZU.KNIFFE[id].tier <= tier && owned.indexOf(id) < 0; });
-  };
-  Run.prototype.kniffPrice = function (id, level) {
-    var spec = ZU.KNIFFE[id];
-    return this._price(level <= spec.start ? spec.price : Math.round(spec.price * [0, 0, 1.2, 2][level]));
-  };
-  /* Kniff des Akts: ein neuer Kniff, solange ein Platz frei ist, sonst (oder im Wechsel) die nächste Stufe eines eigenen.
-     Wie das Privileg nur einmal je Akt zu kaufen; das Angebot bleibt in allen Läden des Akts stehen. */
-  Run.prototype._rollKniff = function () {
-    var s = this.s, own = this.kniffe(), pool = this.kniffPool();
-    var up = own.filter(function (k) { return k.level < 3; }), free = own.length < this.kniffSlots() && pool.length > 0;
-    var offer = null;
-    if (free && (!own.length || !up.length || this.rng.next() < 0.45)) {
-      var narrow = pool.filter(function (id) { return ZU.KNIFFE[id].tier === 0; });
-      var id = this.rng.pick(!own.length && narrow.length ? narrow : pool);
-      offer = { id: id, level: ZU.KNIFFE[id].start, fresh: true };
-    } else if (up.length) {
-      var k = this.rng.pick(up);
-      offer = { id: k.id, level: k.level + 1, fresh: false };
-    }
-    if (offer) { offer.price = this.kniffPrice(offer.id, offer.level); offer.sold = false; }
-    s.kniffOffer = offer || { id: null, sold: true };
-    s.kniffOffer.act = s.act;
-  };
-  Run.prototype.buyKniff = function () {
-    var offer = this.s.kniffOffer;
-    if (!offer || offer.sold || !offer.id || this.s.phase !== 'shop') throw new Error('Nicht verfügbar.');
-    this._pay(offer.price);
-    offer.sold = true;
-    this._gainKniff(offer.id, offer.level);
-    this.save();
-    return offer.id;
-  };
-  Run.prototype._gainKniff = function (id, level) {
-    var own = this.kniffe(), have = own.filter(function (k) { return k.id === id; })[0];
-    if (have) have.level = Math.min(3, Math.max(have.level, level));
-    else own.push({ id: id, level: level });
-    var offer = this.s.kniffOffer; // ein Stufen-Angebot, das die Boss-Beute schon eingelöst hat, ist erledigt
-    if (offer && offer.id === id && !offer.fresh && own.filter(function (k) { return k.id === id; })[0].level >= offer.level) offer.sold = true;
-    ZU.Meta.note({ kniffe: 1 });
-  };
-  /* Boss-Beute: statt der Spezialkarte eine Stufe auf einen eigenen Kniff. */
-  Run.prototype.rewardKniff = function () {
-    var s = this.s, r = s.reward;
-    if (!r || !r.kniff) throw new Error('Keine Belohnung offen.');
-    var have = this.kniffe().filter(function (k) { return k.id === r.kniff; })[0];
-    if (have) this._gainKniff(have.id, have.level + 1);
-    s.reward = null;
-    this._openShop();
-    this._sync();
-    this.save();
-  };
 
   Run.prototype.encounter = function () { return this.s.encounters[this.s.table]; };
   Run.prototype.actName = function () {
@@ -388,8 +335,6 @@
       // Boss-Beute ist freier gebunden als das, was der Akt sonst hergibt.
       var rng = this.rng, ahead = s.act + 1;
       if (specials.length) s.reward = { type: 'card', options: specials, binds: specials.map(function () { return ZU.rollBind(rng, ahead); }), skip: 5 };
-      var upgradable = this.kniffe().filter(function (k) { return k.level < 3; });
-      if (s.reward && upgradable.length) s.reward.kniff = rng.pick(upgradable).id;
     }
     s.phase = 'payout';
     this._sync();
@@ -506,7 +451,7 @@
 
   /* ---------- Laden ---------- */
   Run.prototype._openShop = function () {
-    // Nach dem Boss gehört der Laden schon zum nächsten Akt: neue Preise, neues Privileg, neuer Kniff.
+    // Nach dem Boss gehört der Laden schon zum nächsten Akt: neue Preise, neues Privileg.
     if (this.s.table >= 2) {
       this.s.table = -1;
       this.s.act++;
@@ -517,7 +462,6 @@
     if (this.rule('cover-charge')) this.s.money = Math.max(0, this.s.money - Math.max(2, Math.round(this.s.money * 0.1))); // Hausregel „Eintritt"
     if (this.has('mitgift')) this.s.money += Math.max(3, Math.round(this.s.money * 0.15));
     if (!this.s.perkOffer || this.s.perkOffer.act !== this.s.act) this._rollPerk();
-    if (!this.s.kniffOffer || this.s.kniffOffer.act !== this.s.act) this._rollKniff();
     this._stockShop();
     this.s.phase = 'shop';
   };
@@ -838,6 +782,9 @@
         state.perks.splice(nimble, 1);
         if (!state.kniffe.some(function (k) { return k.id === 'pasch'; })) state.kniffe.push({ id: 'pasch', level: 3 });
       }
+      // Kniffe gibt es nicht mehr im Run zu kaufen: offene Angebote aus alten Spielständen verfallen.
+      delete state.kniffOffer;
+      if (state.reward) delete state.reward.kniff;
       state.perks = state.perks.filter(function (id) { return ZU.PERKS[id]; });
       if (state.perkOffer && state.perkOffer.id && !ZU.PERKS[state.perkOffer.id]) state.perkOffer = null;
       if (state.shop) state.shop.trinkets = state.shop.trinkets.filter(function (offer) { return ZU.TRINKETS[offer.id]; });

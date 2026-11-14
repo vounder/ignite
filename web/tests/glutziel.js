@@ -30,7 +30,6 @@ function playDuel(run) {
 function shop(run) {
   const s = run.s;
   const buy = want => s.shop.trinkets.forEach((o, i) => { if (!o.sold && want(o.id) && s.money >= run.trinketPrice(i)) run.buyTrinket(i); });
-  if (s.kniffOffer && s.kniffOffer.id && !s.kniffOffer.sold && s.money >= s.kniffOffer.price) run.buyKniff();
   if (FOCUS) {
     for (let round = 0; round < 3; round++) {
       buy(id => MULT.includes(id));
@@ -55,6 +54,7 @@ for (let n = 0; n < RUNS; n++) {
   meta.maxStake = meta.stake = STAKE;
   const options = ZU.Meta.runOptions(ZU.Meta.clean(meta));
   if (ALL) options.trinkets = ZU.TRINKET_IDS.slice();
+  options.kniffe = [{ id: 'pasch-8', level: 2 }]; // ein einfacher Kniff aus dem Hinterzimmer
   const run = ZU.Run.start('classic', 5000 + n * 7919, options), rnd = new ZU.Rng(42 + n);
   let guard = 0;
   while (run.s.phase !== 'defeat' && guard++ < 200) {

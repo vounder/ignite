@@ -88,7 +88,6 @@
       urls.push(ZU.deckArt(run.s.starter, 'back'));
       run.s.trinkets.forEach(function (id) { add('trinkets/' + id + '.png'); });
       (run.s.kniffe || []).forEach(function (k) { add('kniffe/' + k.id + '.png'); });
-      if (run.s.kniffOffer && run.s.kniffOffer.id) add('kniffe/' + run.s.kniffOffer.id + '.png');
       (run.s.perks || []).forEach(function (id) { add('perks/' + id + '.png'); });
       run.s.collection.forEach(function (card) {
         if (ZU.CARDS[card.def].special) add('special/' + card.def + '.png');

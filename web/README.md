@@ -70,11 +70,15 @@ zugehörigen Elemente blenden sich selbst aus.
   dürfen (`ZU.KNIFFE`): Pasch für einzelne Werte (7er, 8er, 9/10, Bildkarten,
   Asse), Läufe je Symbol, Kleine Straße und der freie Pasch. Ein Zug folgt genau
   einem Kniff; die Stufe begrenzt die Kartenzahl (2, 3, beliebig). Man trägt
-  einen Kniff (Upgrade „Zweite Hand“: bis zu drei). Manfred bietet in jedem
-  Laden einen neuen Kniff oder die nächste Stufe an; Bosse geben wahlweise eine
-  Stufe statt der Spezialkarte. Ausgeräumte Casinos bringen weitere Kniffe in
-  die Runs (`tier`). Das frühere Privileg „Flinke Finger“ gibt es nicht mehr;
-  alte Spielstände erhalten dafür den Pasch auf Stufe 3.
+  einen Kniff (Upgrade „Zweite Hand“: bis zu drei). Kniffe gibt es nur im
+  Hinterzimmer: Dort schaltet man sie mit Asche frei, kauft ihre Stufen und
+  rüstet aus, was der nächste Run mitnimmt (`meta.kniffe`, `meta.loadout`,
+  `ZU.Meta.buyKniff`/`equipKniff`). Im Run kommt keiner dazu – weder bei Manfred
+  noch als Boss-Beute; nur die Schachtel kann einen eigenen mitbringen.
+  Ausgeräumte Casinos bringen weitere Kniffe ins Hinterzimmer (`tier`). Das
+  frühere Privileg „Flinke Finger“ und das Upgrade „Kniff im Ärmel“ gibt es
+  nicht mehr (Asche zurück); alte Spielstände mit „Flinke Finger“ erhalten den
+  Pasch auf Stufe 3.
 - **Privilegien:** Upgrades, die den ganzen Run gelten und keinen Trinket-Platz
   belegen. Manfred bietet je Akt genau eines an; die Neue Auslage ändert daran
   nichts.

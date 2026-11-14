@@ -94,19 +94,9 @@ function shop(run, rnd) {
   const s = run.s;
   // Privileg: ein Angebot je Akt, in Akt 1 immer die Mehrfachwahl, von der Neuen Auslage unberührt
   assert.strictEqual(s.perkOffer.act, s.act, 'Privileg-Angebot gehört zum laufenden Akt');
-  // Kniff: neuer Kniff oder nächste Stufe; nie über die Plätze oder Stufe 3 hinaus
-  const kn = s.kniffOffer;
-  assert.strictEqual(kn.act, s.act, 'Kniff-Angebot gehört zum laufenden Akt');
-  if (kn.id && !kn.sold) {
-    assert.ok(ZU.KNIFFE[kn.id] && kn.level >= 1 && kn.level <= 3 && kn.price >= 1);
-    if (kn.fresh) assert.ok(run.kniffe().length < run.kniffSlots() && !run.kniffe().some(k => k.id === kn.id));
-    else assert.strictEqual(run.kniffe().find(k => k.id === kn.id).level, kn.level - 1);
-    if (s.money >= kn.price && rnd.next() < 0.7) {
-      run.buyKniff();
-      assert.strictEqual(run.kniffe().find(k => k.id === kn.id).level, kn.level);
-      assert.throws(() => run.buyKniff());
-    }
-  }
+  // Kniffe gibt es im Laden nicht mehr.
+  assert.strictEqual(s.kniffOffer, undefined);
+  assert.strictEqual(typeof run.buyKniff, 'undefined');
   const perkBefore = JSON.stringify(s.perkOffer);
   if (!s.perkOffer.sold && s.money >= s.perkOffer.price && rnd.next() < 0.8) {
     const lives = s.lives, id = run.buyPerk();
@@ -250,7 +240,7 @@ for (let n = 0; n < RUNS; n++) {
   assert.strictEqual(ZU.Meta.feat(ZU.Meta.get(), 'sevens'), 10, 'Summen-Zählwerk addiert');
   assert.strictEqual(ZU.Meta.feat(ZU.Meta.get(), 'chain'), 4, 'Bestwert-Zählwerk hält das Maximum');
   assert.strictEqual(ZU.Meta.isFound(ZU.Meta.get(), 'starter', 'igniter'), true);
-  assert.deepStrictEqual(ZU.Meta.openOffers(ZU.Meta.get()), ['starter:igniter']);
+  assert.deepStrictEqual(ZU.Meta.openOffers(ZU.Meta.get()), ['starter:igniter', 'kniff:pasch-7', 'kniff:pasch-8', 'kniff:pasch-zahl']);
   assert.strictEqual(ZU.Meta.unlock('starter', 'igniter').error, 'poor');
   assert.strictEqual(ZU.Meta.upgrade('reserve').error, 'hidden');
   const run = ZU.Run.start('classic', 77, ZU.Meta.runOptions());
@@ -485,13 +475,86 @@ for (let i = 1; i < ZU.CASINOS.length; i++) assert.ok(ZU.CASINOS[i].ash > ZU.CAS
   assert.ok(ev.some(x => x.t === 'kniff' && x.id === 'pasch-8' && x.count === 2));
   // Zündler startet mit Siebenerpasch; alte Spielstände mit „Flinke Finger" bekommen Pasch Stufe 3.
   assert.deepStrictEqual(ZU.Run.start('igniter', 5).kniffe(), [{ id: 'pasch-7', level: 2 }]);
-  // Staffelung: ohne ausgeräumtes Casino nur die einfachen Kniffe.
   const fresh = ZU.Run.start('classic', 5, ZU.Meta.runOptions(ZU.Meta.defaults()));
-  assert.ok(fresh.kniffPool().length > 0 && fresh.kniffPool().every(id => ZU.KNIFFE[id].tier === 0));
+  assert.deepStrictEqual(fresh.kniffe(), [], 'ohne Hinterzimmer kein Kniff');
   assert.strictEqual(fresh.kniffSlots(), 1);
 }
 
-// Nach dem Boss gehört der Laden schon zum nächsten Akt; der Kniff ist wie das Privileg nur einmal je Akt zu haben.
+// Kniffe gibt es nur im Hinterzimmer: mit Asche freischalten, aufstufen, ausrüsten. Laden und Boss-Beute bieten keine mehr an.
+{
+  ZU.Profile._memory = null;
+  let meta = ZU.Meta.get();
+  assert.deepStrictEqual(ZU.KNIFF_IDS.filter(id => ZU.Meta.kniffFound(meta, id)), ['pasch-7', 'pasch-8', 'pasch-zahl'], 'ohne ausgeräumtes Casino nur die einfachen');
+  assert.ok(ZU.Meta.openOffers(meta).includes('kniff:pasch-8'));
+  assert.strictEqual(ZU.Meta.buyKniff('pasch-8').error, 'poor');
+  assert.strictEqual(ZU.Meta.buyKniff('pasch').error, 'hidden');
+  meta.ash = 200; meta.maxStake = 1; ZU.Meta.put(meta);
+  assert.strictEqual(ZU.Meta.suggest(ZU.Meta.get(), 'unlock')[0].kind, 'kniff', 'der erste Kniff ist die erste Empfehlung');
+  assert.strictEqual(ZU.Meta.kniffCost(ZU.Meta.get(), 'pasch-bild'), 10);
+  assert.deepStrictEqual(ZU.Meta.buyKniff('pasch-bild'), { ok: true, level: 1 });
+  meta = ZU.Meta.get();
+  assert.strictEqual(meta.ash, 190);
+  assert.deepStrictEqual(meta.loadout, ['pasch-bild'], 'der erste Kniff ist gleich ausgerüstet');
+  assert.strictEqual(ZU.Meta.kniffCost(meta, 'pasch-bild'), 12);
+  assert.strictEqual(ZU.Meta.buyKniff('pasch-bild').level, 2);
+  assert.strictEqual(ZU.Meta.kniffCost(ZU.Meta.get(), 'pasch-bild'), 20);
+  assert.strictEqual(ZU.Meta.buyKniff('pasch-bild').level, 3);
+  assert.strictEqual(ZU.Meta.buyKniff('pasch-bild').error, 'max');
+  assert.strictEqual(ZU.Meta.get().ash, 200 - 10 - 12 - 20);
+  assert.strictEqual(ZU.Meta.feat(ZU.Meta.get(), 'kniffe'), 3, 'Lernen und Aufstufen zählen fürs Zählwerk');
+  // Ein Platz: Der zweite Kniff bleibt abgelegt, bis man tauscht oder „Zweite Hand" kauft.
+  assert.strictEqual(ZU.Meta.buyKniff('pasch-7').level, 2);
+  assert.deepStrictEqual(ZU.Meta.get().loadout, ['pasch-bild']);
+  assert.strictEqual(ZU.Meta.equipKniff('pasch-7', true).error, 'full');
+  assert.strictEqual(ZU.Meta.equipKniff('pasch-zahl', true).error, 'locked');
+  assert.deepStrictEqual(ZU.Meta.runOptions().kniffe, [{ id: 'pasch-bild', level: 3 }]);
+  assert.strictEqual(ZU.Meta.equipKniff('pasch-bild', false).ok, true);
+  assert.strictEqual(ZU.Meta.equipKniff('pasch-7', true).ok, true);
+  assert.deepStrictEqual(ZU.Meta.runOptions().kniffe, [{ id: 'pasch-7', level: 2 }]);
+  assert.strictEqual(ZU.Meta.upgrade('kniffplatz').ok, true);
+  assert.strictEqual(ZU.Meta.equipKniff('pasch-bild', true).ok, true);
+  const run = ZU.Run.start('classic', 11, ZU.Meta.runOptions());
+  assert.deepStrictEqual(run.kniffe(), [{ id: 'pasch-7', level: 2 }, { id: 'pasch-bild', level: 3 }]);
+  // Die Schachtel bringt ihren Kniff zusätzlich mit; ist er auch ausgerüstet, gilt die höhere Stufe.
+  ZU.Meta.buyKniff('pasch-7');
+  assert.deepStrictEqual(ZU.Run.start('igniter', 5, ZU.Meta.runOptions()).kniffe(), [{ id: 'pasch-7', level: 3 }, { id: 'pasch-bild', level: 3 }]);
+  // Speichern und Laden: Stufen und Ausrüstung bleiben, Unsinn fliegt raus, nie mehr ausgerüstet als Plätze.
+  const stored = ZU.Meta.get();
+  assert.deepStrictEqual(ZU.Meta.clean(JSON.parse(JSON.stringify(stored))), stored);
+  const odd = ZU.Meta.clean({ kniffe: { 'pasch-8': 9, 'pasch-bild': 1, nix: 2 }, loadout: ['pasch-8', 'nix', 'pasch-8', 'pasch-bild', 'pasch-7'] });
+  assert.deepStrictEqual(odd.kniffe, { 'pasch-8': 3, 'pasch-bild': 1 });
+  assert.deepStrictEqual(odd.loadout, ['pasch-8']);
+  assert.strictEqual(ZU.Meta.touched(odd), true);
+  // Im Run kommt kein Kniff mehr dazu: kein Angebot im Laden, keine Stufe als Boss-Beute.
+  run.s.table = 2; run.s.money = 500;
+  run.s.encounters[2].kind = 'boss';
+  run._openShop();
+  assert.strictEqual(run.s.kniffOffer, undefined);
+  const boss = ZU.Run.start('classic', 12, ZU.Meta.runOptions());
+  boss.s.table = 2;
+  const d = boss.newDuel(); d.start(); d.winner = 'player'; d.phase = 'ended';
+  boss.finishDuel(d);
+  assert.ok(boss.s.reward && boss.s.reward.kniff === undefined);
+  // Alte Spielstände: ein offenes Kniff-Angebot verfällt, die Kniffe des laufenden Runs bleiben.
+  const old = JSON.parse(JSON.stringify(run.s));
+  old.kniffOffer = { id: 'pasch-8', level: 2, price: 9, sold: false, act: 2 };
+  old.reward = { type: 'card', options: [], binds: [], skip: 5, kniff: 'pasch-7' };
+  const shelf = {};
+  globalThis.localStorage = { getItem: key => (key in shelf ? shelf[key] : null), setItem: (key, value) => { shelf[key] = String(value); }, removeItem: key => { delete shelf[key]; } };
+  localStorage.setItem('zuendung.web.run.v1', JSON.stringify(old));
+  const back = ZU.Run.load();
+  delete globalThis.localStorage;
+  assert.ok(back, 'alter Spielstand lädt');
+  assert.strictEqual(back.s.kniffOffer, undefined);
+  assert.strictEqual(back.s.reward.kniff, undefined);
+  assert.deepStrictEqual(back.kniffe(), run.kniffe());
+  // „Kniff im Ärmel" gibt es nicht mehr: 18 Asche zurück.
+  assert.strictEqual(ZU.Meta.clean({ ash: 5, upgrades: { startkniff: 1 } }).ash, 23);
+  assert.strictEqual(ZU.Meta.UPGRADES.startkniff, undefined);
+  ZU.Profile._memory = null;
+}
+
+// Nach dem Boss gehört der Laden schon zum nächsten Akt.
 {
   const run = ZU.Run.start('classic', 909);
   run.s.table = 2; run.s.money = 500;
@@ -499,14 +562,9 @@ for (let i = 1; i < ZU.CASINOS.length; i++) assert.ok(ZU.CASINOS[i].ash > ZU.CAS
   assert.strictEqual(run.s.act, 2);
   assert.strictEqual(run.s.table, -1);
   assert.strictEqual(run.s.perkOffer.act, 2);
-  assert.strictEqual(run.s.kniffOffer.act, 2);
-  const offer = JSON.stringify(run.s.kniffOffer);
-  run.buyKniff();
-  assert.throws(() => run.buyKniff());
   run.leaveShop();
   assert.strictEqual(run.s.act, 2); assert.strictEqual(run.s.table, 0);
   run._openShop();
-  assert.strictEqual(run.s.kniffOffer.sold, true, 'im selben Akt kein zweiter Kniff');
   assert.strictEqual(run.s.table, 0);
 }
 
