@@ -105,7 +105,7 @@
         grid.appendChild(el);
       });
       entry = ZU.modal.open([
-        h('h2', null, swap ? 'Welche Spezialkarte soll weichen?' : burn ? 'Welche Karte soll brennen?' : 'Dein Deck · ' + run.s.collection.length + ' Karten'),
+        h('h2', null, swap ? 'Welche Spezialkarte soll weichen?' : burn ? 'Welche Karte soll brennen?' : 'Dein Deck · ' + (ZU.STARTER[run.s.starter] ? ZU.STARTER[run.s.starter].name + ' · ' : '') + run.s.collection.length + ' Karten'),
         h('p', 'modal-text', swap
           ? 'Dein Deck fasst ' + run.specialSlots() + ' Spezialkarten. Die gewählte Karte verschwindet, die neue nimmt ihren Platz ein.'
           : burn
@@ -596,7 +596,10 @@
     var lives = h('div', 'lives');
     var slots = h('div', 'trinkets');
     var deckCount = h('b', null, String(s.collection.length));
-    var deckBtn = h('button', 'btn deckbtn', [ZU.iconEl('deck', 'deckico'), h('span', null, 'Deck'), deckCount]);
+    // Das Deck trägt die Rückseite der gewählten Schachtel.
+    var deckMini = h('i', 'deckmini');
+    deckMini.style.backgroundImage = 'url(' + ZU.deckArt(s.starter, 'back') + ')';
+    var deckBtn = h('button', 'btn deckbtn', [deckMini, h('span', null, 'Deck'), deckCount]);
     deckBtn.addEventListener('click', function () { ZU.audio.click(); deckModal(game, false); });
     var scoreEl = h('b', null, ZU.fmt(s.score));
     var bar = h('div', 'hud', [
@@ -811,33 +814,122 @@
     return el;
   }
 
+  /* Was in einer Schachtel steckt, als Reihe kleiner Bilder: feste Karten (je Wert eine als Beispiel),
+     die zufällige Spezialkarte, Siegel, Kniffe und Trinkets. */
+  function starterContents(starter) {
+    var row = h('div', 'st-contents'), seenRank = {};
+    // Das Blatt selbst: ein Päckchen mit der Rückseite der Schachtel und der Zahl der normalen Karten
+    var pack = h('div', 'st-pack', [ZU.cardBack(starter.id), h('i', 'st-count', '×' + (starter.size || ZU.DECK_SIZE))]);
+    ZU.tip.bind(pack, '<b>' + starterSize(starter) + '</b><p>' + (starter.cards.some(function (id) { return !ZU.CARDS[id].special; }) ? 'Die gezeigten Karten sind sicher dabei, der Rest ist zufällig.' : starter.suits ? 'Alle Karten dieser Symbole.' : 'Zufällig aus allen 32 Karten.') + ' Alle tragen diese Rückseite.</p>');
+    row.appendChild(pack);
+    starter.cards.forEach(function (id) {
+      var def = ZU.CARDS[id];
+      if (!def.special) { if (seenRank[def.rank]) return; seenRank[def.rank] = true; }
+      row.appendChild(ZU.cardStatic(def, { cls: 'mini', bind: 'none' }));
+    });
+    if (starter.special) {
+      var any = h('div', 'st-any', '?');
+      ZU.tip.bind(any, '<b>Zufällige Spezialkarte</b><p>Eine gewöhnliche Spezialkarte aus deinem Bestand, an ein Symbol gebunden.</p>');
+      row.appendChild(any);
+    }
+    var seals = {};
+    (starter.seals || []).forEach(function (id) { seals[id] = (seals[id] || 0) + 1; });
+    Object.keys(seals).forEach(function (id) {
+      var el = ZU.sealEl(id);
+      if (seals[id] > 1) el.appendChild(h('i', 'st-count', '×' + seals[id]));
+      row.appendChild(el);
+    });
+    (starter.kniffe || []).forEach(function (k) { row.appendChild(ZU.kniffEl(k.id, k.level)); });
+    starter.trinkets.forEach(function (id) { row.appendChild(ZU.trinketEl(id)); });
+    (starter.perks || []).forEach(function (id) { row.appendChild(ZU.perkEl(id)); });
+    return row;
+  }
+  /* Kurzangabe zum Blatt: Zahl der normalen Karten und, wenn eingeschränkt, die Symbole. */
+  function starterSize(starter) {
+    var size = starter.size || ZU.DECK_SIZE;
+    return size + ' Karten' + (starter.suits ? ' · nur ' + starter.suits.map(function (suit) { return ZU.SUITS[suit].name; }).join(' und ') : '');
+  }
+
+  /* Schachtelwahl: links das Regal mit allen Schachteln, rechts der Schaukasten mit der gewählten –
+     die Schachtel groß, dahinter ein Fächer ihrer Kartenrückseiten, darunter Inhalt und Startwerte. */
   screens.starter = function (game, root) {
     ZU.bg.set('select');
-    var meta = ZU.Meta.get();
-    var row = h('div', 'boxes');
-    ZU.STARTERS.forEach(function (starter, i) {
-      var open = ZU.Meta.isUnlocked(meta, 'starter', starter.id);
-      var preview = h('div', 'box-preview');
-      // Höchstens zwei Karten als Kostprobe; der Text darunter nennt den Rest.
-      starter.cards.slice(0, 2).forEach(function (id) { preview.appendChild(ZU.cardStatic(ZU.CARDS[id], { cls: 'mini', bind: 'none' })); });
-      starter.trinkets.forEach(function (id) { preview.appendChild(ZU.trinketEl(id)); });
-      (starter.perks || []).forEach(function (id) { preview.appendChild(ZU.perkEl(id)); });
-      if (!starter.cards.length) preview.insertBefore(h('div', 'box-plain', ZU.DECK_SIZE + ' × ?'), preview.firstChild);
-      var box = h('div', 'matchbox' + (open ? '' : ' locked'), [
-        h('div', 'box-top', [h('div', 'box-name', starter.name), h('div', 'box-strip')]),
-        preview,
-        h('p', null, starter.text),
-        h('div', 'box-money', [ZU.iconEl('coin', 'coin'), h('b', null, String(starter.money + ZU.Meta.runOptions(meta).startgeld)), h('span', 'unit', 'Mark')]),
-        open ? btn('Anzünden', 'ember', function () {
+    var meta = ZU.Meta.get(), options = ZU.Meta.runOptions(meta);
+    function isOpen(id) { return ZU.Meta.isUnlocked(meta, 'starter', id); }
+    var wanted = game.starterPick || game.profile.deck;
+    var pick = ZU.STARTER[wanted] && isOpen(wanted) ? wanted : ZU.STARTER[game.starterPick] ? game.starterPick : 'classic';
+    var tiles = {}, show = h('div', 'st-show'), started = false;
+
+    function renderShow(animate) {
+      var starter = ZU.STARTER[pick], open = isOpen(pick), found = open || ZU.Meta.isFound(meta, 'starter', pick);
+      var lives = Math.max(1, options.maxLives + (starter.lives || 0));
+      var fan = h('div', 'st-fan', [ZU.cardBack(pick), ZU.cardBack(pick), ZU.cardBack(pick)]);
+      var box = ZU.boxEl(pick, 'st-bigbox');
+      var matches = h('div', 'lives');
+      for (var l = 0; l < lives; l++) matches.appendChild(ZU.iconEl('match', 'match'));
+      ZU.tip.bind(matches, '<b>' + lives + ' Streichhölzer</b><p>Jede Niederlage kostet eines. Ist das letzte abgebrannt, endet der Run.</p>');
+      var text = h('p', 'st-text');
+      text.innerHTML = starter.text;
+      var action;
+      if (open) {
+        action = btn('Anzünden', 'ember big st-go', function () {
+          if (started) return; // der Schleier braucht einen Moment: kein zweiter Run durch Doppelklick
+          started = true;
           ZU.audio.match();
           var p = ZU.stagePos(box);
-          fx.burst(p.x, p.y - 120, { n: 40, speed: 380, life: 1.2 });
-          game.startRun(starter.id);
-        }) : h('div', 'box-locked', [ZU.iconEl('lock', 'lockico'), 'Im Hinterzimmer'])
-      ]);
-      box.style.setProperty('--box', starter.color);
-      box.style.animationDelay = (i * 90) + 'ms';
-      row.appendChild(box);
+          fx.burst(p.x, p.y, { n: 46, speed: 400, life: 1.2 });
+          game.starterPick = null;
+          game.startRun(pick);
+        });
+      } else {
+        var hint = ZU.Meta.hint(meta, 'starter', pick), price = ZU.Meta.cost('starter', pick);
+        action = h('div', 'st-locked', [
+          h('div', 'st-lockline', [ZU.iconEl('lock', 'lockico'), found ? 'Entdeckt · im Hinterzimmer zu haben' : 'Noch nicht entdeckt']),
+          found ? h('div', 'st-lockrow', [
+            h('div', 'br-price' + (meta.ash < price ? ' poor' : ''), [ZU.iconEl('ash', 'ashico'), h('span', null, String(price))]),
+            btn('Zum Hinterzimmer', 'small', function () { game.backroomTab = 'unlock'; game.backroomSub = 'starter'; game.backroomPick = 'starter:' + pick; game.go('backroom'); })
+          ]) : h('p', 'st-hint', hint ? 'Hinweis: ' + hint : 'Wie sie sich zeigt, weiß noch niemand.')
+        ]);
+      }
+      show.innerHTML = '';
+      show.className = 'st-show' + (open ? '' : ' locked') + (animate ? ' swap' : '');
+      show.style.setProperty('--box', starter.color);
+      [
+        h('div', 'st-stage', [h('div', 'st-glow'), fan, box]),
+        h('div', 'st-name', starter.name),
+        h('div', 'st-size', starterSize(starter)),
+        text,
+        starterContents(starter),
+        h('div', 'st-stats', [
+          h('div', 'box-money', [ZU.iconEl('coin', 'coin'), h('b', null, String(starter.money + options.startgeld)), h('span', 'unit', 'Mark')]),
+          matches
+        ]),
+        action
+      ].forEach(function (el) { show.appendChild(el); });
+      Object.keys(tiles).forEach(function (id) { tiles[id].classList.toggle('sel', id === pick); });
+    }
+
+    // Regal: vier Schachteln je Brett, in Spielreihenfolge.
+    var shelf = h('div', 'st-shelf'), board = null;
+    ZU.STARTERS.forEach(function (starter, i) {
+      var open = isOpen(starter.id), found = open || ZU.Meta.isFound(meta, 'starter', starter.id);
+      var tile = h('button', 'st-tile' + (open ? '' : found ? ' closed' : ' hidden'), [
+        ZU.boxEl(starter.id, 'st-box'),
+        open ? null : h('i', 'st-lock', [ZU.iconEl('lock', 'lockico')]),
+        found && !open ? h('i', 'newtag', 'Entdeckt') : null,
+        h('span', 'st-plate', starter.name)
+      ], { type: 'button' });
+      tile.style.setProperty('--box', starter.color);
+      tile.style.animationDelay = (i * 35) + 'ms';
+      tile.addEventListener('click', function () {
+        if (pick === starter.id) return;
+        pick = game.starterPick = starter.id;
+        ZU.audio.select(true);
+        renderShow(true);
+      });
+      tiles[starter.id] = tile;
+      if (i % 4 === 0) { board = h('div', 'st-board'); shelf.appendChild(board); }
+      board.appendChild(tile);
     });
 
     // Das Casino ist schon gewählt; hier steht nur noch, wohin es geht.
@@ -851,12 +943,26 @@
       btn('Anderes Casino', 'small', function () { game.go('casino'); })
     ]);
 
+    // Pfeiltasten wandern durchs Regal, Enter zündet an.
+    function keys(ev) {
+      if (ZU.modal.isOpen()) return;
+      var index = ZU.STARTERS.indexOf(ZU.STARTER[pick]);
+      var step = ev.code === 'ArrowLeft' ? -1 : ev.code === 'ArrowRight' ? 1 : ev.code === 'ArrowUp' ? -4 : ev.code === 'ArrowDown' ? 4 : 0;
+      if (step && ZU.STARTERS[index + step]) { ev.preventDefault(); tiles[ZU.STARTERS[index + step].id].click(); }
+      // Liegt der Fokus schon auf einem Knopf, löst Enter den selbst aus.
+      var focus = document.activeElement;
+      if (ev.code === 'Enter' && !(focus && focus.classList && focus.classList.contains('btn'))) { var go = show.querySelector('.st-go'); if (go) go.click(); }
+    }
+    window.addEventListener('keydown', keys);
+
+    renderShow(false);
     root.appendChild(h('div', 'screen starter', [
+      btn('Zurück', 'felt st-back', function () { game.go('casino'); }),
       h('h1', null, 'Wähle deine Schachtel'),
       stakeRow,
-      row,
-      btn('Zurück', 'felt back', function () { game.go('casino'); })
+      h('div', 'st-body', [shelf, show])
     ]));
+    return function () { window.removeEventListener('keydown', keys); };
   };
 
   /* ---------- Casino-Wahl: vor jedem Run ----------
@@ -960,10 +1066,8 @@
     if (kind === 'seal') return { visual: ZU.sealEl(id), name: ZU.SEALS[id].name, kind: 'Veredelung', text: ZU.SEALS[id].text };
     if (kind === 'upgrade') return { visual: ZU.upgradeEl(id), name: ZU.Meta.UPGRADES[id].name, kind: 'Upgrade', text: ZU.Meta.UPGRADES[id].text };
     if (kind === 'casino') return { visual: h('div', 'un-badge', ZU.roman(Number(id) + 1)), name: ZU.CASINOS[id].name, kind: 'Casino', text: ZU.CASINOS[id].sub + '. ' + casinoFacts(ZU.CASINOS[id]) + '.', open: true };
-    var starter = ZU.STARTERS.filter(function (s) { return s.id === id; })[0];
-    var box = h('div', 'br-box');
-    box.style.background = starter.color;
-    return { visual: box, name: starter.name, kind: 'Schachtel', text: starter.text };
+    var starter = ZU.STARTER[id];
+    return { visual: ZU.boxEl(id, 'br-box'), name: starter.name, kind: 'Schachtel', text: starter.text };
   }
   function unlockedPopup(game) {
     var profile = ZU.Profile.load(), keys = unlockedKeys(ZU.Meta.get());
@@ -1059,7 +1163,7 @@
     /* Bild eines Stücks ohne eigenen Tooltip – was es tut, steht im Schaukasten. */
     function visual(kind, id) {
       var el;
-      if (kind === 'starter') { el = h('div', 'br-box'); el.style.background = info(kind, id).color; }
+      if (kind === 'starter') el = ZU.boxEl(id, 'br-box');
       else if (kind === 'trinket') el = ZU.trinketEl(id);
       else if (kind === 'seal') el = ZU.sealEl(id);
       else if (kind === 'upgrade') el = ZU.upgradeEl(id);

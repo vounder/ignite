@@ -1106,13 +1106,36 @@
     'boss-label': ['c', 0.88], politician: ['a', 0.94], influencer: ['b', 1.2], undersecretary: ['f', 1.04], 'poker-pro': ['a', 0.88], bluffer: ['c', 1.0]
   };
 
-  /* ---------- Startschachteln ---------- */
+  /* ---------- Startschachteln ----------
+     Jede Schachtel ist ein Startdeck mit eigenem Etikett: assets/decks/<id>-box.png (die Schachtel) und
+     assets/decks/<id>-back.png (die Rückseite aller eigenen Karten in diesem Run).
+     cards: feste Karten (normale zählen zu den "size" Karten, Spezialkarten kommen dazu, an ein Symbol gebunden)
+     special: dazu eine zufällige gewöhnliche Spezialkarte · suits: nur diese Symbole · size: Zahl normaler Karten
+     seals: so viele zufällige Karten tragen schon diese Siegel · lives: Streichhölzer mehr oder weniger
+     color: Farbe des Etiketts für Rahmen und Schilder. */
+  function ofRank(rank) { return ZU.SUIT_ORDER.map(function (suit) { return suit + '-' + rank; }); }
   ZU.STARTERS = [
     { id: 'classic', name: 'Klassisch', money: 10, text: '16 zufällige Karten, eine zufällige Spezialkarte und das meiste Startgeld. Solide.', cards: [], special: true, trinkets: [], color: '#2f7d5b' },
-    { id: 'igniter', name: 'Zündler', money: 5, text: '16 Karten, darunter vier 7en, und eine zufällige Spezialkarte. Dazu der Kniff Siebenerpasch: Mehrere 7en gehen zusammen raus.', cards: ['hearts-7', 'spades-7', 'diamonds-7', 'clubs-7'], kniffe: [{ id: 'pasch-7', level: 2 }], special: true, trinkets: [], color: '#f08a24' },
+    { id: 'igniter', name: 'Zündler', money: 5, text: '16 Karten, darunter vier 7en, und eine zufällige Spezialkarte. Dazu der Kniff Siebenerpasch: Mehrere 7en gehen zusammen raus.', cards: ofRank('7'), kniffe: [{ id: 'pasch-7', level: 2 }], special: true, trinkets: [], color: '#f08a24' },
     { id: 'cheater', name: 'Falschspieler', money: 5, text: '16 Karten plus Tausch und Zocken, beide an ein Symbol gebunden.', cards: ['tausch', 'zocken'], trinkets: [], color: '#a3271f' },
-    { id: 'alchemist', name: 'Alchemist', money: 4, text: '16 Karten plus Zytokinese und HODL, beide an ein Symbol gebunden.', cards: ['zytokinese', 'hodl'], trinkets: [], color: '#2a8c8c' }
+    { id: 'alchemist', name: 'Alchemist', money: 4, text: '16 Karten plus Zytokinese und HODL, beide an ein Symbol gebunden.', cards: ['zytokinese', 'hodl'], trinkets: [], color: '#2a8c8c' },
+    { id: 'hearts', name: 'Herzblatt', money: 4, text: 'Nur Herz und Karo: alle 16 roten Karten. Mit dem Rotlicht zählt jede von ihnen 3 Glut mehr.', cards: [], suits: ['hearts', 'diamonds'], trinkets: ['rotlicht'], color: '#d2476a' },
+    { id: 'carny', name: 'Schausteller', money: 4, text: '16 Karten, darunter vier 8en. Mit der Achterbahn lassen deine 8en den Gegner aussetzen.', cards: ofRank('8'), trinkets: ['rollercoaster'], color: '#2f9fa8' },
+    { id: 'picked', name: 'Handverlesen', money: 6, size: 12, text: 'Nur 12 Karten und eine zufällige Spezialkarte. Weniger Ballast: Was du brauchst, kommt schneller wieder.', cards: [], special: true, trinkets: [], color: '#b9b09a' },
+    { id: 'hoarder', name: 'Hamsterer', money: 5, size: 22, text: '22 Karten und eine zufällige Spezialkarte. Das Glutnest bringt +5 % Glut je Karte über 16.', cards: [], special: true, trinkets: ['glutnest'], color: '#a8672a' },
+    { id: 'straw', name: 'Strohfeuer', money: 3, text: '16 Karten plus Glutnest und Stichflamme, beide an ein Symbol gebunden. Mit der Zündschnur startet deine Kette bei ×2.', cards: ['glutnest', 'stichflamme'], trinkets: ['fuse'], color: '#d9a21e' },
+    { id: 'cat', name: 'Schwarze Katze', money: 4, text: '16 Karten plus Fluch, an ein Symbol gebunden. Das Hexenbrett verflucht jeden Gegner schon zu Beginn (×2).', cards: ['fluch'], trinkets: ['hex-board'], color: '#7a4ab8' },
+    { id: 'conman', name: 'Hochstapler', money: 3, text: '16 Karten, darunter vier Asse. Mit dem Ass im Ärmel passen sie auf jede Karte.', cards: ofRank('A'), trinkets: ['ace-sleeve'], color: '#8a8794' },
+    { id: 'snoop', name: 'Spitzel', money: 4, text: '16 Karten plus Spion, an ein Symbol gebunden. Notizbuch und Opernglas: Du siehst die Gegnerhand von Beginn an, und Spion wirkt doppelt so lange.', cards: ['spion'], trinkets: ['black-book', 'opernglas'], color: '#4f6f96' },
+    { id: 'noble', name: 'Blaublut', money: 4, text: '16 Karten, darunter alle Buben, Damen und Könige. Mit dem Hofstaat zählen sie 15 statt 10 Glut.', cards: ofRank('J').concat(ofRank('Q'), ofRank('K')), trinkets: ['hofstaat'], color: '#2f4f9d' },
+    { id: 'jeweler', name: 'Goldschmied', money: 4, text: '16 Karten, vier davon schon veredelt: zwei Glutsiegel, ein Goldrand und ein Anker.', cards: [], seals: ['glut', 'glut', 'gold', 'anker'], trinkets: [], color: '#c0508a' },
+    { id: 'banker', name: 'Bankier', money: 14, lives: -1, text: '16 Karten plus Schutzgeld, dazu das Kassenbuch und volle Taschen. Dafür liegt ein Streichholz weniger in der Schachtel.', cards: ['schutzgeld'], trinkets: ['ledger'], color: '#b08a2e' },
+    { id: 'devil', name: 'Teufelsblatt', money: 2, lives: -1, text: '16 Karten und der Teufelspakt: Alles bringt doppelte Glut, aber du beginnst jedes Duell verflucht (×2). Ein Streichholz weniger.', cards: [], trinkets: ['teufelspakt'], color: '#a3211c' }
   ];
+  ZU.STARTER = {};
+  ZU.STARTERS.forEach(function (starter) { ZU.STARTER[starter.id] = starter; });
+  /* Bilder einer Schachtel: 'box' oder 'back'. */
+  ZU.deckArt = function (id, what) { return ZU.asset('decks/' + (ZU.STARTER[id] ? id : 'classic') + '-' + what + '.png'); };
 
   ZU.roman = function (n) {
     var out = '', map = [[10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']];

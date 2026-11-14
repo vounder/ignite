@@ -109,8 +109,17 @@ zugehörigen Elemente blenden sich selbst aus.
   Streichholz und neuer Auslage. Drei Streichhölzer sind die Leben. Nach dem
   letzten Boss des Casinos geht es optional endlos in der Nachglut weiter –
   dort gibt es keine Asche mehr.
-- **Deck:** Ein Run beginnt mit 16 zufälligen normalen Karten und den
-  Spezialkarten der Schachtel (bei „Klassisch“ und „Zündler“ eine zufällige
+- **Schachteln:** 16 Startdecks (`ZU.STARTERS`), jedes mit eigenem Etikett: einem Schachtelbild und einer
+  Kartenrückseite (`assets/decks/<id>-box.png` und `-back.png`). Im Run tragen alle eigenen Karten, der
+  Nachziehstapel und der Deck-Knopf die Rückseite der gewählten Schachtel; der Gegner spielt mit der
+  Hausrückseite (`decks/house-back.png`). Die Schachtelwahl zeigt links ein Regal mit allen Schachteln und rechts
+  den Schaukasten mit Kartenfächer, Inhalt, Startgeld und Streichhölzern. Neben festen Karten, Spezialkarten,
+  Trinkets und Kniffen kann eine Schachtel nur zwei Symbole kennen (`suits`, Herzblatt), kleiner oder größer
+  sein (`size`, Handverlesen 12, Hamsterer 22), veredelte Karten mitbringen (`seals`, Goldschmied) oder ein
+  Streichholz weniger haben (`lives`, Bankier und Teufelsblatt). Außer „Klassisch“ wird jede im Hinterzimmer
+  entdeckt und mit Asche gekauft.
+- **Deck:** Ein Run beginnt mit den normalen Karten der Schachtel (meist 16, teils fest, sonst zufällig) und
+  ihren Spezialkarten (bei manchen eine zufällige
   gewöhnliche). Zu Duellbeginn wird das Deck gemischt: 7 Karten kommen auf die
   Hand, der Rest ist der eigene Nachziehstapel. Der Gegner spielt mit einem
   eigenen Blatt (24 Karten des Hauses plus seine Spezialkarten) und zieht nur
