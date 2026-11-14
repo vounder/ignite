@@ -52,6 +52,10 @@ zugehörigen Elemente blenden sich selbst aus.
   haben keines.
 - **Ziehen:** setzt die Kette zurück; passt die gezogene Karte sofort, bleibt
   die halbe Kette stehen.
+- **Ebenbild:** Wer genau dieselbe Karte auf ihr Ebenbild legt (gleicher Wert
+  und gleiches Symbol, egal wer die untere gelegt hat), hebt die Kette sofort
+  um die Hälfte (`ZU.TWIN_CHAIN`, aufgerundet: ×10 wird ×15) – noch bevor die
+  Karte gerechnet wird.
 - **Wirtschaft in Prozent:** Prämien, Preise, Bank und Zinsdeckel wachsen je Akt
   um 15 % (`ZU.ACT_GROWTH`); Rabatte, Aufschläge und Geld-Trinkets rechnen in
   Prozent, damit sie in späten Akten noch zählen.
@@ -173,12 +177,16 @@ zugehörigen Elemente blenden sich selbst aus.
   Gegner. Ein Klick öffnet ihre **Akte**: drei Einträge je Figur, die sich mit
   der Zahl der Siege über sie öffnen (Tische 1/3/6, Elite 1/3/5, Bosse 1/2/4).
   Die Geschichten greifen ineinander.
-- **Konto (freiwillig):** Anmeldung oben rechts im Hauptmenü. Ein Konto sichert
-  Runs, Siege, Bestwert und den Meta-Fortschritt auf dem Server. Geworben wird dafür nur am Ende
-  eines Runs.
+- **Konto (freiwillig):** Anmeldung oben rechts im Hauptmenü. Ein Konto trägt
+  den ganzen Spielstand: Statistik (Runs, Siege, Bestwert), Meta-Fortschritt,
+  den laufenden Run, die eigene Figur, die zuletzt gespielte Schachtel und die
+  Merkzettel (Regeln und Neuigkeiten gesehen). Nur die Einstellungen bleiben
+  auf dem Gerät. Wie der Abgleich über mehrere Geräte läuft, steht unter
+  „Abgleich mit dem Konto“. Geworben wird fürs Konto nur am Ende eines Runs.
 
 Tasten: `1`–`9` spielt Handkarten, `Leertaste` zieht, `Enter` legt die Auswahl
-(bei Mehrfachwahl), `Esc` öffnet das Menü. Der Run wird zwischen den Tischen automatisch im Browser gespeichert.
+(bei Mehrfachwahl), `Esc` öffnet das Menü. Der Run wird zwischen den Tischen automatisch gespeichert – auf dem
+Gerät und, wer angemeldet ist, im Konto.
 
 ## Aufbau
 
@@ -252,10 +260,9 @@ So funktioniert es (`js/offline.js`, `sw.js`):
   der vorhandenen los; das Update lädt dann im Hintergrund, und im Hauptmenü
   erscheint „Neue Fassung geladen · Neu starten“. Im laufenden Spiel wird alle
   30 Minuten nachgesehen, sobald es wieder in den Vordergrund kommt.
-- **Ohne Netz** startet die gespeicherte Fassung. Konto-Funktionen ruhen dann;
-  wer auf dem Gerät angemeldet war, dessen beendete Runs und Fortschritt werden
-  gemerkt und beim nächsten Kontakt nachgereicht (`js/account.js`). Der Stand
-  auf dem Gerät gilt dabei als der neuere.
+- **Ohne Netz** startet die gespeicherte Fassung. Wer auf dem Gerät angemeldet
+  war, spielt auf seinem Stand weiter; beim nächsten Kontakt wird er mit dem
+  Konto abgeglichen (siehe „Abgleich mit dem Konto“).
 - Musik wird in Stücken geladen (Range); die App-Hülle beantwortet das auch aus
   dem Speicher, sonst bliebe Safari stumm.
 
@@ -285,6 +292,35 @@ Rechtliches* erreichbar. Die Betreiberangaben stehen in `js/legal.js`. Die
 Datenschutzerklärung beschreibt, was die Software technisch tut, und ist ein
 Entwurf – bitte rechtlich prüfen lassen.
 
+## Abgleich mit dem Konto
+
+Wer angemeldet ist, hat seinen Spielstand im Konto; das Gerät hält eine Kopie,
+damit das Spiel sofort startet und ohne Netz läuft (`js/account.js`).
+
+- **Was abgeglichen wird:** Meta-Fortschritt (`meta`), laufender Run (`run`)
+  und Figur, Schachtel, Merkzettel (`prefs`). Einstellungen nie.
+- **Wann:** nach jeder Änderung (kurz gesammelt), beim Start, wenn die Seite
+  oder App wieder in den Vordergrund kommt, wenn wieder Netz da ist, sonst
+  einmal je Minute. Geht die App in den Hintergrund, wird sofort gesichert.
+  Ohne Netz bleibt alles auf dem Gerät liegen und folgt bei der nächsten
+  Gelegenheit; im Konto-Fenster steht, ob alles gesichert ist.
+- **Wie:** Das Konto zählt seine Speicherungen (`rev`). Das Gerät merkt sich
+  den Stand, auf dem es zuletzt mit dem Konto einig war, und schickt nur, was
+  sich seither geändert hat (`POST /api/sync`). Hat inzwischen ein anderes
+  Gerät gespeichert, lehnt der Server ab und schickt seinen Stand; das Gerät
+  führt zusammen und versucht es erneut. Es wird nie blind überschrieben.
+- **Fortschritt zusammenführen** (`ZU.Meta.merge`): Zähler addieren, was beide
+  Geräte dazugewonnen haben; Bestwerte, Stufen und geöffnete Casinos nehmen das
+  Höhere; Freischaltungen vereinigen sich; Asche = Stand des Kontos plus dem,
+  was auf dem Gerät dazukam oder ausgegeben wurde (nie unter null).
+- **Der Run** lässt sich nicht mischen (`ZU.Run.pick`). Jeder Run hat eine
+  Kennung und einen Speicherzähler: Derselbe Run auf zwei Geräten – der weitere
+  gilt. Auf einem Gerät beendet – er bleibt beendet. Zwei verschiedene Runs,
+  beide weitergespielt – das Spiel fragt, welcher bleiben soll. Mitten in
+  einem Run wird nichts ausgetauscht: Es gilt der, der gerade gespielt wird.
+- **Neues Gerät, frisch angemeldet:** Hat das Konto schon Fortschritt, gilt
+  er; sonst wandert der Stand des Geräts hinauf.
+
 ## Tests
 
 ```bash
@@ -304,6 +340,14 @@ node web/tests/offline_e2e.js
 Prüft im echten Browser (braucht Playwright und Node ≥ 22.13): Offline-Ablage,
 Start ohne Netz, Updates beim Start und im Hintergrund, das Nachreichen ans
 Konto und das Angebot der Android-App.
+
+```bash
+node web/tests/sync_e2e.js
+```
+
+Prüft im echten Browser mit zwei „Geräten“ den Abgleich mit dem Konto: Der
+Stand wandert mit, ein geöffnetes Casino bleibt offen, ohne Netz Erspieltes
+wird zusammengeführt, bei zwei verschiedenen Runs fragt das Spiel.
 
 ```bash
 node web/tests/balance.js 1500

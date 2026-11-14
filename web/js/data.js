@@ -2,13 +2,13 @@
 (function (ZU) {
   'use strict';
 
-  ZU.VERSION = '2.11.0';
+  ZU.VERSION = '2.12.0';
   /* Stand der Casino-Liste. Ändert sich die Reihenfolge, rechnen js/meta.js und js/run.js gespeicherte Stände um. */
   ZU.CASINO_VERSION = 2;
   ZU.CASINO_REMAP = [0, 1, 3, 5, 6, 7]; // alter Index (sechs Häuser) → neuer Index (acht Häuser) // im Hauptmenü unten rechts angezeigt
   /* Build-Kennung: wird an alle Asset-Adressen gehängt, damit Browser und CDN nach einem Update frische
      Dateien holen. Nicht von Hand ändern: web/tools/stamp_version.py setzt den Wert. */
-  ZU.BUILD = 'c47ae35770';
+  ZU.BUILD = '20e668f67a';
   ZU.asset = function (path) { return 'assets/' + path + '?v=' + ZU.BUILD; };
 
   ZU.HAND_SIZE = 7;
@@ -17,6 +17,7 @@
   ZU.MAX_LIVES = 3;
   ZU.OPP_HAND = 8; // Starthand der Gegner
   ZU.TURN_LIMIT = 50; // Sperrstunde: danach gewinnt, wer weniger Karten hält
+  ZU.TWIN_CHAIN = 1.5; // Ebenbild: dieselbe Karte auf dieselbe gelegt – die Kette wächst um die Hälfte (aufgerundet)
 
   ZU.SUITS = {
     hearts: { name: 'Herz', red: true },

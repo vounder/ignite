@@ -26,6 +26,8 @@
     var starter = ZU.STARTERS.filter(function (s) { return s.id === starterId; })[0] || ZU.STARTERS[0];
     var state = {
       v: 1, seed: seed >>> 0, rng: seed >>> 0, starter: starter.id,
+      // Kennung dieses Runs und Zähler seiner Speicherungen: daran erkennt der Abgleich, welches Gerät weiter ist.
+      rid: (seed >>> 0).toString(36) + '-' + Date.now().toString(36) + Math.floor(Math.random() * 1296).toString(36), step: 0, at: 0,
       act: 1, table: 0, lives: Math.max(1, meta.maxLives + (starter.lives || 0)), money: starter.money + meta.startgeld, score: 0, nextId: 1,
       meta: meta, ash: 0, ashPaid: 0,
       collection: [], trinkets: starter.trinkets.slice(), perks: (starter.perks || []).slice(), perkOffer: null, kniffe: (starter.kniffe || []).map(function (k) { return { id: k.id, level: k.level }; }),
@@ -739,7 +741,53 @@
     var store = storage();
     if (!store) return;
     this._sync();
+    if (!this.s.rid) this.s.rid = Run.rid(this.s);
+    this.s.step = (this.s.step || 0) + 1;
+    this.s.at = Date.now();
     try { store.setItem(SAVE_KEY, JSON.stringify(this.s)); } catch (e) { /* voller Speicher: Spiel läuft weiter */ }
+    if (Run.onSave) Run.onSave();
+  };
+
+  /* ---------- Abgleich über Geräte hinweg ---------- */
+  /* Wird nach jedem Speichern und Löschen gerufen (das Konto reicht den Run dann weiter). */
+  Run.onSave = null;
+  /* Spielstände aus der Zeit vor der Kennung: Sie ergibt sich aus dem Seed, damit zwei Geräte denselben Run erkennen. */
+  Run.rid = function (state) { return state ? state.rid || 's' + state.seed : ''; };
+  /* Kurzform eines gespeicherten Runs: Kennung und Speicherzähler. '' = kein Run. */
+  Run.sig = function (state) { return state ? Run.rid(state) + ':' + (state.step || 0) : ''; };
+  /* Der gespeicherte Run, so wie er im Speicher liegt (ohne ihn zu prüfen oder umzubauen). */
+  Run.raw = function () {
+    var store = storage();
+    if (!store) return null;
+    try {
+      var state = JSON.parse(store.getItem(SAVE_KEY) || 'null');
+      return state && typeof state === 'object' && state.v === 1 && Array.isArray(state.collection) ? state : null;
+    } catch (e) { return null; }
+  };
+  /* Legt einen Run vom Konto auf dem Gerät ab (null: es gibt keinen mehr). Meldet das nicht zurück ans Konto. */
+  Run.store = function (state) {
+    var store = storage();
+    if (!store) return;
+    try {
+      if (state) store.setItem(SAVE_KEY, JSON.stringify(state)); else store.removeItem(SAVE_KEY);
+    } catch (e) { /* egal */ }
+  };
+  /* Welcher Run gilt, wenn Gerät (local) und Konto (remote) auseinanderliegen? base ist die Kurzform des Runs beim
+     letzten Abgleich (null: es gab noch keinen). Ergebnis: 'same', 'local', 'remote' oder 'ask' – zwei verschiedene
+     Runs, auf beiden Seiten weitergespielt: Das kann nur der Spieler entscheiden. */
+  Run.pick = function (base, local, remote) {
+    var l = Run.sig(local), r = Run.sig(remote);
+    if (l === r) return 'same';
+    var same = !!local && !!remote && Run.rid(local) === Run.rid(remote);
+    var further = (local && local.step || 0) >= (remote && remote.step || 0) ? 'local' : 'remote';
+    if (base == null) return !local ? 'remote' : !remote ? 'local' : same ? further : 'ask';
+    if (l === base) return 'remote';
+    if (r === base) return 'local';
+    var bid = base.slice(0, base.lastIndexOf(':'));
+    // Hier beendet, dort denselben Run weitergespielt (oder umgekehrt): Beendet bleibt beendet. Ein neuer Run dagegen gilt.
+    if (!local) return Run.rid(remote) === bid ? 'local' : 'remote';
+    if (!remote) return Run.rid(local) === bid ? 'remote' : 'local';
+    return same ? further : 'ask';
   };
 
   Run.load = function () {
@@ -806,6 +854,7 @@
   Run.clearSave = function () {
     var store = storage();
     if (store) { try { store.removeItem(SAVE_KEY); } catch (e) { /* egal */ } }
+    if (Run.onSave) Run.onSave();
   };
 
   Run.prototype._closeRun = function (won, keepSave) {
@@ -854,7 +903,10 @@
       var store = storage();
       if (!store) { ZU.Profile._memory = profile; return; }
       try { store.setItem(PROFILE_KEY, JSON.stringify(profile)); } catch (e) { /* egal */ }
-    }
+      if (ZU.Profile.onSave) ZU.Profile.onSave();
+    },
+    /* Wird nach jedem Speichern gerufen (das Konto gleicht Fortschritt, Figur und Merkzettel dann ab). */
+    onSave: null
   };
 
   ZU.Run = Run;

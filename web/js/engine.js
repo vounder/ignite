@@ -596,6 +596,14 @@
     if (actor === 'player') {
       var face = def.rank === 'J' || def.rank === 'Q' || def.rank === 'K', low = def.rank === '7' || def.rank === '8' || def.rank === '9';
       var mark = this.cards[id], seal = mark.seal, flaw = mark.flaw;
+      // Ebenbild: Liegt genau dieselbe Karte schon oben (gleicher Wert, gleiches Symbol), wächst die Kette um die Hälfte –
+      // noch bevor diese Karte zählt. Aus ×10 wird ×15.
+      var twin = null;
+      if (below && below === def) {
+        var before = this.chain;
+        this._setChain(Math.ceil(before * ZU.TWIN_CHAIN));
+        if (this.chain > before) twin = { from: before, to: this.chain };
+      }
       var base = def.base + (low && this.has('kleinvieh') ? 6 : 0) + (face && this.has('hofstaat') ? 5 : 0) +
         (this.has('zunder') ? 4 : 0) + (def.special && this.has('tintenfass') ? 15 : 0) +
         (def.suit === 'clubs' && this.has('kreuzfeuer') ? 8 : 0) + (def.rank === 'J' && this.has('bauernopfer') ? 10 : 0) +
@@ -669,6 +677,7 @@
       if (this.has('vabanque')) mult('vabanque', 3);
       this.glut += points;
       event.score = { base: base, chain: this.chain, eff: effChain, points: points, glut: this.glut, doubled: doubled, steps: steps, adds: adds };
+      if (twin) event.score.twin = twin;
       var step = this.has('afterburner') ? 2 : 1;
       if (def.special && this.has('blasebalg')) { step += 2; trig.push('blasebalg'); }
       if (seal === 'zuend') step += 1;

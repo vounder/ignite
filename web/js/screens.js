@@ -175,6 +175,7 @@
           '<p><b>Sperrstunde:</b> Nach ' + ZU.TURN_LIMIT + ' Zügen gewinnt, wer weniger Karten hält.</p></div>' +
           '<div><h3>Glut und Mark</h3>' +
           '<p>Jede gespielte Karte bringt <b>Glut</b>: Kartenwert × Kette. Die Kette wächst mit jeder Karte und fällt zurück, wenn du ziehst. Passt die gezogene Karte sofort, bleibt die halbe Kette stehen.</p>' +
+          '<p><b>Ebenbild:</b> Legst du genau dieselbe Karte auf ihr Ebenbild (gleicher Wert und gleiches Symbol), wächst die Kette sofort um die Hälfte – aus ×10 wird ×15.</p>' +
           '<p>Jeder Tisch hat ein <b>Glutziel</b>. Erreichst du es, brennt der Tisch: Du gewinnst sofort, auch mit voller Hand. Wer das Ziel vervielfacht, kassiert für jede Verdopplung extra Mark und Asche – ohne Obergrenze.</p>' +
           '<p>Siege zahlen <b>Mark</b>: Tischprämie, Restkarten des Gegners, Glut-Bonus, Bank und Zinsen (1 Mark je 5 gesparte Mark).</p>' +
           '<h3>Der Run</h3>' +
@@ -510,8 +511,62 @@
     setTimeout(function () { pass.focus(); }, 60);
   };
 
+  /* Wie es um die Sicherung im Konto steht – in einem Satz. */
+  function syncText() {
+    var account = ZU.account;
+    if (!account.user) return account.remembered() ? 'Kein Netz: Dein Stand bleibt auf dem Gerät und geht beim nächsten Kontakt ins Konto.' : '';
+    if (account.syncState === 'saved') return 'Fortschritt, laufender Run und Figur sind im Konto gesichert.';
+    if (account.syncState === 'offline') return 'Kein Kontakt zum Server: Dein Stand wird gesichert, sobald er wieder antwortet.';
+    return 'Wird gesichert …';
+  }
+
+  /* Zwei verschiedene Runs, auf beiden Seiten weitergespielt: Der Spieler entscheidet, welcher bleibt. */
+  function runFacts(state) {
+    var meta = state.meta || {}, casino = ZU.CASINOS[meta.stake || 0] || ZU.CASINOS[0], starter = ZU.STARTER[state.starter];
+    var when = state.at ? new Date(state.at) : null;
+    function two(n) { return (n < 10 ? '0' : '') + n; }
+    return [
+      h('div', 'rc-casino', meta.legacy ? 'Alter Run' : casino.name),
+      h('div', 'rc-where', 'Akt ' + ZU.roman(state.act || 1) + ' · Tisch ' + ((state.table || 0) + 1) + ' von 3'),
+      h('div', 'rc-line', 'Schachtel: ' + (starter ? starter.name : '–')),
+      h('div', 'rc-line', (state.lives || 0) + ' Streichhölzer · ' + ZU.fmt(state.money || 0) + ' Mark · ' + ((state.trinkets || []).length) + ' Trinkets'),
+      h('div', 'rc-line', 'Punkte: ' + ZU.fmt(state.score || 0)),
+      h('div', 'rc-when', when ? 'Zuletzt gespielt am ' + two(when.getDate()) + '.' + two(when.getMonth() + 1) + '. um ' + two(when.getHours()) + ':' + two(when.getMinutes()) + ' Uhr' : '')
+    ];
+  }
+  ZU.account.askRun = function (local, remote) {
+    return new Promise(function (resolve) {
+      var done = false, entry;
+      function finish(value) { if (done) return; done = true; ZU.modal.close(entry); resolve(value); }
+      function card(title, state, value) {
+        return h('div', 'runcard', [h('h3', null, title)].concat(runFacts(state)).concat([btn('Diesen behalten', 'ember', function () { finish(value); })]));
+      }
+      // Erst fragen, wenn kein anderes Fenster offen ist (Neuigkeiten, Anleitung) – die Frage soll allein stehen.
+      function ask() {
+        if (ZU.account.inPlay()) { resolve('local'); return; } // inzwischen wird gespielt: Dieser Run gilt
+        if (ZU.modal.isOpen()) { setTimeout(ask, 400); return; }
+        open();
+      }
+      function open() {
+        entry = ZU.modal.open([
+          h('h2', null, 'Zwei laufende Runs'),
+          h('p', 'modal-text', 'Auf diesem Gerät und in deinem Konto liegen zwei verschiedene Runs. Es kann nur einer weitergehen – der andere wird verworfen. Dein Fortschritt (Asche, Freischaltungen) bleibt von beiden erhalten.'),
+          h('div', 'runcards', [card('Auf diesem Gerät', local, 'local'), card('Im Konto', remote, 'remote')])
+        ], { cls: 'runpick', locked: true, onClose: function () { finish('local'); } });
+      }
+      ask();
+    });
+  };
+
   function accountModal() {
     var entry, account = ZU.account, stats = account.stats || { runs: 0, wins: 0, best: 0 };
+    var syncLine = h('p', 'syncline', syncText());
+    var offSync = account.onChange(function () {
+      syncLine.textContent = syncText();
+      syncLine.className = 'syncline ' + account.syncState;
+    });
+    syncLine.className = 'syncline ' + account.syncState;
+    account.check();
     var pass = field('password', 'Passwort', 'current-password', 'password');
     var removeForm = accountForm([pass], 'Endgültig löschen', function () {
       return account.remove(pass.value);
@@ -526,6 +581,7 @@
         h('span', null, ['Siege ', h('b', null, ZU.fmt(stats.wins))]),
         h('span', null, ['Bestwert ', h('b', null, ZU.fmt(stats.best))])
       ]),
+      syncLine,
       h('div', 'btnrow', [
         btn('Abmelden', 'felt', function () { account.logout().then(function () { ZU.modal.close(entry); }); }),
         btn('Schließen', 'ember', function () { ZU.modal.close(entry); })
@@ -535,7 +591,7 @@
         removeForm.style.display = '';
         pass.focus();
       })])
-    ], { cls: 'small auth' });
+    ], { cls: 'small auth', onClose: offSync });
   }
 
   /* Kleiner Knopf oben rechts im Hauptmenü: "Anmelden" oder der eigene Name. */
@@ -543,9 +599,22 @@
     var slot = h('div', 'account-slot');
     function render() {
       slot.innerHTML = '';
+      var name = ZU.account.remembered();
+      if (!ZU.account.user && name) {
+        // Ohne Netz (oder Sitzung abgelaufen): Das Konto ist bekannt, sein Stand wird auf dem Gerät weitergeführt.
+        var chip = h('div', 'offline-chip', [h('b', null, name), h('span', null, ZU.account.available ? 'abgemeldet' : 'offline')]);
+        chip.style.cursor = 'pointer';
+        ZU.tip.bind(chip, syncText());
+        if (ZU.account.available) chip.addEventListener('click', function () { ZU.audio.click(); authModal('login'); });
+        slot.appendChild(chip);
+        return;
+      }
       if (!ZU.account.available) return;
-      if (ZU.account.user) slot.appendChild(btn(ZU.account.user.username, 'small on', accountModal));
-      else slot.appendChild(btn('Anmelden', 'small felt', function () { authModal('login'); }));
+      if (ZU.account.user) {
+        var own = btn(ZU.account.user.username, 'small on', accountModal);
+        if (ZU.account.syncState === 'offline') own.classList.add('unsaved');
+        slot.appendChild(own);
+      } else slot.appendChild(btn('Anmelden', 'small felt', function () { authModal('login'); }));
     }
     slot._off = ZU.account.onChange(render);
     render();
@@ -732,7 +801,19 @@
       setTimeout(function () { if (game.screen === 'menu' && !ZU.modal.isOpen()) helpModal(); }, 600);
     }
     setTimeout(function () { if (game.screen === 'menu') unlockedPopup(game); }, intro ? 1400 : 450);
-    return function () { slot._off(); news._off(); logo.destroy(); scene.stop(); };
+    // Hat der Abgleich mit dem Konto einen anderen Run oder eine andere Figur gebracht, baut sich der Titel neu auf
+    // (nicht, solange ein Fenster offen ist oder die Kamera schon unterwegs ist).
+    function stamp() { return ZU.Run.sig(ZU.Run.raw()) + '|' + JSON.stringify(ZU.Profile.load().avatar || {}); }
+    var shown = stamp(), alive = true, waitTimer = null;
+    function refresh() {
+      clearTimeout(waitTimer);
+      if (!alive || leaving || game.screen !== 'menu' || stamp() === shown) return;
+      if (ZU.modal.isOpen()) { waitTimer = setTimeout(refresh, 500); return; }
+      game.go('menu');
+    }
+    var offSync = ZU.account.onChange(refresh);
+    ZU.account.check();
+    return function () { alive = false; clearTimeout(waitTimer); offSync(); slot._off(); news._off(); logo.destroy(); scene.stop(); };
   };
 
   /* Titelkulisse: ein gemaltes Bild der Gasse (title/alley.png, 1600×900 für die Kamerafahrt), darüber Leben aus CSS –
@@ -1692,6 +1773,7 @@
     ZU.bg.set('shop');
     var bar = hud(game);
     var row = h('div', 'reward-row');
+    var chosen = false;
     function leave() { game.go('shop'); }
     reward.options.forEach(function (id, index) {
       var item, name, text;
@@ -1708,12 +1790,29 @@
         text = def.text;
       }
       var take = btn('Nehmen', 'ember', function () {
+        if (chosen) return;
         var done = function (replaceId) {
+          if (chosen) return;
+          chosen = true;
           run.chooseReward(index, replaceId);
           ZU.audio.win();
+          // Die Wahl steht: Die anderen Angebote weichen, das gewählte Stück hebt sich aus seinem Rahmen –
+          // und fliegt dann selbst (nicht als zweites Exemplar) dorthin, wo es von nun an liegt.
+          screen.classList.add('chosen');
+          box.classList.add('picked');
           var p = ZU.stagePos(item);
+          fx.flash(p.x, p.y, { r: 150, alpha: 0.75 });
           fx.burst(p.x, p.y, { n: 36, speed: 360, life: 1.2 });
-          fx.flyTo(item, reward.type === 'trinket' ? bar.slots : bar.deckBtn, 520).then(leave);
+          setTimeout(function () {
+            var target = reward.type === 'trinket' ? bar.slots : bar.deckBtn;
+            box.classList.add('gone'); // der leere Rahmen blendet aus, während das Stück fliegt
+            fx.flyTo(item, target, 520, true).then(function () {
+              var t = ZU.stagePos(target);
+              fx.punch(target);
+              fx.burst(t.x, t.y, { n: 12, speed: 200 });
+              return new Promise(function (resolve) { setTimeout(resolve, 160 / ZU.speed); });
+            }).then(leave);
+          }, 300 / ZU.speed);
         };
         // Volles Deck: Eine vorhandene Spezialkarte muss weichen.
         if (reward.type !== 'trinket' && !run.specialFree()) deckModal(game, 'swap').then(function (cardId) { if (cardId != null) done(cardId); });
@@ -1723,18 +1822,21 @@
       box.style.animationDelay = (index * 110) + 'ms';
       row.appendChild(box);
     });
-    root.appendChild(h('div', 'screen reward', [
+    var screen = h('div', 'screen reward', [
       bar.el,
       h('h1', null, reward.type === 'trinket' ? 'Elite besiegt · Wähle ein Trinket' : 'Boss besiegt · Wähle eine Spezialkarte'),
       h('p', 'sub', reward.type === 'trinket' ? 'Trinkets wirken für den Rest des Runs.'
         : run.specialFree() ? 'Die Karte wandert dauerhaft in dein Deck.' : 'Dein Deck ist voll (' + run.specialSlots() + ' Spezialkarten): Die neue Karte ersetzt eine alte.'),
       row,
-      btn('Lieber ' + reward.skip + ' Mark nehmen', 'felt', function () {
+      btn('Lieber ' + reward.skip + ' Mark nehmen', 'felt skip', function () {
+        if (chosen) return;
+        chosen = true;
         run.chooseReward(null);
         ZU.audio.coin(3);
         leave();
       })
-    ]));
+    ]);
+    root.appendChild(screen);
   };
 
   /* ---------- Manfreds Laden ---------- */

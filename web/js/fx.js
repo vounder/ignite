@@ -57,7 +57,12 @@
   ZU.time = 0;
   ZU.onFrame = function (fn) { updaters.push(fn); return fn; };
   ZU.offFrame = function (fn) { var i = updaters.indexOf(fn); if (i >= 0) updaters.splice(i, 1); };
+  /* Bildschirme mit 120 Hz und mehr rufen doppelt so oft: Dann wird nur jedes zweite Bild gerechnet. Dem Spiel reichen
+     60 Bilder je Sekunde; Partikel, Feuer, Hintergrund und Kartenbewegung kosten so halb so viel – auf Handys der
+     Unterschied zwischen flüssig und ruckelnd, wenn viel gleichzeitig passiert. (90 Hz bleibt, wie es ist.) */
+  var MIN_FRAME_MS = 10;
   function frame(now) {
+    if (last && now - last < MIN_FRAME_MS && now >= last) { requestAnimationFrame(frame); return; }
     var dt = Math.min(0.5, (now - last) / 1000 || 0.016);
     last = now;
     // Hit-Stop: Für einen Wimpernschlag steht alles Bewegte still; das gibt großen Treffern Gewicht.
@@ -273,16 +278,30 @@
       el.classList.add(cls);
     },
 
-    /* Lässt ein Element von seiner Position zu einem Ziel fliegen und dort verschwinden. */
-    flyTo: function (el, target, ms) {
+    /* Lässt ein Element zu einem Ziel fliegen. Geflogen wird mit einem Abbild; take: Das Original verschwindet im selben
+       Moment (sonst stünde es doppelt da, solange der Bildschirm nicht neu aufgebaut wird). */
+    flyTo: function (el, target, ms, take) {
       var from = ZU.stagePos(el), to = ZU.stagePos(target);
-      var ghost = el.cloneNode(true);
-      ghost.classList.add('ghost');
+      // Das Abbild steckt in einem eigenen Rahmen an der Stelle des Originals. So stimmen Ort und Größe auch bei
+      // Elementen, die sich selbst vergrößern (große Karten per zoom) oder gerade bewegt werden.
+      var copy = el.cloneNode(true), ghost = ZU.h('div', 'ghost', [copy]);
+      if (take) el.style.visibility = 'hidden';
       ghost.style.left = (from.x - from.w / 2) + 'px';
       ghost.style.top = (from.y - from.h / 2) + 'px';
       ghost.style.width = from.w + 'px';
       ghost.style.height = from.h + 'px';
+      copy.style.position = 'absolute';
+      copy.style.left = copy.style.top = '0';
+      copy.style.margin = '0';
+      copy.style.animation = 'none';
+      copy.style.transform = 'none';
+      copy.style.visibility = 'visible';
       document.getElementById('pops').appendChild(ghost);
+      var real = copy.getBoundingClientRect(), frame = ghost.getBoundingClientRect();
+      if (real.width > 0 && Math.abs(real.width - frame.width) > 0.5) {
+        copy.style.transformOrigin = '0 0';
+        copy.style.transform = 'scale(' + (frame.width / real.width).toFixed(4) + ')';
+      }
       ms = (ms || 520) / ZU.speed;
       ghost.style.transition = 'transform ' + ms + 'ms cubic-bezier(.5,-0.3,.7,1), opacity ' + ms + 'ms ease-in';
       requestAnimationFrame(function () {

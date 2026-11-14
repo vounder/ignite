@@ -2,6 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Damit die Seite erfährt, wann wieder Netz da ist (navigator.onLine): Dann gleicht sie den Spielstand sofort mit dem Konto ab. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
 
     <application

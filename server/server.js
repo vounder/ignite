@@ -26,7 +26,10 @@ const SESSION_DAYS = 30;
 const RESET_MINUTES = 60;
 const REPORTED_DAYS = 90;
 const COOKIE = 'zs';
-const MAX_BODY = 24 * 1024;
+const MAX_BODY = 96 * 1024;
+const MAX_META = 16000; // rund 100 Freischaltungen, Zählwerke und Kartei passen bequem
+const MAX_RUN = 48000; // ein laufender Run mit großem Deck und vollem Laden bleibt weit darunter
+const MAX_PREFS = 8000;
 const MAX_SCORE = 100000000;
 
 const MIME = {
@@ -119,10 +122,13 @@ function createApp(overrides) {
     );
   `);
 
-  // Spalte für den Meta-Fortschritt nachziehen (Datenbanken aus früheren Versionen)
-  if (!db.prepare('PRAGMA table_info(users)').all().some(column => column.name === 'meta')) {
-    db.exec("ALTER TABLE users ADD COLUMN meta TEXT NOT NULL DEFAULT '{}'");
-  }
+  // Spalten nachziehen (Datenbanken aus früheren Versionen): Meta-Fortschritt, dann der Abgleich über Geräte hinweg –
+  // laufender Run, Figur und Merkzettel, dazu ein Zähler, der mit jeder Änderung des Spielstands steigt.
+  const columns = db.prepare('PRAGMA table_info(users)').all().map(column => column.name);
+  if (!columns.includes('meta')) db.exec("ALTER TABLE users ADD COLUMN meta TEXT NOT NULL DEFAULT '{}'");
+  if (!columns.includes('rev')) db.exec('ALTER TABLE users ADD COLUMN rev INTEGER NOT NULL DEFAULT 0');
+  if (!columns.includes('run')) db.exec("ALTER TABLE users ADD COLUMN run TEXT NOT NULL DEFAULT ''");
+  if (!columns.includes('prefs')) db.exec("ALTER TABLE users ADD COLUMN prefs TEXT NOT NULL DEFAULT '{}'");
 
   const q = {
     userByName: db.prepare('SELECT * FROM users WHERE username_key = ?'),
@@ -131,7 +137,8 @@ function createApp(overrides) {
     insertUser: db.prepare('INSERT INTO users (username, username_key, email, email_key, pass, created, runs, wins, best, best_act) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'),
     setStats: db.prepare('UPDATE users SET runs = ?, wins = ?, best = ?, best_act = ? WHERE id = ?'),
     setPass: db.prepare('UPDATE users SET pass = ? WHERE id = ?'),
-    setMeta: db.prepare('UPDATE users SET meta = ? WHERE id = ?'),
+    setMeta: db.prepare('UPDATE users SET meta = ?, rev = rev + 1 WHERE id = ?'),
+    setSave: db.prepare('UPDATE users SET meta = ?, run = ?, prefs = ?, rev = rev + 1 WHERE id = ? AND rev = ?'),
     deleteUser: db.prepare('DELETE FROM users WHERE id = ?'),
     insertSession: db.prepare('INSERT INTO sessions (token_hash, user_id, expires) VALUES (?, ?, ?)'),
     session: db.prepare('SELECT * FROM sessions WHERE token_hash = ?'),
@@ -246,14 +253,28 @@ function createApp(overrides) {
     return q.userById.get(session.user_id) || null;
   }
 
-  function publicUser(user) {
-    let meta = {};
-    try { meta = JSON.parse(user.meta || '{}'); } catch (error) { /* beschädigt: leer ausliefern */ }
-    return {
+  function parse(text, fallback) {
+    try { return text ? JSON.parse(text) : fallback; } catch (error) { return fallback; } // beschädigt: leer ausliefern
+  }
+
+  /* Der Spielstand eines Kontos: Fortschritt, laufender Run (oder null), Figur und Merkzettel – und der Zähler dazu. */
+  function saveOf(user) {
+    return { rev: user.rev, meta: parse(user.meta, {}), run: parse(user.run, null), prefs: parse(user.prefs, {}) };
+  }
+
+  /* full: mit laufendem Run und Merkzettel (Anmeldung, Wiedersehen). Die Antwort auf eine Run-Meldung braucht sie nicht. */
+  function publicUser(user, full) {
+    const data = {
       user: { username: user.username },
       stats: { runs: user.runs, wins: user.wins, best: user.best, bestAct: user.best_act },
-      meta
+      meta: parse(user.meta, {}),
+      rev: user.rev
     };
+    if (full) {
+      data.run = parse(user.run, null);
+      data.prefs = parse(user.prefs, {});
+    }
+    return data;
   }
 
   function count(value, max) {
@@ -272,7 +293,7 @@ function createApp(overrides) {
     'GET /api/me': async (req, res) => {
       const user = currentUser(req);
       if (!user) return fail(res, 401, 'auth');
-      send(res, 200, publicUser(user));
+      send(res, 200, publicUser(user, true));
     },
 
     'POST /api/register': async (req, res, body) => {
@@ -294,7 +315,7 @@ function createApp(overrides) {
         return fail(res, 409, 'taken_name'); // gleichzeitige Registrierung mit demselben Namen
       }
       const user = q.userById.get(Number(info.lastInsertRowid));
-      send(res, 201, publicUser(user), { 'Set-Cookie': startSession(req, user.id) });
+      send(res, 201, publicUser(user, true), { 'Set-Cookie': startSession(req, user.id) });
     },
 
     'POST /api/login': async (req, res, body) => {
@@ -312,7 +333,7 @@ function createApp(overrides) {
         Math.max(user.best, count(local.best, MAX_SCORE)),
         Math.max(user.best_act, count(local.bestAct, 9999)),
         user.id);
-      send(res, 200, publicUser(q.userById.get(user.id)), { 'Set-Cookie': startSession(req, user.id) });
+      send(res, 200, publicUser(q.userById.get(user.id), true), { 'Set-Cookie': startSession(req, user.id) });
     },
 
     'POST /api/logout': async (req, res) => {
@@ -342,16 +363,51 @@ function createApp(overrides) {
       send(res, 200, publicUser(q.userById.get(user.id)));
     },
 
-    /* Speichert den Meta-Fortschritt (Asche, Freischaltungen, Upgrades, Einsätze) als Ganzes. */
+    /* Speichert den Meta-Fortschritt als Ganzes – der Weg älterer Fassungen des Spiels (vor dem Abgleich). Sie schreiben
+       ohne Rücksicht auf andere Geräte; der Zähler steigt trotzdem, damit neuere Fassungen die Änderung bemerken. */
     'POST /api/meta': async (req, res, body) => {
       const user = currentUser(req);
       if (!user) return fail(res, 401, 'auth');
       if (limited('meta:' + user.id, 600, 60 * 60 * 1000)) return fail(res, 429, 'rate');
       if (!body.meta || typeof body.meta !== 'object' || Array.isArray(body.meta)) return fail(res, 400, 'bad_request');
       const text = JSON.stringify(body.meta);
-      if (text.length > 16000) return fail(res, 413, 'bad_request'); // rund 100 Freischaltungen, Zählwerke und Kartei passen bequem
+      if (text.length > MAX_META) return fail(res, 413, 'bad_request');
       q.setMeta.run(text, user.id);
       send(res, 200, { ok: true });
+    },
+
+    /* Abgleich des Spielstands über Geräte hinweg. Das Gerät nennt den Zählerstand, auf dem seine Änderungen aufbauen
+       (rev), und schickt nur die Teile mit, die sich geändert haben: meta, run (null = kein Run mehr), prefs.
+       Stimmt der Zähler, wird gespeichert und er steigt. Hat inzwischen ein anderes Gerät gespeichert, kommt 409 mit dem
+       ganzen Stand zurück: Das Gerät führt beides zusammen (es kennt die Spielregeln dafür) und versucht es erneut.
+       Ohne Teile ist die Anfrage ein bloßes Nachsehen und ändert nichts. */
+    'POST /api/sync': async (req, res, body) => {
+      const user = currentUser(req);
+      if (!user) return fail(res, 401, 'auth');
+      if (limited('sync:' + user.id, 1500, 60 * 60 * 1000)) return fail(res, 429, 'rate');
+      const plain = value => !!value && typeof value === 'object' && !Array.isArray(value);
+      const parts = {};
+      if ('meta' in body) {
+        if (!plain(body.meta)) return fail(res, 400, 'bad_request');
+        parts.meta = JSON.stringify(body.meta);
+        if (parts.meta.length > MAX_META) return fail(res, 413, 'bad_request');
+      }
+      if ('prefs' in body) {
+        if (!plain(body.prefs)) return fail(res, 400, 'bad_request');
+        parts.prefs = JSON.stringify(body.prefs);
+        if (parts.prefs.length > MAX_PREFS) return fail(res, 413, 'bad_request');
+      }
+      if ('run' in body) {
+        if (body.run !== null && !plain(body.run)) return fail(res, 400, 'bad_request');
+        parts.run = body.run === null ? '' : JSON.stringify(body.run);
+        if (parts.run.length > MAX_RUN) return fail(res, 413, 'bad_request');
+      }
+      if (body.rev !== user.rev) return send(res, 409, saveOf(user));
+      if (!Object.keys(parts).length) return send(res, 200, { ok: true, rev: user.rev });
+      const done = q.setSave.run('meta' in parts ? parts.meta : user.meta, 'run' in parts ? parts.run : user.run,
+        'prefs' in parts ? parts.prefs : user.prefs, user.id, user.rev);
+      if (done.changes === 0) return send(res, 409, saveOf(q.userById.get(user.id)));
+      send(res, 200, { ok: true, rev: user.rev + 1 });
     },
 
     'POST /api/account/delete': async (req, res, body) => {
@@ -396,7 +452,7 @@ function createApp(overrides) {
       q.deleteResetsOf.run(entry.user_id);
       q.deleteSessionsOf.run(entry.user_id);
       const user = q.userById.get(entry.user_id);
-      send(res, 200, publicUser(user), { 'Set-Cookie': startSession(req, user.id) });
+      send(res, 200, publicUser(user, true), { 'Set-Cookie': startSession(req, user.id) });
     }
   };
 

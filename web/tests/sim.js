@@ -12,6 +12,7 @@ const assert = require('assert');
 const RUNS = Number(process.argv[2] || 400);
 const tally = {};
 const perks = {};
+let twins = 0, scored = 0;
 let duels = 0, victories = 0, maxTurns = 0, sumTurns = 0, drawFits = 0, decisions = {}, eventTypes = {};
 
 function note(enemy, won) {
@@ -34,6 +35,13 @@ function checkScore(e) {
     assert.strictEqual(st.v, v, 'Rechenschritt stimmt nicht: ' + JSON.stringify(st));
   });
   assert.strictEqual(v, e.score.points, 'Rechnung ergibt nicht die Glut der Karte');
+  // Ebenbild: Die Kette ist um die Hälfte gewachsen, bevor die Karte gerechnet wurde.
+  if (e.score.twin) {
+    twins++;
+    assert.ok(e.score.twin.to > e.score.twin.from && e.score.twin.to <= Math.ceil(e.score.twin.from * ZU.TWIN_CHAIN), 'Ebenbild: Kette falsch');
+    assert.strictEqual(e.score.chain, e.score.twin.to, 'Ebenbild: Rechnung nutzt nicht die gewachsene Kette');
+  }
+  scored++;
 }
 
 function record(events) {
@@ -382,7 +390,8 @@ Object.values(ZU.LORE_STEPS).forEach(steps => assert.ok(steps.length === 3 && st
   if (!duel.hand.player.includes(plain[0].id)) { duel.stocks.player.splice(duel.stocks.player.indexOf(plain[0].id), 1); duel.hand.player.push(plain[0].id); }
   duel.phase = 'action'; duel.active = 'player'; duel.pending = null;
   duel.play('player', [plain[0].id]);
-  assert.strictEqual(duel.glut - before, base * chain * 2, 'Glutsiegel verdoppelt');
+  // Auf dem Stapel liegt dieselbe Karte: Das Ebenbild hebt die Kette um die Hälfte, bevor gerechnet wird.
+  assert.strictEqual(duel.glut - before, base * Math.ceil(chain * ZU.TWIN_CHAIN) * 2, 'Ebenbild hebt die Kette, Glutsiegel verdoppelt');
   // Esme: früh viele Makel, spät wenige
   const early = ZU.Run.start('classic', 1); const late = ZU.Run.start('classic', 1); late.s.act = late.acts();
   assert.ok(early.flawChance() > 0.6 && late.flawChance() < 0.3);
@@ -617,7 +626,9 @@ for (let i = 1; i < ZU.CASINOS.length; i++) assert.ok(ZU.CASINOS[i].ash > ZU.CAS
     if (setup && setup.duel) setup.duel(d);
     const card = d.hand.player.concat(d.stocks.player).find(id => plainDef(d.cards[id].def));
     if (!d.hand.player.includes(card)) { d.stocks.player.splice(d.stocks.player.indexOf(card), 1); d.hand.player.push(card); }
-    d.pile.push(d._register(d.cards[card].def, 'house', false));
+    // Unterlage: eine andere Karte desselben Symbols – dieselbe Karte wäre ein Ebenbild und höbe die Kette.
+    const under = ZU.STANDARD_IDS.find(x => x !== d.cards[card].def && ZU.CARDS[x].suit === ZU.CARDS[d.cards[card].def].suit);
+    d.pile.push(d._register(under, 'house', false));
     const ev = [];
     d.salvo = salvo || 0;
     d._putOnTable('player', card, 'hand', ev);
@@ -714,6 +725,65 @@ ZU.CASINOS.forEach((casino, index) => {
 });
 assert.ok(ZU.BATTLE_POOL.concat(ZU.ELITE_POOL).every(id => !ZU.ENEMIES[id].casino));
 
+// Abgleich über Geräte hinweg: Zwei Geräte spielen vom selben Stand aus weiter – nichts geht verloren.
+{
+  const M = ZU.Meta;
+  const base = M.clean({ ash: 50, earned: 80, maxStake: 0, stake: 0, cv: ZU.CASINO_VERSION, unlocked: { 'trinket:heartblood': true }, upgrades: { startgeld: 1 },
+    defeated: { bouncer: 2 }, feats: { chain: 6, played: 100 } });
+  const phone = M.clean(Object.assign({}, base, { ash: 20, earned: 90, unlocked: { 'trinket:heartblood': true, 'trinket:zunder': true }, upgrades: { startgeld: 2 },
+    defeated: { bouncer: 3, pianist: 1 }, feats: { chain: 9, played: 140 } }));
+  const pc = M.clean(Object.assign({}, base, { ash: 65, earned: 95, maxStake: 1, stake: 1, unlocked: { 'trinket:heartblood': true, 'special:tausch': true },
+    defeated: { bouncer: 4 }, feats: { chain: 7, played: 130, casino: 1 } }));
+  const merged = M.merge(base, phone, pc);
+  assert.strictEqual(merged.ash, 35, 'Asche: Stand des Kontos plus dem, was hier dazukam oder ausgegeben wurde (65 + 20 − 50)');
+  assert.strictEqual(merged.earned, 105);
+  assert.strictEqual(merged.maxStake, 1, 'ein anderswo geöffnetes Casino bleibt offen');
+  assert.strictEqual(merged.stake, 1, 'Wahl des Casinos: hier nicht geändert, also gilt die des Kontos');
+  assert.deepStrictEqual(Object.keys(merged.unlocked).sort(), ['special:tausch', 'trinket:heartblood', 'trinket:zunder']);
+  assert.strictEqual(merged.upgrades.startgeld, 2);
+  assert.deepStrictEqual(merged.defeated, { bouncer: 5, pianist: 1 }, 'Zähler addieren, was beide dazugewonnen haben');
+  assert.strictEqual(merged.feats.chain, 9, 'Bestwerte nehmen den höheren');
+  assert.strictEqual(merged.feats.played, 170);
+  assert.deepStrictEqual(M.merge(base, base, pc), pc, 'hier nichts geändert: Es gilt der Stand des Kontos');
+  assert.deepStrictEqual(M.merge(base, phone, base), phone, 'im Konto nichts geändert: Es gilt der Stand des Geräts');
+  assert.deepStrictEqual(M.merge(base, phone, pc), M.merge(base, pc, phone), 'die Reihenfolge der Geräte spielt keine Rolle');
+  assert.strictEqual(M.merge(base, M.clean(Object.assign({}, base, { ash: 0 })), M.clean(Object.assign({}, base, { ash: 10 }))).ash, 0, 'doppelt ausgegeben: nie unter null');
+  // Ohne gemeinsamen Stand: Der erste gilt, vom anderen kommt hinzu, was dort mehr ist.
+  const joined = M.join(pc, phone);
+  assert.strictEqual(joined.ash, 65);
+  assert.strictEqual(joined.feats.chain, 9);
+  assert.strictEqual(joined.defeated.pianist, 1);
+  assert.ok(joined.unlocked['trinket:zunder'] && joined.unlocked['special:tausch']);
+  // Ein ausgeräumtes Casino öffnet das nächste, auch wenn die Freischaltung selbst verloren ging (Fehler vor 2.12.0).
+  assert.strictEqual(M.clean({ cv: ZU.CASINO_VERSION, maxStake: 0, feats: { casino: 1 } }).maxStake, 1);
+  assert.strictEqual(M.clean({ cv: ZU.CASINO_VERSION, maxStake: 3, feats: { casino: 1 } }).maxStake, 3);
+  assert.strictEqual(M.clean({ cv: ZU.CASINO_VERSION, feats: { casino: 99 } }).maxStake, ZU.CASINOS.length - 1);
+
+  // Welcher Run gilt? Kurzform: Kennung und Speicherzähler.
+  const R = ZU.Run, x3 = { rid: 'x', step: 3 }, x5 = { rid: 'x', step: 5 }, y1 = { rid: 'y', step: 1 }, y4 = { rid: 'y', step: 4 };
+  assert.strictEqual(R.sig(null), '');
+  assert.strictEqual(R.sig({ seed: 7 }), 's7:0', 'alte Spielstände: Kennung aus dem Seed');
+  assert.strictEqual(R.pick('x:3', x3, x3), 'same');
+  assert.strictEqual(R.pick('x:3', x3, x5), 'remote', 'hier unverändert: Das Konto ist weiter');
+  assert.strictEqual(R.pick('x:3', x5, x3), 'local');
+  assert.strictEqual(R.pick('x:3', x3, null), 'remote', 'anderswo beendet');
+  assert.strictEqual(R.pick('x:3', null, x3), 'local', 'hier beendet');
+  assert.strictEqual(R.pick('x:3', x5, { rid: 'x', step: 6 }), 'remote', 'derselbe Run auf zwei Geräten: der weitere gilt');
+  assert.strictEqual(R.pick('x:3', x5, y1), 'ask', 'zwei verschiedene Runs, beide weitergespielt: Der Spieler entscheidet');
+  assert.strictEqual(R.pick('x:3', null, x5), 'local', 'hier beendet, dort weitergespielt: beendet bleibt beendet');
+  assert.strictEqual(R.pick('x:3', null, y1), 'remote', 'hier beendet, dort ein neuer Run');
+  assert.strictEqual(R.pick('x:3', x5, null), 'remote', 'dort beendet, hier weitergespielt: beendet bleibt beendet');
+  assert.strictEqual(R.pick('x:3', y1, null), 'local');
+  assert.strictEqual(R.pick('', y1, y4), 'remote');
+  assert.strictEqual(R.pick(null, null, y1), 'remote', 'neues Gerät: Der Run des Kontos kommt herunter');
+  assert.strictEqual(R.pick(null, y1, null), 'local');
+  assert.strictEqual(R.pick(null, x3, y1), 'ask');
+  assert.strictEqual(R.pick(null, y1, y4), 'remote');
+  // Ein neuer Run bekommt Kennung und Zähler.
+  const fresh = ZU.Run.start('classic', 99);
+  assert.ok(/^[0-9a-z]+-[0-9a-z]+$/.test(fresh.s.rid) && fresh.s.step === 0);
+}
+
 // Determinismus: gleicher Seed, gleiche Entscheidungen => gleicher Verlauf
 function fingerprint(seed) {
   const run = ZU.Run.start('classic', seed), rnd = new ZU.Rng(7);
@@ -725,6 +795,7 @@ assert.strictEqual(fingerprint(123456), fingerprint(123456));
 console.log('Runs: %d, Duelle: %d, Siege über Akt 3: %d (%s%%), längstes Duell: %d Züge',
   RUNS, duels, victories, (100 * victories / RUNS).toFixed(1), maxTurns);
 console.log('Entscheidungen:', decisions, 'Züge/Duell:', (sumTurns / duels).toFixed(1), 'gezogen und passend:', drawFits);
+console.log('Ebenbild: %d von %d gelegten Karten (%s je Duell)', twins, scored, (twins / duels).toFixed(2));
 console.log('Privilegien gekauft:', perks);
 console.log('Ereignisse:', Object.keys(eventTypes).sort().map(k => k + '=' + eventTypes[k]).join(' '));
 Object.keys(tally).sort().forEach(k => console.log('  %s  %d Duelle, Spieler gewinnt %s%%', k.padEnd(28), tally[k].n, (100 * tally[k].w / tally[k].n).toFixed(0)));

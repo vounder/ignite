@@ -289,7 +289,57 @@
           if (value) meta.feats[key] = value;
         });
       }
+      // Ein ausgeräumtes Casino öffnet das nächste – auch dann, wenn die Freischaltung selbst einmal verloren ging
+      // (vor 2.12.0 konnte der ältere Stand des Kontos sie überschreiben). Das Zählwerk weiß, wie weit man war.
+      if (raw.cv === ZU.CASINO_VERSION && meta.feats.casino) {
+        meta.maxStake = Math.max(meta.maxStake, Math.min(meta.feats.casino, M.STAKES.length - 1));
+      }
       return meta;
+    },
+
+    /* ---------- Abgleich über Geräte hinweg ----------
+       Zwei Geräte haben seit dem gemeinsamen Stand (base) jeweils weitergespielt: Nichts davon geht verloren.
+       Zähler addieren, was beide dazugewonnen haben; Bestwerte, Stufen und geöffnete Casinos nehmen das Höhere;
+       Freischaltungen vereinigen sich; Asche = Stand des Kontos plus dem, was hier dazukam oder ausgegeben wurde.
+       Reine Vorlieben (gewähltes Casino, ausgerüstete Kniffe) gelten von hier, wenn sie hier geändert wurden. */
+    merge: function (base, local, remote) {
+      base = M.clean(base); local = M.clean(local); remote = M.clean(remote);
+      var out = M.defaults();
+      function sum(l, r, b) { return Math.max(0, r + l - b); }
+      function keys(a, b) { var all = {}; [a, b].forEach(function (o) { Object.keys(o || {}).forEach(function (k) { all[k] = true; }); }); return Object.keys(all).sort(); }
+      out.ash = sum(local.ash, remote.ash, base.ash);
+      out.earned = sum(local.earned, remote.earned, base.earned);
+      out.maxStake = Math.max(local.maxStake, remote.maxStake);
+      out.stake = Math.min(local.stake !== base.stake ? local.stake : remote.stake, out.maxStake);
+      keys(local.unlocked, remote.unlocked).forEach(function (k) { out.unlocked[k] = true; });
+      keys(local.upgrades, remote.upgrades).forEach(function (k) { out.upgrades[k] = Math.max(local.upgrades[k] || 0, remote.upgrades[k] || 0); });
+      keys(local.kniffe, remote.kniffe).forEach(function (k) { out.kniffe[k] = Math.max(local.kniffe[k] || 0, remote.kniffe[k] || 0); });
+      out.loadout = (JSON.stringify(local.loadout) !== JSON.stringify(base.loadout) ? local.loadout : remote.loadout).slice();
+      keys(local.defeated, remote.defeated).forEach(function (k) {
+        var n = sum(local.defeated[k] || 0, remote.defeated[k] || 0, base.defeated[k] || 0);
+        if (n) out.defeated[k] = n;
+      });
+      Object.keys(FEATS).forEach(function (k) {
+        var l = local.feats[k] || 0, r = remote.feats[k] || 0;
+        var n = FEATS[k] === 'sum' ? sum(l, r, base.feats[k] || 0) : Math.max(l, r);
+        if (n) out.feats[k] = n;
+      });
+      return M.clean(out);
+    },
+
+    /* Zusammenführen ohne gemeinsamen Stand: first gilt (Asche, Vorlieben), von other kommt hinzu, was dort mehr ist –
+       Freischaltungen, Stufen, Bestwerte, Zähler. So geht beim ersten Abgleich eines Geräts nichts verloren. */
+    join: function (first, other) {
+      first = M.clean(first); other = M.clean(other);
+      var out = M.clean(first);
+      out.earned = Math.max(first.earned, other.earned);
+      out.maxStake = Math.max(first.maxStake, other.maxStake);
+      Object.keys(other.unlocked).forEach(function (k) { out.unlocked[k] = true; });
+      Object.keys(other.upgrades).forEach(function (k) { out.upgrades[k] = Math.max(out.upgrades[k] || 0, other.upgrades[k]); });
+      Object.keys(other.kniffe).forEach(function (k) { out.kniffe[k] = Math.max(out.kniffe[k] || 0, other.kniffe[k]); });
+      Object.keys(other.defeated).forEach(function (k) { out.defeated[k] = Math.max(out.defeated[k] || 0, other.defeated[k]); });
+      Object.keys(other.feats).forEach(function (k) { out.feats[k] = Math.max(out.feats[k] || 0, other.feats[k]); });
+      return M.clean(out);
     },
 
     exists: function (kind, id) {
