@@ -1,5 +1,5 @@
 'use strict';
-/* Tests für den Server: Konten, Sitzungen, Statistik, Zurücksetzen, statische Dateien.
+/* Tests für den Server: Konten, Sitzungen, Statistik, Abgleich, Zurücksetzen, statische Dateien.
    Aufruf: node server/test.js */
 const assert = require('node:assert');
 const fs = require('node:fs');
@@ -130,7 +130,7 @@ async function waitFor(check, ms) {
   assert.strictEqual((await a('POST', '/api/register', { username: 'Zuendler', password: 'langgenug1', email: 'keine-mail' })).data.error, 'bad_email');
   assert.strictEqual((await a('POST', '/api/register', 'kein json')).status, 400);
   assert.strictEqual((await a('POST', '/api/register', '[1,2]')).status, 400);
-  assert.strictEqual((await a('POST', '/api/register', { username: 'x'.repeat(30000) })).status, 413);
+  assert.strictEqual((await a('POST', '/api/register', { username: 'x'.repeat(100000) })).status, 413);
   r = await fetch(base + '/api/register', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: '{}' });
   assert.strictEqual(r.status, 415, 'nur JSON');
   r = await fetch(base + '/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'https://boese.example' }, body: '{}' });
@@ -139,7 +139,7 @@ async function waitFor(check, ms) {
   // --- Registrierung mit Übernahme lokaler Statistik ---
   r = await a('POST', '/api/register', { username: 'Zuendler', password: 'streichholz1', email: 'Zuendler@Example.org', local: { runs: 4, wins: 9, best: 1234, bestAct: 2 } });
   assert.strictEqual(r.status, 201);
-  assert.deepStrictEqual(r.data, { user: { username: 'Zuendler' }, stats: { runs: 4, wins: 4, best: 1234, bestAct: 2 }, meta: {} });
+  assert.deepStrictEqual(r.data, { user: { username: 'Zuendler' }, stats: { runs: 4, wins: 4, best: 1234, bestAct: 2 }, meta: {}, rev: 0, run: null, prefs: {} });
   assert.match(r.setCookie, /HttpOnly/);
   assert.match(r.setCookie, /SameSite=Lax/);
   assert.doesNotMatch(r.setCookie, /Secure/, 'ohne HTTPS kein Secure-Flag');
@@ -171,6 +171,43 @@ async function waitFor(check, ms) {
   assert.strictEqual((await a('POST', '/api/meta', { meta: { blob: 'x'.repeat(17000) } })).status, 413);
   assert.strictEqual((await a('POST', '/api/meta', { meta: { ash: 12, earned: 30, unlocked: { 'trinket:heartblood': true }, upgrades: { startgeld: 2 }, maxStake: 1 } })).status, 200);
   assert.deepStrictEqual((await a('GET', '/api/me')).data.meta, { ash: 12, earned: 30, unlocked: { 'trinket:heartblood': true }, upgrades: { startgeld: 2 }, maxStake: 1 });
+
+  // --- Abgleich über Geräte hinweg: Zähler, Teile, Ablehnung bei veraltetem Stand ---
+  assert.strictEqual((await anon('POST', '/api/sync', { rev: 0 })).status, 401);
+  r = await a('GET', '/api/me');
+  const rev0 = r.data.rev;
+  assert.strictEqual(typeof rev0, 'number');
+  assert.strictEqual(r.data.run, null, 'noch kein Run im Konto');
+  assert.deepStrictEqual(r.data.prefs, {});
+  r = await a('POST', '/api/sync', { rev: rev0 });
+  assert.deepStrictEqual([r.status, r.data.rev], [200, rev0], 'bloßes Nachsehen ändert nichts');
+  r = await a('POST', '/api/sync', { rev: rev0, run: { v: 1, rid: 'abc', step: 3, collection: [] }, prefs: { deck: 'classic', avatar: { hair: 2 } } });
+  assert.deepStrictEqual([r.status, r.data.rev], [200, rev0 + 1]);
+  r = await a('GET', '/api/me');
+  assert.deepStrictEqual(r.data.run, { v: 1, rid: 'abc', step: 3, collection: [] });
+  assert.deepStrictEqual(r.data.prefs, { deck: 'classic', avatar: { hair: 2 } });
+  assert.strictEqual(r.data.meta.ash, 12, 'nicht mitgeschickte Teile bleiben, wie sie sind');
+  // Ein zweites Gerät baut noch auf dem alten Stand auf: Es bekommt den ganzen neuen und schreibt nichts.
+  r = await a('POST', '/api/sync', { rev: rev0, meta: { ash: 99 } });
+  assert.strictEqual(r.status, 409);
+  assert.strictEqual(r.data.rev, rev0 + 1);
+  assert.strictEqual(r.data.meta.ash, 12);
+  assert.strictEqual(r.data.run.rid, 'abc');
+  r = await a('POST', '/api/sync', { rev: rev0 + 1, meta: { ash: 20, maxStake: 2 }, run: null });
+  assert.deepStrictEqual([r.status, r.data.rev], [200, rev0 + 2]);
+  r = await a('GET', '/api/me');
+  assert.deepStrictEqual([r.data.meta.ash, r.data.run, r.data.prefs.deck], [20, null, 'classic'], 'run: null räumt den Run ab');
+  // Ältere Fassungen des Spiels schreiben über /api/meta: Der Zähler steigt, damit neuere es bemerken.
+  assert.strictEqual((await a('POST', '/api/meta', { meta: { ash: 21, maxStake: 2 } })).status, 200);
+  assert.strictEqual((await a('GET', '/api/me')).data.rev, rev0 + 3);
+  assert.strictEqual((await a('POST', '/api/sync', { rev: rev0 + 2, meta: { ash: 1 } })).status, 409);
+  assert.strictEqual((await a('POST', '/api/sync', { rev: rev0 + 3, meta: 'nein' })).status, 400);
+  assert.strictEqual((await a('POST', '/api/sync', { rev: rev0 + 3, run: [1] })).status, 400);
+  assert.strictEqual((await a('POST', '/api/sync', { rev: rev0 + 3, run: { blob: 'x'.repeat(49000) } })).status, 413);
+  assert.strictEqual((await a('POST', '/api/sync', { rev: rev0 + 3, prefs: { blob: 'x'.repeat(9000) } })).status, 413);
+  r = await a('POST', '/api/run', { countRun: false, score: 1, act: 1 });
+  assert.strictEqual(r.data.run, undefined, 'die Antwort auf eine Run-Meldung trägt den Run nicht mit');
+  assert.strictEqual((await a('GET', '/api/me')).data.rev, rev0 + 3, 'Statistik zählt nicht als Änderung des Spielstands');
 
   // --- Abmelden und Anmelden ---
   assert.strictEqual((await a('POST', '/api/logout', {})).status, 200);

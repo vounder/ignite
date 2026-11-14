@@ -480,6 +480,14 @@ body.nobg { background: radial-gradient(ellipse at 50% 85%, var(--bg-mid, #34170
 .reward-item { width: 270px; height: 390px; display: flex; flex-direction: column; align-items: center; justify-content: space-between; gap: 10px; padding: 22px 18px 18px; border-radius: 16px; background: linear-gradient(180deg, var(--walnut-2), var(--walnut)); border: 3px solid var(--brass-dark);
   box-shadow: inset 0 0 0 2px rgba(0,0,0,.45), 0 8px 0 rgba(0,0,0,.5); animation: dropin .5s cubic-bezier(.3,1.5,.5,1) backwards; }
 .reward-item p { text-align: center; font-size: 13px; line-height: 1.4; color: #e6dabd; min-height: 56px; }
+/* Die Wahl steht: Die übrigen Angebote sinken weg, vom gewählten bleibt nur das Stück selbst, das sich hebt und dann davonfliegt. */
+.reward.chosen .reward-item, .reward.chosen .reward-item > *, .reward.chosen .btn.skip, .reward.chosen h1, .reward.chosen .sub { transition: opacity .28s ease, transform .32s cubic-bezier(.3,1.4,.5,1), border-color .2s, box-shadow .2s; }
+.reward.chosen .reward-item:not(.picked) { opacity: 0; transform: translateY(26px) scale(.94); pointer-events: none; }
+.reward.chosen .btn.skip, .reward.chosen h1, .reward.chosen .sub { opacity: 0; pointer-events: none; }
+.reward.chosen .reward-item.picked { border-color: var(--ember-hot); box-shadow: inset 0 0 0 2px rgba(0,0,0,.45), 0 0 34px rgba(255,200,80,.55); }
+.reward.chosen .reward-item.picked > .ename, .reward.chosen .reward-item.picked > p, .reward.chosen .reward-item.picked > .btn { opacity: 0; pointer-events: none; }
+.reward.chosen .reward-item.picked > :first-child { transform: translateY(96px) scale(1.18); }
+.reward.chosen .reward-item.picked.gone { opacity: 0; transform: scale(.96); transition: opacity .3s ease, transform .3s ease; }
 
 .shop-left { position: absolute; left: 22px; bottom: 16px; width: 300px; height: 520px; }
 .manfred { position: absolute; left: -10px; bottom: 40px; width: 320px; height: 320px; filter: drop-shadow(0 8px 0 rgba(0,0,0,.35)); }
@@ -589,6 +597,19 @@ body.nobg { background: radial-gradient(ellipse at 50% 85%, var(--bg-mid, #34170
 .legaltext p { margin-bottom: 8px; }
 .statsline { display: flex; justify-content: center; gap: 22px; font-size: 14px; color: var(--ivory-dim); }
 .statsline b { font-family: var(--px-wide); font-weight: normal; font-size: 16px; color: var(--ember-hot); margin-left: 4px; }
+/* Abgleich mit dem Konto: Stand der Sicherung, Konto ohne Netz, Wahl zwischen zwei Runs */
+.syncline { text-align: center; font-size: 13px; line-height: 1.4; color: var(--good); margin: 2px 0 0; }
+.syncline.pending { color: var(--ivory-dim); } .syncline.offline, .syncline.none { color: #ffb37a; }
+.btn.small.unsaved::after { content: ''; display: inline-block; width: 8px; height: 8px; margin-left: 8px; border-radius: 50%; background: #ffb37a; }
+.offline-chip { display: flex; align-items: center; gap: 8px; padding: 7px 12px 5px; border-radius: 10px; background: rgba(23,13,8,.82); border: 2px solid var(--brass-dark); font-family: var(--px); font-size: 14px; letter-spacing: 1px; color: var(--ivory-dim); }
+.offline-chip b { font-weight: normal; color: var(--ivory); } .offline-chip span { color: #ffb37a; }
+.modal.runpick { width: 760px; }
+.runcards { display: flex; gap: 18px; margin-top: 14px; }
+.runcard { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 16px 14px 14px; border-radius: 14px; background: linear-gradient(180deg, var(--walnut-2), var(--walnut)); border: 3px solid var(--brass-dark); box-shadow: inset 0 0 0 2px rgba(0,0,0,.45); }
+.runcard h3 { margin: 0 0 4px; font-family: var(--px); font-weight: normal; font-size: 15px; letter-spacing: 1px; color: var(--ivory-dim); }
+.runcard .rc-casino { font-family: var(--px-wide); font-size: 20px; color: var(--ember-hot); text-align: center; }
+.runcard .rc-where { font-family: var(--px); font-size: 16px; color: var(--ivory); }
+.runcard .rc-line { font-size: 13px; color: #e6dabd; } .runcard .rc-when { font-size: 12px; color: var(--ivory-dim); min-height: 16px; margin-bottom: 8px; }
 .endcta { display: flex; align-items: center; gap: 12px; padding: 8px 10px 8px 16px; border-radius: 12px; background: rgba(0,0,0,.42); font-size: 14px; color: var(--ivory); }
 
 /* ---------- Bindung der Spezialkarten ---------- */

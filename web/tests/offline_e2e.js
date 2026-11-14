@@ -154,15 +154,16 @@ function copyWeb(target) {
   await context.setOffline(false);
   await page.reload();
   await menu(page);
-  await page.waitForFunction(() => ZU.account.user && ZU.account.stats.runs === 2, null, { timeout: 15000 });
+  await page.waitForFunction(() => ZU.account.user && ZU.account.stats.runs === 2 && ZU.account.syncState === 'saved', null, { timeout: 15000 });
   const synced = await page.evaluate(async () => ({
     stats: ZU.account.stats, local: ZU.Meta.get().ash, remote: (await (await fetch('api/me')).json()).meta.ash,
-    left: localStorage.getItem('zuendung.web.sync.v1')
+    left: localStorage.getItem('zuendung.web.sync.v2'), waiting: ZU.account.waiting()
   }));
   assert.deepStrictEqual(synced.stats, { runs: 2, wins: 1, best: 900, bestAct: 3 });
   assert.strictEqual(synced.local, 7, 'der Fortschritt vom Gerät bleibt');
   assert.strictEqual(synced.remote, 7, 'und liegt jetzt am Konto');
-  assert.deepStrictEqual(JSON.parse(synced.left), { user: 'Offliner', runs: [], meta: false });
+  const left = JSON.parse(synced.left);
+  assert.deepStrictEqual([left.user, left.runs, left.base.meta.ash, synced.waiting], ['Offliner', [], 7, false], 'nichts wartet mehr auf dem Gerät');
 
   // --- Einstellung verloren, Ablage noch da: Sie wird beim Start weggeräumt statt ohne Updates weiterzulaufen ---
   await page.evaluate(() => { const profile = ZU.Profile.load(); profile.settings.offline = false; ZU.Profile.save(profile); });

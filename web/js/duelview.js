@@ -462,9 +462,26 @@
       sp.setZ(self.pileZ);
       sp.punch(ev.score ? 2.6 + Math.min(4, ev.score.chain * 0.35) : 2.4);
       ZU.audio.place();
+      if (ev.score && ev.score.twin) return self.twinSeq(ev.score.twin, sp).then(function () { return self.destroyed ? null : self.scoreSeq(ev, sp); });
       if (ev.score) return self.scoreSeq(ev, sp);
       fx.burst(PILE.x, PILE.y, { n: 5, speed: 140, colors: ['#e9d8b0', '#b9aa86', '#7d7360'] });
       return wait(330);
+    });
+  };
+
+  /* Ebenbild: Dieselbe Karte liegt auf derselben. Ein Funke springt vom Stapel in die Kette, die um die Hälfte wächst –
+     erst danach wird die Karte gerechnet. */
+  DuelView.prototype.twinSeq = function (twin, sp) {
+    var self = this, to = ZU.stagePos(this.chainEl);
+    fx.pop(PILE.x, PILE.y - 150, 'Ebenbild! Kette ×1,5', 'gold', 1100);
+    fx.flash(PILE.x, PILE.y, { r: 90, alpha: 0.7, color: '#ffd75e' });
+    ZU.audio.ignite();
+    return fx.comet(PILE.x, PILE.y - 40, to.x, to.y, { ms: 200, colors: ['#ffffff', '#ffe98a', '#ff7b3a'], size: 8, trail: 3, arc: 40 }).then(function () {
+      if (self.destroyed) return null;
+      self.setChain(twin.to, true);
+      fx.flash(to.x, to.y, { r: 60, alpha: 0.8 });
+      fx.burst(to.x, to.y, { n: 16, speed: 240 });
+      return wait(240);
     });
   };
 

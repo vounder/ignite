@@ -61,11 +61,28 @@ Kennung setzt `python web/tools/stamp_version.py` vor dem Deployment.
 - `POST /api/run` nimmt eine Kennung `id` an; dieselbe Meldung zählt dann nur
   einmal (Nachreichen nach einer Zeit ohne Netz).
 
+## Abgleich über Geräte hinweg
+
+- Je Konto liegen drei Teile des Spielstands als JSON: `meta` (Fortschritt),
+  `run` (laufender Run oder leer) und `prefs` (Figur, Schachtel, Merkzettel),
+  dazu der Zähler `rev`, der mit jeder Speicherung steigt. `GET /api/me`,
+  Anmeldung und Registrierung liefern alles mit.
+- `POST /api/sync` mit `{ rev, meta?, run?, prefs? }`: Stimmt `rev` mit dem
+  Konto überein, werden die mitgeschickten Teile gespeichert (`run: null`
+  räumt den Run ab) und die Antwort nennt den neuen Zähler. Ohne Teile ist es
+  ein bloßes Nachsehen. Stimmt `rev` nicht, antwortet der Server mit 409 und
+  dem ganzen Stand – das Gerät führt zusammen (die Regeln dafür kennt das
+  Spiel, nicht der Server) und versucht es erneut.
+- `POST /api/meta` bleibt für ältere Fassungen des Spiels (zwischengespeicherte
+  Seiten, Apps vor dem Update): Es überschreibt den Fortschritt als Ganzes und
+  erhöht den Zähler, damit neuere Fassungen die Änderung bemerken.
+
 ## Was gespeichert wird
 
 Je Konto: Name, E-Mail-Adresse, Passwort als scrypt-Hash, Registrierungszeit und
-die Statistik (Runs, Siege, Bestwert, höchster Akt) sowie der Meta-Fortschritt
-(Asche, Freischaltungen, Upgrades, Einsätze, besiegte Gegner) als JSON. Sitzungen und Reset-Links
+die Statistik (Runs, Siege, Bestwert, höchster Akt) sowie der Spielstand als JSON:
+Meta-Fortschritt (Asche, Freischaltungen, Upgrades, Einsätze, besiegte Gegner), laufender Run,
+Figur, zuletzt gespielte Schachtel und Merkzettel. Sitzungen und Reset-Links
 werden nur als Hash abgelegt. Zu gemeldeten Runs bleibt 90 Tage lang deren
 zufällige Kennung liegen. Der Server schreibt keine Zugriffsprotokolle.
 
