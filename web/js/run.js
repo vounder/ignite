@@ -108,7 +108,7 @@
   /* Mit jedem Akt wachsen Prämien und Preise – so behalten Prozent-Effekte über den ganzen Run ihren Wert. */
   Run.prototype.scale = function () { return 1 + ZU.ACT_GROWTH * (this.s.act - 1); };
   Run.prototype._price = function (price) { return Math.max(1, Math.round(price * this.scale() * (this.rule('markup') ? 1.2 : 1))); };
-  /* Glutziel eines Tisches: wächst steil mit dem Akt und mit dem Casino. */
+  /* Glutziel eines Tisches: wächst mit dem Akt (×1,7) und mit dem Casino (+25 % je Haus). */
   Run.prototype.glutTarget = function (kind) {
     var g = ZU.GLUT_TARGET, raw = g[kind] * Math.pow(g.perAct, this.s.act - 1) * (1 + g.perCasino * (this.meta().legacy ? 0 : this.meta().stake || 0));
     if (this.has('zuenglein')) raw *= 0.9;

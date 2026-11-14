@@ -8,7 +8,7 @@
   ZU.CASINO_REMAP = [0, 1, 3, 5, 6, 7]; // alter Index (sechs Häuser) → neuer Index (acht Häuser) // im Hauptmenü unten rechts angezeigt
   /* Build-Kennung: wird an alle Asset-Adressen gehängt, damit Browser und CDN nach einem Update frische
      Dateien holen. Nicht von Hand ändern: web/tools/stamp_version.py setzt den Wert. */
-  ZU.BUILD = 'b0f57187d8';
+  ZU.BUILD = 'c47ae35770';
   ZU.asset = function (path) { return 'assets/' + path + '?v=' + ZU.BUILD; };
 
   ZU.HAND_SIZE = 7;
@@ -242,8 +242,10 @@
   ZU.TRINKET_SURCHARGE = 0.12; // Aufschlag je getragenem Trinket, als Anteil des Preises
   /* Mit jedem Akt wachsen Prämien und Preise um diesen Anteil – damit Prozent-Effekte ihren Wert behalten. */
   ZU.ACT_GROWTH = 0.15;
-  /* Glutziel je Tisch: Grundwert je Art, Faktor je Akt und Zuschlag je Casino. */
-  ZU.GLUT_TARGET = { battle: 600, elite: 800, boss: 1100, perAct: 2, perCasino: 0.5 };
+  /* Glutziel je Tisch: Grundwert je Art, Faktor je Akt und Zuschlag je Casino.
+     Früher ×2 je Akt und +50 % je Casino: Das lief jedem Deck davon (ab dem zweiten Casino fiel praktisch kein Ziel mehr).
+     Nachmessen mit web/tests/glutziel.js. */
+  ZU.GLUT_TARGET = { battle: 600, elite: 800, boss: 1100, perAct: 1.7, perCasino: 0.25 };
   var trinkets = {};
   function trinket(id, name, rarity, text) {
     trinkets[id] = { id: id, name: name, rarity: rarity, price: ZU.TRINKET_PRICES[rarity], text: text };

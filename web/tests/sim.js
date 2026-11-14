@@ -568,12 +568,18 @@ for (let i = 1; i < ZU.CASINOS.length; i++) assert.ok(ZU.CASINOS[i].ash > ZU.CAS
   assert.strictEqual(run.s.table, 0);
 }
 
-// Glutziel: Wer es erreicht, gewinnt sofort; die Ziele steigen steil, und der Überschuss zahlt ohne Deckel.
+// Glutziel: Wer es erreicht, gewinnt sofort; die Ziele steigen mit Akt und Casino, und der Überschuss zahlt ohne Deckel.
 {
   const run = ZU.Run.start('classic', 31337);
   const t1 = run.glutTarget('battle'), tBoss = run.glutTarget('boss');
   run.s.act = 3;
-  assert.ok(tBoss > t1 && run.glutTarget("battle") >= t1 * 4, 'Ziele wachsen mit Art und Akt');
+  assert.ok(tBoss > t1 && run.glutTarget("battle") >= t1 * 2.5 && run.glutTarget("battle") < t1 * 4, 'Ziele wachsen mit Art und Akt, aber nicht mehr aufs Doppelte je Akt');
+  assert.deepStrictEqual([ZU.GLUT_TARGET.perAct, ZU.GLUT_TARGET.perCasino], [1.7, 0.25]);
+  {
+    const far = ZU.Meta.defaults(); far.maxStake = far.stake = 4;
+    const high = ZU.Run.start('classic', 1, ZU.Meta.runOptions(ZU.Meta.clean(far)));
+    assert.strictEqual(high.glutTarget('battle'), 1200, 'fünftes Casino: +25 % je Haus');
+  }
   run.s.act = 1;
   const duel = run.newDuel();
   duel.start();

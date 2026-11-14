@@ -27,7 +27,7 @@ zugehörigen Elemente blenden sich selbst aus.
 - **Ziehen:** Wer nicht legen kann oder will, zieht eine Karte. Passt sie, darf
   sie sofort gelegt werden; sonst endet der Zug.
 - **Glutziel:** Jeder Tisch hat ein Glutziel (Tisch 600, Elite 800, Boss 1.100;
-  verdoppelt sich je Akt, +50 % je Casino-Stufe). Wer es erreicht, hat den Tisch
+  ×1,7 je Akt, +25 % je Casino-Stufe). Wer es erreicht, hat den Tisch
   „abgefackelt“ und gewinnt sofort; die Auszahlung zahlt dafür +50 % der Prämie
   und weitere +50 % je Verdopplung über dem Ziel (ohne Deckel), dazu Asche.
   Werte in `ZU.GLUT_TARGET` (`js/data.js`).
@@ -64,7 +64,7 @@ zugehörigen Elemente blenden sich selbst aus.
 - **Glut-Mult:** Neun Trinkets (Brandbeschleuniger, Chefsache, Öl ins Feuer, Schaulustige, Hexenfeuer, Breitseite,
   Weißglut, Kerbholz, Vabanque) sind je ein eigener Faktor auf jede Karte. Anders als die wachsenden Trinkets, deren
   Prozente sich zu einem Faktor addieren, multiplizieren sie sich miteinander – das ist der Weg zu Glutzielen, die sich
-  je Akt verdoppeln. Texte mit „+×0,1 je …" wachsen ab ×1. Wie oft das Glutziel fällt, misst
+  je Akt um 70 % wachsen. Texte mit „+×0,1 je …" wachsen ab ×1. Wie oft das Glutziel fällt, misst
   `node web/tests/glutziel.js [Runs] [Casino] [base|all] [focus]`.
 - **Kniffe:** Regeln, welche normalen Karten in einem Zug zusammen gelegt werden
   dürfen (`ZU.KNIFFE`): Pasch für einzelne Werte (7er, 8er, 9/10, Bildkarten,
