@@ -587,11 +587,9 @@
   /* ---------- Hauptmenü ---------- */
   var screens = {};
 
-  /* Titelbildschirm: das Hinterzimmer als Kulisse, der Schriftzug wird von einem Streichholz entzündet
-     und brennt danach; unten liegt die eigene Hand auf dem Filz. Nur beim ersten Mal läuft das Anzünden
-     in voller Länge – ein Klick überspringt es. */
-  var TITLE_HAND = [['hearts-Q'], ['fluch', 'clubs'], ['spades-K'], ['diamonds-A'], ['hodl', 'red'], ['clubs-J'], ['tausch', 'wild']];
-
+  /* Titelbildschirm: die Gasse hinter dem Casino. Rechts lehnt die eigene Figur an der Wand, links brennt der
+     Schriftzug, entzündet von einem Streichholz. Nur beim ersten Mal läuft das Anzünden in voller Länge – ein Klick
+     überspringt es. Wer losspielt, lässt die Figur stehen: Die Kamera fährt die Gasse hinunter bis in die Hintertür. */
   screens.menu = function (game, root) {
     ZU.bg.set('menu');
     ZU.audio.music('menu');
@@ -600,24 +598,35 @@
     var intro = !game.titleSeen && !calm;
     game.titleSeen = true;
 
-    var scene = titleScene(calm), art = scene.el;
+    var scene = alleyScene(game, calm), art = scene.el;
     var logo = ZU.titleLogo('ZÜNDUNG');
+    var leaving = false;
 
-    var hand = h('div', 'title-hand');
-    TITLE_HAND.forEach(function (entry, i) {
-      var slot = h('div', 'hand-slot', [ZU.cardStatic(ZU.CARDS[entry[0]], { bind: entry[1] })]);
-      slot.style.setProperty('--a', ((i - (TITLE_HAND.length - 1) / 2) * 4.5) + 'deg');
-      slot.style.setProperty('--i', i);
-      slot.addEventListener('pointerenter', function () { ZU.audio.hover(); });
-      hand.appendChild(slot);
-    });
+    /* Aufbruch in den Run: Schriftzug und Knöpfe weichen, die Kamera fährt zur Hintertür, erst dann wechselt der Bildschirm. */
+    function depart(fn) {
+      if (leaving) return;
+      leaving = true;
+      if (calm) { fn(); return; }
+      screen.classList.add('depart');
+      logo.fan(1);
+      ZU.audio.match();
+      setTimeout(function () { ZU.audio.whoosh(); }, 420);
+      scene.depart();
+      setTimeout(fn, 1280);
+    }
+    function play(label, cls, fn) {
+      var b = btn(label, cls, fn);
+      b.addEventListener('pointerenter', function () { if (!leaving) scene.fig.setBase('smug'); });
+      b.addEventListener('pointerleave', function () { if (!leaving) scene.fig.setBase('idle'); });
+      return b;
+    }
 
     var buttons = h('div', 'menu-buttons');
-    if (saved) buttons.appendChild(btn('Weiterspielen', 'big ember', function () { game.continueRun(saved); }));
-    buttons.appendChild(btn('Neuer Run', 'big ' + (saved ? 'felt' : 'ember'), function () {
-      if (!saved) { game.go('casino'); return; }
+    if (saved) buttons.appendChild(play('Weiterspielen', 'big ember', function () { depart(function () { game.continueRun(saved); }); }));
+    buttons.appendChild(play('Neuer Run', 'big ' + (saved ? 'felt' : 'ember'), function () {
+      if (!saved) { depart(function () { game.go('casino'); }); return; }
       confirmBox('Neuen Run beginnen?', 'Der gespeicherte Run wird dabei überschrieben.', 'Neu beginnen').then(function (yes) {
-        if (yes) game.go('casino');
+        if (yes) depart(function () { game.go('casino'); });
       });
     }));
     buttons.appendChild(h('div', 'menu-row', [
@@ -631,11 +640,10 @@
     Array.prototype.forEach.call(buttons.children, function (child, i) { child.style.setProperty('--i', i); });
 
     var slot = accountSlot();
-    var screen = h('div', 'screen menu title ' + (intro ? 'intro' : 'ready quick'), [
+    var screen = h('div', 'screen menu title alley ' + (intro ? 'intro' : 'ready quick'), [
       art,
       h('div', 'title-shade'),
       logo,
-      hand,
       buttons,
       slot,
       h('div', 'menu-version', 'v' + ZU.VERSION)
@@ -646,7 +654,7 @@
       if (!screen.classList.contains('intro')) return;
       screen.classList.remove('intro');
       screen.classList.add('ready');
-      for (var i = 0; i < TITLE_HAND.length; i++) setTimeout(ZU.audio.deal, 140 + i * 70);
+      scene.fig.setMood('smug', 1500);
     }
     logo.onAblaze = ready;
     logo.ignite(!intro);
@@ -656,7 +664,7 @@
       ready();
     }
     screen.addEventListener('pointerdown', skip);
-    /* Parallaxe: Kulisse, Schriftzug und Hand verschieben sich leicht gegen die Maus. */
+    /* Parallaxe: Kulisse, Figur und Schriftzug verschieben sich leicht gegen die Maus. */
     screen.addEventListener('pointermove', function (e) {
       var r = screen.getBoundingClientRect();
       screen.style.setProperty('--mx', (((e.clientX - r.left) / r.width - 0.5) * 2).toFixed(3));
@@ -671,58 +679,51 @@
     return function () { slot._off(); logo.destroy(); scene.stop(); };
   };
 
-  /* Titelkulisse aus Ebenen: Raum, die Herren und Damen der sechs Casinos, davor der Tisch.
-     Jede Figur ist ein Streifen aus drei Bildern (ruhig, Blinzeln, Grinsen) und lebt für sich:
-     Sie atmet (CSS), blinzelt in unregelmäßigen Abständen und grinst gelegentlich. */
-  var TITLE_CAST = [
-    // id, Mitte x, Unterkante y, Höhe, gespiegelt, Ebene – von außen nach innen, die mittlere sitzt jeweils weiter hinten
-    ['impresario', 108, 548, 372, false, 2],
-    ['house', 262, 520, 348, false, 1],
-    ['captain', 384, 552, 348, false, 3],
-    ['baroness', 896, 552, 348, true, 3],
-    ['prince', 1018, 520, 348, true, 1],
-    ['director', 1172, 548, 372, true, 2]
-  ];
-  ZU.TITLE_ART = ['title/room.png', 'title/table.png'].concat(TITLE_CAST.map(function (c) { return 'title/cast-' + c[0] + '.png'; }));
-  function titleScene(calm) {
-    var room = h('div', 'ts-layer ts-room'), cast = h('div', 'ts-layer ts-cast'), table = h('div', 'ts-layer ts-table');
-    room.style.backgroundImage = 'url(' + ZU.asset('title/room.png') + ')';
-    table.style.backgroundImage = 'url(' + ZU.asset('title/table.png') + ')';
-    var timers = [], dead = false;
-    TITLE_CAST.forEach(function (c, index) {
-      var height = c[3], width = Math.round(height * 440 / 480);
-      var img = h('i', 'ts-img');
-      img.style.backgroundImage = 'url(' + ZU.asset('title/cast-' + c[0] + '.png') + ')';
-      var fig = h('div', 'ts-fig' + (c[4] ? ' flip' : ''), [h('div', 'ts-breath', [img])]);
-      fig.style.cssText = 'left:' + (c[1] - width / 2) + 'px;top:' + (c[2] - height) + 'px;width:' + width + 'px;height:' + height + 'px;z-index:' + c[5] + ';';
-      fig.style.setProperty('--d', (-index * 0.9) + 's');
-      cast.appendChild(fig);
-      if (calm) return;
-      function frame(n) { img.style.backgroundPosition = (n * 50) + '% 0'; }
-      // Blinzeln: kurz, alle paar Sekunden, manchmal doppelt
-      (function blink() {
-        timers[index * 2] = setTimeout(function () {
-          if (dead) return;
-          frame(1);
-          setTimeout(function () { if (!dead && !fig._smug) frame(0); }, 130);
-          if (Math.random() < 0.2) setTimeout(function () { if (dead || fig._smug) return; frame(1); setTimeout(function () { if (!dead && !fig._smug) frame(0); }, 110); }, 300);
-          blink();
-        }, 1800 + Math.random() * 4200);
-      })();
-      // Grinsen: selten und für einen Moment, nie alle zugleich
-      (function smirk() {
-        timers[index * 2 + 1] = setTimeout(function () {
-          if (dead) return;
-          fig._smug = true;
-          frame(2);
-          setTimeout(function () { fig._smug = false; if (!dead) frame(0); }, 1400 + Math.random() * 1600);
-          smirk();
-        }, 5000 + index * 1300 + Math.random() * 12000);
-      })();
-    });
+  /* Titelkulisse: ein gemaltes Bild der Gasse (title/alley.png, 1600×900 für die Kamerafahrt), darüber Leben aus CSS –
+     Laterne und Neonschild flackern, aus dem Gully steigt Dampf, es regnet. Davor steht die eigene Figur in ganzer Länge
+     (ZU.avatar.full); ein Klick auf sie führt zu „Deine Figur“. */
+  ZU.TITLE_ART = ['title/alley.png'];
+  var rainTile = null;
+  function rainUrl() {
+    if (rainTile) return rainTile;
+    var c = document.createElement('canvas'), x = c.getContext('2d');
+    c.width = 256; c.height = 256;
+    x.strokeStyle = 'rgba(190,205,235,.5)';
+    x.lineWidth = 1;
+    for (var i = 0; i < 26; i++) {
+      var px = Math.random() * 256, py = Math.random() * 256, len = 10 + Math.random() * 16;
+      x.globalAlpha = 0.25 + Math.random() * 0.5;
+      x.beginPath(); x.moveTo(px, py); x.lineTo(px - len * 0.18, py + len); x.stroke();
+    }
+    return (rainTile = 'url(' + c.toDataURL() + ')');
+  }
+  function alleyScene(game, calm) {
+    var back = h('div', 'al-back');
+    back.style.backgroundImage = 'url(' + ZU.asset('title/alley.png') + ')';
+    var fig = ZU.avatar.full(ZU.avatar.clean(game.profile.avatar, ZU.Meta.get()), { light: true, calm: calm });
+    var hit = h('div', 'al-hit');
+    hit.addEventListener('click', function () { ZU.audio.click(); game.go('avatar'); });
+    hit.addEventListener('pointerenter', function () { ZU.audio.hover(); fig.setMood('smug', 1200); });
+    ZU.tip.bind(hit, 'Deine Figur – hier ziehst du sie um.');
+    var cam = h('div', 'al-cam', [
+      back,
+      h('div', 'al-lamp'),
+      h('div', 'al-neon'),
+      h('div', 'al-steam', [h('i'), h('i'), h('i')])
+    ]);
+    var rain = h('div', 'al-rain');
+    if (!calm) rain.style.backgroundImage = rainUrl();
+    var el = h('div', 'title-art alley', [
+      cam,
+      h('div', 'al-fig', [h('div', 'al-figshadow'), fig, hit]),
+      rain,
+      h('div', 'al-dark')
+    ]);
     return {
-      el: h('div', 'title-art', [room, cast, table]),
-      stop: function () { dead = true; timers.forEach(clearTimeout); }
+      el: el,
+      fig: fig,
+      depart: function () { fig.setMood('smug'); el.classList.add('go'); },
+      stop: function () {}
     };
   }
 

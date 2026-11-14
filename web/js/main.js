@@ -30,7 +30,8 @@
         }
       });
       // Erst der Vorspann, dabei lädt alles, was der Titel zeigt; reicht die Zeit nicht, folgt der Ladebalken.
-      var core = ZU.TITLE_ART.map(function (path) { return ZU.asset(path); }).concat([ZU.cardAtlas()]);
+      var core = ZU.TITLE_ART.map(function (path) { return ZU.asset(path); }).concat([ZU.cardAtlas()])
+        .concat(ZU.avatar.fullUrls(ZU.avatar.clean(this.profile.avatar, ZU.Meta.get()))); // die eigene Figur lehnt im Titel an der Wand
       ZU.boot.start(core).then(function () { self.start(); });
     },
 
@@ -75,6 +76,7 @@
       var run = this.run, urls = [], self = this;
       function add(path) { urls.push(ZU.asset(path)); }
       if (name === 'casino') ZU.CASINO_ART.forEach(add);
+      if (name === 'menu') { ZU.TITLE_ART.forEach(add); ZU.avatar.fullUrls(ZU.avatar.clean(this.profile.avatar, ZU.Meta.get())).forEach(function (u) { urls.push(u); }); }
       if (name === 'avatar' || name === 'duel') ZU.avatar.urls(ZU.avatar.clean(this.profile.avatar, ZU.Meta.get())).forEach(function (u) { urls.push(u); });
       if (name === 'backroom') { add('backroom/room.png'); add('backroom/veil.png'); }
       if (!run || ['select', 'duel', 'shop', 'esme', 'reward'].indexOf(name) < 0) return urls;
