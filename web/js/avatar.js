@@ -252,12 +252,12 @@
   function ramped(name, img, ramp) {
     var key = name + '|' + ramp.join(''), done = tinted[key];
     if (done) return done;
-    var c = document.createElement('canvas');
-    c.width = c.height = SIZE;
+    var c = document.createElement('canvas'), w = img.naturalWidth || SIZE, hgt = img.naturalHeight || SIZE;
+    c.width = w; c.height = hgt;
     var x = c.getContext('2d');
-    x.drawImage(img, 0, 0, SIZE, SIZE);
+    x.drawImage(img, 0, 0, w, hgt);
     try {
-      var data = x.getImageData(0, 0, SIZE, SIZE), px = data.data, cols = ramp.map(rgb);
+      var data = x.getImageData(0, 0, w, hgt), px = data.data, cols = ramp.map(rgb);
       for (var i = 0; i < px.length; i += 4) {
         if (!px[i + 3]) continue;
         var l = px[i], col = cols[l < 56 ? 0 : l < 124 ? 1 : l < 180 ? 2 : l < 228 ? 3 : 4];
@@ -319,6 +319,102 @@
     show('idle');
     blinkTimer = setTimeout(blink, 1500 + Math.random() * 2500);
     return box;
+  }
+
+  /* ---------- Ganze Figur (Titelbild) ----------
+     Dieselben Teile noch einmal in ganzer Länge und in der lässig angelehnten Haltung (assets/avatar/full/*.png, je 240×360,
+     auf der Bühne doppelt so groß). Kopf und Hals stammen aus head.png; alles darunter bringt das Outfit selbst mit:
+     outfit-N.png die Kleidung, outfit-N-skin.png die nackte Haut dieses Outfits (Arme, Beine, Ausschnitt) in Graustufen.
+     Tattoos liegen auf der Haut und werden auf sie beschnitten. */
+  var FW = 240, FH = 360;
+  function fullLayers(cfg, mood) {
+    var skin = find('skin', cfg.skin).ramp, hairRamp = find('hairColor', cfg.hairColor).ramp, f = 'full/';
+    var list = [[f + cfg.outfit + '-skin', skin], [f + 'head', skin]];
+    cfg.tattoo.forEach(function (id) { if (!FACE_INK[id]) list.push([f + id, null, null, true]); });
+    list.push([f + cfg.outfit]);
+    list.push([f + 'face-' + mood + '-skin', skin]);
+    cfg.tattoo.forEach(function (id) { if (FACE_INK[id]) list.push([f + id]); });
+    list.push([f + 'face-' + mood]);
+    cfg.acc.forEach(function (id) { if (UNDER_HAIR[id]) list.push([f + id]); });
+    if (cfg.beard !== 'none') list.push([f + cfg.beard, hairRamp]);
+    var hidden = cfg.hat !== 'none' && HAIR_OFF[cfg.hair] && HAIR_OFF[cfg.hair][cfg.hat];
+    if (cfg.hair !== 'none' && !hidden) list.push([f + cfg.hair, hairRamp, cfg.hat !== 'none' ? f + cfg.hat + '-hairmask' : null]);
+    cfg.acc.forEach(function (id) { if (!UNDER_HAIR[id]) list.push([f + id]); });
+    if (cfg.hat !== 'none') list.push([f + cfg.hat]);
+    return list;
+  }
+  var fscratch = null;
+  function fullScratch() {
+    fscratch = fscratch || document.createElement('canvas');
+    fscratch.width = FW; fscratch.height = FH;
+    return fscratch.getContext('2d');
+  }
+  /* light: Die Figur steht im Licht der Gasse – nach unten und zur Wand hin dunkler, links eine warme Kante von der Laterne. */
+  function paintFull(canvas, cfg, mood, light) {
+    var list = fullLayers(cfg, mood), items = list.map(function (l) { return image(l[0]); });
+    var masks = list.map(function (l) { return l[2] ? image(l[2]) : null; });
+    var pending = items.concat(masks).some(function (it) { return it && !it.ok && !it.bad; });
+    if (pending) { waiting.push(function () { if (canvas._want === mood + JSON.stringify(cfg)) paintFull(canvas, cfg, mood, light); }); return; }
+    var ctx = canvas.getContext('2d'), s;
+    ctx.imageSmoothingEnabled = false;
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+    ctx.clearRect(0, 0, FW, FH);
+    list.forEach(function (l, i) {
+      if (!items[i].ok) return;
+      var src = l[1] ? ramped(l[0], items[i].img, l[1]) : items[i].img, mask = masks[i] && masks[i].ok ? masks[i].img : null;
+      if (!mask && !l[3]) { ctx.drawImage(src, 0, 0); return; }
+      s = fullScratch();
+      s.drawImage(src, 0, 0);
+      if (mask) { s.globalCompositeOperation = 'destination-out'; s.drawImage(mask, 0, 0); }
+      if (l[3]) { s.globalCompositeOperation = 'destination-in'; s.drawImage(canvas, 0, 0); } // nur dort, wo schon Haut ist
+      ctx.drawImage(fscratch, 0, 0);
+    });
+    if (!light) return;
+    var shade = ctx.createLinearGradient(0, 40, 60, FH);
+    shade.addColorStop(0, 'rgba(60,20,10,0)'); shade.addColorStop(0.55, 'rgba(40,14,10,.14)'); shade.addColorStop(1, 'rgba(24,8,10,.42)');
+    ctx.globalCompositeOperation = 'source-atop';
+    ctx.fillStyle = 'rgba(255,150,70,.07)'; ctx.fillRect(0, 0, FW, FH);
+    ctx.fillStyle = shade; ctx.fillRect(0, 0, FW, FH);
+    s = fullScratch();                       // Lichtkante: was von der Figur übrig bleibt, wenn man sie um einen Pixel nach rechts versetzt abzieht
+    s.drawImage(canvas, 0, 0);
+    s.globalCompositeOperation = 'destination-out'; s.drawImage(canvas, 1, 0);
+    s.globalCompositeOperation = 'source-in'; s.fillStyle = '#ffc070'; s.fillRect(0, 0, FW, FH);
+    ctx.globalAlpha = 0.6; ctx.drawImage(fscratch, 0, 0); ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  /* Die ganze Figur als Element: setMood(mood, ms), setBase(mood), setConfig(cfg) wie beim Porträt; sie atmet und blinzelt von selbst. */
+  function fullEl(cfg, opts) {
+    opts = opts || {};
+    var canvas = h('canvas', 'af-canvas', null, { width: String(FW), height: String(FH) });
+    var box = h('div', 'avatar-full ' + (opts.cls || ''), [h('div', 'af-breath', [canvas])]);
+    var base = 'idle', shown = '', timer = null, seen = false;
+    function show(mood) {
+      shown = mood;
+      canvas._want = mood + JSON.stringify(cfg);
+      box.dataset.mood = mood;
+      paintFull(canvas, cfg, mood, !!opts.light);
+    }
+    function blink() {
+      if (box.isConnected) seen = true; else if (seen) return;
+      if (shown === 'idle' && box.isConnected && !opts.calm) { show('blink'); setTimeout(function () { if (shown === 'blink') show('idle'); }, 130); }
+      setTimeout(blink, 2200 + Math.random() * 3800);
+    }
+    box.setMood = function (mood, ms) {
+      clearTimeout(timer); timer = null;
+      show(mood);
+      if (ms) timer = setTimeout(function () { timer = null; show(base); }, ms);
+    };
+    box.setBase = function (mood) { base = mood; if (!timer) show(mood); };
+    box.setConfig = function (next) { cfg = next; show(shown === 'blink' ? 'idle' : shown || base); };
+    show('idle');
+    setTimeout(blink, 1500 + Math.random() * 2500);
+    return box;
+  }
+  function fullUrls(cfg, moods) {
+    var names = {};
+    (moods || ['idle', 'blink', 'smug']).forEach(function (mood) { fullLayers(cfg, mood).forEach(function (l) { names[l[0]] = true; if (l[2]) names[l[2]] = true; }); });
+    return Object.keys(names).map(function (n) { return ZU.asset('avatar/' + n + '.png'); });
   }
 
   /* ---------- Editor ---------- */
@@ -389,7 +485,7 @@
     ]));
   }
 
-  ZU.avatar = { PARTS: PARTS, DEFAULT: DEFAULT, clean: clean, el: el, unlocked: unlocked, screen: screen,
+  ZU.avatar = { PARTS: PARTS, DEFAULT: DEFAULT, clean: clean, el: el, unlocked: unlocked, screen: screen, full: fullEl, fullUrls: fullUrls,
     /* Alle Bilder, die diese Figur braucht (zum Vorladen). */
     urls: function (cfg) {
       var names = {};

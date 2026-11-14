@@ -30,7 +30,8 @@
         }
       });
       // Erst der Vorspann, dabei lädt alles, was der Titel zeigt; reicht die Zeit nicht, folgt der Ladebalken.
-      var core = ZU.TITLE_ART.map(function (path) { return ZU.asset(path); }).concat([ZU.cardAtlas()]);
+      var core = ZU.TITLE_ART.map(function (path) { return ZU.asset(path); }).concat([ZU.cardAtlas()])
+        .concat(ZU.avatar.fullUrls(ZU.avatar.clean(this.profile.avatar, ZU.Meta.get()))); // die eigene Figur lehnt im Titel an der Wand
       var pending = ZU.offline.begin(this);
       ZU.boot.start(core).then(function () { return ZU.boot.update(pending); }).then(function () { self.start(); });
     },
@@ -79,6 +80,7 @@
       if (name === 'starter') ZU.STARTERS.forEach(function (starter) { add('decks/' + starter.id + '-box.png'); });
       if (name === 'starter') urls.push(ZU.deckArt(ZU.STARTER[this.starterPick || this.profile.deck] ? this.starterPick || this.profile.deck : 'classic', 'back'));
       if (name === 'duel' && run) add('decks/house-back.png');
+      if (name === 'menu') { ZU.TITLE_ART.forEach(add); ZU.avatar.fullUrls(ZU.avatar.clean(this.profile.avatar, ZU.Meta.get())).forEach(function (u) { urls.push(u); }); }
       if (name === 'avatar' || name === 'duel') ZU.avatar.urls(ZU.avatar.clean(this.profile.avatar, ZU.Meta.get())).forEach(function (u) { urls.push(u); });
       if (name === 'backroom') { add('backroom/room.png'); add('backroom/veil.png'); }
       if (!run || ['select', 'duel', 'shop', 'esme', 'reward'].indexOf(name) < 0) return urls;
