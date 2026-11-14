@@ -2,13 +2,13 @@
 (function (ZU) {
   'use strict';
 
-  ZU.VERSION = '2.10.1';
+  ZU.VERSION = '2.11.0';
   /* Stand der Casino-Liste. Ändert sich die Reihenfolge, rechnen js/meta.js und js/run.js gespeicherte Stände um. */
   ZU.CASINO_VERSION = 2;
   ZU.CASINO_REMAP = [0, 1, 3, 5, 6, 7]; // alter Index (sechs Häuser) → neuer Index (acht Häuser) // im Hauptmenü unten rechts angezeigt
   /* Build-Kennung: wird an alle Asset-Adressen gehängt, damit Browser und CDN nach einem Update frische
      Dateien holen. Nicht von Hand ändern: web/tools/stamp_version.py setzt den Wert. */
-  ZU.BUILD = '705bcaa8c9';
+  ZU.BUILD = 'ad12b810e3';
   ZU.asset = function (path) { return 'assets/' + path + '?v=' + ZU.BUILD; };
 
   ZU.HAND_SIZE = 7;
@@ -400,6 +400,16 @@
   trinket('brandpraemie', 'Brandprämie', 1, 'Abgefackelte Tische zahlen noch einmal 50 % der Prämie.');
   trinket('hausfreund', 'Hausfreund', 1, 'Esmes Pakete kosten 25 % weniger.');
   trinket('teufelspakt', 'Teufelspakt', 3, 'Alle deine Karten bringen doppelte Glut. Du beginnst jedes Duell verflucht (×2).');
+  // --- Glut-Mult: jedes Stück ist ein eigener Faktor auf jede Karte; mehrere davon multiplizieren sich ---
+  trinket('brandbeschleuniger', 'Brandbeschleuniger', 0, 'Alle deine Karten bringen ×1,5 Glut.');
+  trinket('chefsache', 'Chefsache', 0, 'An Bosstischen bringen deine Karten ×3 Glut.');
+  trinket('oel-ins-feuer', 'Öl ins Feuer', 1, 'Je Löschmittel, das ein Tisch gegen dich aufbietet: ×1,5 Glut auf jede Karte.');
+  trinket('schaulustige', 'Schaulustige', 1, '+×0,1 Glut je Handkarte des Gegners (bei 7 Karten: ×1,7).');
+  trinket('hexenfeuer', 'Hexenfeuer', 1, 'Solange der Gegner verflucht ist, bringen deine Karten ×2 Glut.');
+  trinket('breitseite', 'Breitseite', 1, 'Legst du mehrere Karten auf einmal, bringt jede davon ×2 Glut.');
+  trinket('weissglut', 'Weißglut', 2, '+×0,1 Glut je Stufe deiner Kette (bei Kette ×10: ×2).');
+  trinket('kerbholz', 'Kerbholz', 2, '+×0,25 Glut je Tisch, den du in diesem Run abgefackelt hast.');
+  trinket('vabanque', 'Vabanque', 2, 'Alle deine Karten bringen ×3 Glut. Verlierst du ein Duell, ist dieses Trinket fort.');
   ZU.TRINKETS = trinkets;
   ZU.TRINKET_IDS = Object.keys(trinkets);
 

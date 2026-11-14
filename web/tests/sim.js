@@ -25,8 +25,19 @@ function check(duel) {
   assert.ok(duel.chain >= 1);
 }
 
+/* Die angezeigte Rechnung muss aufgehen: Grundwert × Kette, dann jeder Schritt, ergibt genau die gutgeschriebene Glut. */
+function checkScore(e) {
+  if (e.t !== 'play' || !e.score) return;
+  let v = e.score.base * e.score.eff;
+  (e.score.steps || []).forEach(st => {
+    v = st.round ? Math.round(v * st.f) : v * st.f;
+    assert.strictEqual(st.v, v, 'Rechenschritt stimmt nicht: ' + JSON.stringify(st));
+  });
+  assert.strictEqual(v, e.score.points, 'Rechnung ergibt nicht die Glut der Karte');
+}
+
 function record(events) {
-  events.forEach(e => { eventTypes[e.t] = (eventTypes[e.t] || 0) + 1; assert.ok(e.t, 'Ereignis ohne Typ'); });
+  events.forEach(e => { eventTypes[e.t] = (eventTypes[e.t] || 0) + 1; assert.ok(e.t, 'Ereignis ohne Typ'); checkScore(e); });
 }
 
 function playDuel(run, rnd) {
@@ -525,6 +536,97 @@ for (let i = 1; i < ZU.CASINOS.length; i++) assert.ok(ZU.CASINOS[i].ash > ZU.CAS
   const early = ZU.Run.start('classic', 5), late = ZU.Run.start('classic', 5);
   late.s.act = 5;
   assert.ok(late.baseReward('battle') > early.baseReward('battle') * 1.5 && late._price(20) > early._price(20));
+}
+
+// Glut-Mult: Jedes Stück ist ein eigener Faktor; zusammen multiplizieren sie sich. Vabanque geht bei einer Niederlage verloren.
+{
+  const plainDef = id => { const c = ZU.CARDS[id]; return !c.special && !'78AJ'.includes(c.rank); };
+  /* Legt eine einzelne normale Karte (oder zwei gleiche Werte als Zug) mit den gegebenen Trinkets und liefert die Wertung. */
+  const score = (trinkets, setup, salvo) => {
+    const run = ZU.Run.start('classic', 606);
+    run.s.trinkets = trinkets.slice();
+    if (setup && setup.run) setup.run(run);
+    const d = run.newDuel();
+    d.start();
+    d.phase = 'action'; d.active = 'player'; d.pending = null; d.afterDraw = null;
+    d.status.curse.player = 0; d.status.curse.opp = 0;
+    if (setup && setup.duel) setup.duel(d);
+    const card = d.hand.player.concat(d.stocks.player).find(id => plainDef(d.cards[id].def));
+    if (!d.hand.player.includes(card)) { d.stocks.player.splice(d.stocks.player.indexOf(card), 1); d.hand.player.push(card); }
+    d.pile.push(d._register(d.cards[card].def, 'house', false));
+    const ev = [];
+    d.salvo = salvo || 0;
+    d._putOnTable('player', card, 'hand', ev);
+    const sc = ev.find(e => e.t === 'play').score;
+    checkScore(ev.find(e => e.t === 'play'));
+    return { points: sc.points, plain: sc.base * sc.eff, steps: sc.steps, d: d };
+  };
+  const f = r => r.points / r.plain;
+  assert.strictEqual(f(score([])), 1);
+  assert.strictEqual(f(score(['brandbeschleuniger'])), 1.5);
+  assert.strictEqual(f(score(['chefsache'])), 1, 'Chefsache ruht am gewöhnlichen Tisch');
+  assert.strictEqual(f(score(['chefsache'], { duel: d => { d.kind = 'elite'; } })), 1);
+  assert.strictEqual(f(score(['chefsache'], { duel: d => { d.kind = 'boss'; } })), 3);
+  assert.strictEqual(f(score(['oel-ins-feuer'], { duel: d => { d.douse = []; } })), 1);
+  assert.strictEqual(f(score(['oel-ins-feuer'], { duel: d => { d.douse = ['sand']; } })), 1.5);
+  assert.strictEqual(f(score(['oel-ins-feuer'], { duel: d => { d.douse = ['blanket', 'water']; d.chain = 4; } })), 2.25);
+  const crowd = score(['schaulustige'], { duel: d => { d.hand.opp.length = 5; } });
+  assert.strictEqual(f(crowd), 1.5, '+×0,1 je Handkarte des Gegners');
+  assert.strictEqual(f(score(['hexenfeuer'])), 1);
+  assert.strictEqual(f(score(['hexenfeuer'], { duel: d => { d.status.curse.opp = 1; } })), 2);
+  assert.strictEqual(f(score(['breitseite'])), 1, 'einzelne Karte: keine Breitseite');
+  assert.strictEqual(f(score(['breitseite'], null, 2)), 2);
+  assert.strictEqual(f(score(['weissglut'], { duel: d => { d.chain = 10; } })), 2);
+  assert.strictEqual(f(score(['weissglut'], { duel: d => { d.chain = 5; } })), 1.5);
+  assert.strictEqual(f(score(['kerbholz'])), 1);
+  assert.strictEqual(f(score(['kerbholz'], { run: r => { r.s.burntCount = 4; } })), 2);
+  assert.strictEqual(f(score(['vabanque'])), 3);
+  // zusammen: ×1,5 · ×2 · ×3 = ×9 – nicht +350 %
+  const all = score(['brandbeschleuniger', 'hexenfeuer', 'vabanque'], { duel: d => { d.chain = 4; d.status.curse.opp = 2; } });
+  assert.strictEqual(f(all), 9);
+  assert.deepStrictEqual(all.steps.map(st => st.id), ['brandbeschleuniger', 'hexenfeuer', 'vabanque']);
+  // Breitseite im echten Zug: Zwei Könige mit dem Pasch – beide Karten zählen doppelt, eine einzelne danach nicht.
+  {
+    const run = ZU.Run.start('classic', 607);
+    run.s.trinkets = ['breitseite'];
+    run.s.kniffe = [{ id: 'pasch', level: 3 }];
+    const d = run.newDuel(); d.start();
+    d.phase = 'action'; d.active = 'player'; d.pending = null; d.afterDraw = null; d.target = 1e9;
+    const kings = ['hearts-K', 'spades-K'].map(def => { const id = d._register(def, 'player', false); d.hand.player.push(id); return id; });
+    d.pile.push(d._register('hearts-9', 'house', false));
+    const plays = d.play('player', kings).filter(e => e.t === 'play' && e.score);
+    assert.strictEqual(plays.length, 2);
+    plays.forEach(e => { checkScore(e); assert.deepStrictEqual(e.score.steps.map(st => st.id), ['breitseite']); });
+    assert.strictEqual(d.salvo, 0);
+  }
+  // Kerbholz zählt abgefackelte Tische des Runs; Vabanque ist nach einer Niederlage fort.
+  {
+    const run = ZU.Run.start('classic', 608);
+    run.s.trinkets = ['vabanque', 'kerbholz'];
+    let d = run.newDuel(); d.start();
+    d.glut = d.target; d.phase = 'action'; d.active = 'player'; d.pending = null;
+    const card = d.hand.player.find(id => !d.def(id).special);
+    d.pile.push(d._register(d.cards[card].def, 'house', false));
+    d.play('player', [card]);
+    assert.strictEqual(run.finishDuel(d).burnt, true);
+    assert.strictEqual(run.s.burntCount, 1);
+    run.afterPayout();
+    if (run.s.phase === 'reward') run.chooseReward(null);
+    run.leaveShop();
+    d = run.newDuel(); d.start();
+    assert.strictEqual(d.grow.burnt, 1);
+    d.winner = 'opp'; d.phase = 'ended';
+    const lost = run.finishDuel(d);
+    assert.strictEqual(lost.won, false);
+    assert.strictEqual(lost.gone, 'vabanque');
+    assert.deepStrictEqual(run.s.trinkets, ['kerbholz']);
+  }
+  // Jedes Trinket hat ein Bild, und alles außerhalb der Grundausstattung hat eine Bedingung.
+  const fs = require('fs'), path = require('path');
+  ZU.TRINKET_IDS.forEach(id => {
+    assert.ok(fs.existsSync(path.join(__dirname, '..', 'assets', 'trinkets', id + '.png')), 'Bild fehlt: ' + id);
+    assert.ok(ZU.Meta.BASE.trinket.includes(id) || ZU.Meta.REQ['trinket:' + id], 'weder Grundausstattung noch Bedingung: ' + id);
+  });
 }
 
 // Die 7 lässt nur noch 1 Karte ziehen und niemanden aussetzen.

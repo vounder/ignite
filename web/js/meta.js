@@ -10,7 +10,8 @@
     starter: ['classic'],
     trinket: ['lucky-chip', 'ashtray', 'false-bottom', 'ledger', 'fuse', 'brass-knuckles', 'pocket-watch', 'gold-tooth', 'cellar-key', 'counterfeit', 'loyalty',
       'kreuzfeuer', 'bauernopfer', 'rotlicht', 'volle-zehn', 'erster-funke', 'volles-haus', 'heisse-ware', 'endspurt',
-      'schwarzer-peter', 'schadenfreude', 'bierdeckel', 'trinkgeld', 'rabattmarke', 'nachtschicht'],
+      'schwarzer-peter', 'schadenfreude', 'bierdeckel', 'trinkgeld', 'rabattmarke', 'nachtschicht',
+      'brandbeschleuniger', 'chefsache', 'oel-ins-feuer', 'schaulustige'],
     special: ['stillstand', 'addieren', 'spion', 'fluch', 'hodl', 'opfer'],
     seal: ['glut', 'gold', 'anker']
   };
@@ -156,6 +157,12 @@
     'trinket:brandpraemie': ['burnt', 2, 'Fackle 2 Tische ab.'],
     'trinket:hausfreund': ['sealed', 3, 'Lass bei Esme 3 Karten veredeln.'],
     'trinket:teufelspakt': ['casino', 4, '', NIE],
+    // --- Glut-Mult ---
+    'trinket:hexenfeuer': ['curses', 5, 'Lass Gegner 5-mal unter einem Fluch ziehen.'],
+    'trinket:breitseite': ['pairs', 6, 'Lege 6-mal mehrere Karten auf einmal.'],
+    'trinket:weissglut': ['chain', 9, 'Erreiche eine Kette von ×9.'],
+    'trinket:kerbholz': ['burnt', 4, 'Fackle 4 Tische ab.'],
+    'trinket:vabanque': ['last', 1, 'Gewinne ein Duell mit dem letzten Streichholz.'],
     // --- Spezialkarten ---
     'special:zytokinese': ['deck', 22, 'Baue ein Deck aus 22 Karten.'],
     'special:zocken': ['foe:bookie', 1, 'Schlage Quoten-Otto.'],

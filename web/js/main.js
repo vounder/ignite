@@ -255,6 +255,9 @@
         // In der Nachglut zählt der Run schon als Sieg; dann wird nur noch der Bestwert gemeldet.
         ZU.account.reportRun({ won: false, score: run.s.score, act: run.s.act, countRun: !run.s.endless });
         this.go('defeat');
+      } else if (result.gone) {
+        // Vabanque: Die Niederlage hat das Trinket gekostet.
+        ZU.fx.banner(ZU.TRINKETS[result.gone].name + ' verspielt!', 'lose', 1500).then(function () { self.go('select'); });
       } else {
         this.go('select');
       }

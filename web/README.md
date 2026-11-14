@@ -55,12 +55,17 @@ zugehörigen Elemente blenden sich selbst aus.
 - **Wirtschaft in Prozent:** Prämien, Preise, Bank und Zinsdeckel wachsen je Akt
   um 15 % (`ZU.ACT_GROWTH`); Rabatte, Aufschläge und Geld-Trinkets rechnen in
   Prozent, damit sie in späten Akten noch zählen.
-- **Trinkets:** 128 Stück, die meisten greifen in die Glut ein (Kartenwerte,
+- **Trinkets:** 137 Stück, die meisten greifen in die Glut ein (Kartenwerte,
   Vervielfacher, Kette, Wachstum über den Run, Glutziel und Löschmittel) mit Synergie-Familien (Zieh-Druck und Flüche,
   Aussetzen, Kette und Glut, Mehrfachwahl, Spezialkarten, Kasse, Schutz). Es
   gibt keine Obergrenze; dafür kostet jedes weitere Trinket im Laden 12 %
-  mehr. 25 Trinkets sind von Anfang an im Spiel, der Rest wird im Hinterzimmer
+  mehr. 29 Trinkets sind von Anfang an im Spiel, der Rest wird im Hinterzimmer
   entdeckt und gekauft.
+- **Glut-Mult:** Neun Trinkets (Brandbeschleuniger, Chefsache, Öl ins Feuer, Schaulustige, Hexenfeuer, Breitseite,
+  Weißglut, Kerbholz, Vabanque) sind je ein eigener Faktor auf jede Karte. Anders als die wachsenden Trinkets, deren
+  Prozente sich zu einem Faktor addieren, multiplizieren sie sich miteinander – das ist der Weg zu Glutzielen, die sich
+  je Akt verdoppeln. Texte mit „+×0,1 je …" wachsen ab ×1. Wie oft das Glutziel fällt, misst
+  `node web/tests/glutziel.js [Runs] [Casino] [base|all] [focus]`.
 - **Kniffe:** Regeln, welche normalen Karten in einem Zug zusammen gelegt werden
   dürfen (`ZU.KNIFFE`): Pasch für einzelne Werte (7er, 8er, 9/10, Bildkarten,
   Asse), Läufe je Symbol, Kleine Straße und der freie Pasch. Ein Zug folgt genau
@@ -154,7 +159,7 @@ zugehörigen Elemente blenden sich selbst aus.
 - **Meta-Progression:** Asche gibt es sofort nach jedem Sieg (1 je Tisch, 2 je
   Elite, 5 je Boss, 8 für das ausgeräumte Casino, mal Asche-Faktor). Im
   Hinterzimmer (Hauptmenü) kauft man damit Schachteln, Trinkets, Spezialkarten
-  und fünfzehn Upgrades. Anfangs gibt es eine Schachtel, 25 Trinkets und 6
+  und fünfzehn Upgrades. Anfangs gibt es eine Schachtel, 29 Trinkets und 6
   Spezialkarten. Alles Weitere ist zunächst **verborgen** („?????“) und taucht
   erst auf, wenn eine Bedingung am Tisch erfüllt ist – etwa „Spiele 10
   Siebenen“ oder „Schlage Madame Rauch“. Manche Stücke zeigen diesen Hinweis

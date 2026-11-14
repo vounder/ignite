@@ -255,7 +255,7 @@
       douse: this.douse(e),
       grow: { burned: this.s.burnCount || 0, bosses: this.s.bossesBeaten || 0, money: this.s.money, trinkets: this.s.trinkets.length, lastChain: this.s.lastChain || 0,
         deck: this.s.collection.length, sealed: this.s.collection.filter(function (c) { return c.seal; }).length, act: this.s.act,
-        wins: this.s.stats.wins, streak: this.s.streak || 0, lastLost: !!this.s.lastLost },
+        wins: this.s.stats.wins, streak: this.s.streak || 0, lastLost: !!this.s.lastLost, burnt: this.s.burntCount || 0 },
       perks: this.s.perks || [],
       specialPool: this.meta().specials,
       trinkets: this.s.trinkets, collection: this.s.collection.map(function (c) { return { id: c.id, def: c.def, bind: c.bind, seal: c.seal, flaw: c.flaw }; }),
@@ -287,6 +287,9 @@
         s.lives--;
         s.hurt = true;
       }
+      // Vabanque: alles auf eine Karte – die Niederlage kostet das Trinket.
+      var gone = null;
+      if (s.trinkets.indexOf('vabanque') >= 0) { s.trinkets.splice(s.trinkets.indexOf('vabanque'), 1); gone = 'vabanque'; }
       if (this.has('dicke-brieftasche')) comfort += Math.round(duel.bank * this.scale());
       if (this.has('police')) comfort += Math.round(this.baseReward(e.kind) * 0.6);
       s.lastChain = duel.maxChain;
@@ -295,7 +298,7 @@
       s.phase = s.lives <= 0 ? 'defeat' : 'select';
       this._sync();
       if (s.phase === 'defeat') this._closeRun(false); else this.save();
-      return { won: false, saved: saved, spared: spared, comfort: comfort, lives: s.lives };
+      return { won: false, saved: saved, spared: spared, comfort: comfort, lives: s.lives, gone: gone };
     }
 
     s.stats.wins++;
@@ -326,6 +329,7 @@
     var heat = Math.round(base * 0.5 * Math.min(1, ratio)) * (this.has('furnace') ? 2 : 1);
     if (heat > 0) lines.push({ label: 'Glut-Bonus (' + Math.min(100, Math.floor(ratio * 100)) + ' % des Ziels)', amount: heat });
     var doublings = burnt ? Math.floor(Math.log(ratio) / Math.LN2) : 0;
+    if (burnt) s.burntCount = (s.burntCount || 0) + 1; // Kerbholz zählt mit
     if (burnt) lines.push({ label: 'Tisch abgefackelt', amount: share(0.5) });
     if (doublings > 0) lines.push({ label: 'Überschuss: Ziel ×' + Math.pow(2, doublings), amount: share(0.5) * doublings * (this.has('funkenregen') ? 2 : 1) });
     if (burnt && this.has('brandpraemie')) lines.push({ label: 'Brandprämie (+50 %)', amount: share(0.5), trinket: 'brandpraemie' });
