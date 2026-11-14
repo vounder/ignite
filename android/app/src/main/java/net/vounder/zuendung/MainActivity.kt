@@ -44,6 +44,10 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        // Dem Spiel genügen 60 Bilder je Sekunde. Auf Displays mit 90 oder 120 Hz zeichnete die WebView sonst alles
+        // entsprechend öfter (Effekte, Schatten, Überblendungen) – das kostet Leistung und Akku und führt zu Rucklern,
+        // sobald viel gleichzeitig passiert. Das System wählt die nächstliegende Bildrate, die das Display kann.
+        window.attributes = window.attributes.also { it.preferredRefreshRate = 60f }
         store = WebStore(applicationContext)
         updater = Updater(store, BuildConfig.GAME_URL) { state, done, total -> tell(state, done, total) }
 
