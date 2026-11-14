@@ -596,9 +596,18 @@
     this.heat = part;
     this.root.style.setProperty('--heat', part.toFixed(3));
     this.root.classList.toggle('warm', part >= 0.5);
-    this.boardFire.set(part < 0.08 ? 0 : 0.22 + part * 0.78);
     this.tableFire.set(part < 0.5 ? 0 : 0.12 + (part - 0.5) * 1.5);
     ZU.bg.setGlow(part);
+    this.updateFire();
+  };
+  /* Die Flammen über der Glutanzeige zeigen vor allem die Kette: Mit jeder gelegten Karte lodern sie höher,
+     und wer zieht, sieht sie mit der Kette wieder zusammenfallen. Der Glutstand hält nur eine Grundglut am Leben.
+     fireMode: 'ablaze' (Tisch brennt, volle Flammen) oder 'off' (Duell vorbei bzw. Abgang). */
+  DuelView.prototype.updateFire = function () {
+    if (this.fireMode === 'ablaze') { this.boardFire.set(1.5); return; }
+    if (this.fireMode === 'off') { this.boardFire.set(0); return; }
+    var level = 0.8 * Math.min(1, (this.chain - 1) / 8) + 0.4 * (this.heat || 0);
+    this.boardFire.set(level < 0.06 ? 0 : level);
   };
   /* Löschmittel des Gegners: Kette und Glut sinken sichtbar, Dampf steigt auf. */
   DuelView.prototype.on_douse = function (ev) {
@@ -630,8 +639,8 @@
     fx.shake(14);
     fx.hitstop(120);
     fx.zoom(0.05);
+    this.fireMode = 'ablaze';
     this.setHeat(1);
-    this.boardFire.set(1.5);
     this.tableFire.set(1.35);
     this.tableFire.kick(1);
     this.root.classList.add('ablaze');
@@ -852,14 +861,18 @@
     this.chainEl.querySelector('b').textContent = '×' + value;
     this.chainEl.className = 'chain' + (value >= 8 ? ' c3' : value >= 5 ? ' c2' : value >= 3 ? ' c1' : '');
     if (bump) fx.punch(this.chainEl);
+    this.updateFire();
   };
 
   DuelView.prototype.on_chain = function (ev) {
+    var before = this.chain;
     this.setChain(ev.chain, false);
     if (ev.reset) {
       fx.punch(this.chainEl, 'fizzle');
       var p = ZU.stagePos(this.chainEl);
       fx.smoke(p.x, p.y, 8);
+      // Die Flammen über der Anzeige fallen zusammen; war die Kette lang, bleibt eine Rauchfahne stehen.
+      if (before >= 4) { var board = ZU.stagePos(this.board); fx.smoke(board.x, board.y - board.h / 2 - 14, 6 + Math.min(10, before)); }
     }
     return null;
   };
@@ -1466,6 +1479,7 @@
       ZU.audio.lose();
       ZU.bg.set('lose');
       fx.shake(8);
+      this.fireMode = 'off';
       this.setHeat(0);
       this.pHand.forEach(function (sp) { sp.kick(ZU.rand(-300, 300), ZU.rand(100, 400), ZU.rand(-400, 400)); });
       this.burnHand(this.pHand, 380);
@@ -1494,6 +1508,7 @@
     var self = this, list = Object.keys(this.sprites).map(function (key) { return self.sprites[key]; });
     this.busy = true;
     this.root.classList.add('leaving');
+    this.fireMode = 'off';
     this.setHeat(0);
     this.promptEl.classList.remove('on');
     this.bubble.classList.remove('on');
