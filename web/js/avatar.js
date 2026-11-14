@@ -1,5 +1,5 @@
 /* Zündung – die eigene Figur: ein Brustbild aus übereinandergelegten Ebenen (assets/avatar/*.png, je 192×192).
-   Reihenfolge: Körper (eingefärbt), Tattoos, Outfit, Gesicht (je Ausdruck), Haare (eingefärbt), Hut.
+   Reihenfolge: Körper (eingefärbt), Tattoos, Outfit, Gesicht (je Ausdruck), Bart und Haare (eingefärbt), Extras, Hut.
    Körper, Gesichtsschatten und Haare liegen in fünf Graustufen vor (16 Kontur, 96 tiefer Schatten, 152 Schatten,
    208 Grundton, 248 Glanzlicht); beim Zeichnen wird jede Stufe durch die Farbe einer Rampe ersetzt (ramp), damit
    Schatten wie bei den Gegnerporträts in den Farbton kippen statt nur dunkler zu werden.
@@ -20,87 +20,172 @@
     hair: [
       { id: 'hair-1', name: 'Seitenscheitel' },
       { id: 'hair-4', name: 'Stoppelschnitt', req: ['duels', 1, 'Gewinne ein Duell.'] },
-      { id: 'hair-6', name: 'Bob mit Pony', req: ['duels', 2, 'Gewinne 2 Duelle.'] },
-      { id: 'none', name: 'Glatze', req: ['burned', 3, 'Verbrenne 3 Karten.'] },
-      { id: 'hair-2', name: 'Lockenkopf', req: ['duels', 5, 'Gewinne 5 Duelle.'] },
-      { id: 'hair-7', name: 'Pferdeschwanz', req: ['played', 150, 'Spiele 150 Karten.'] },
-      { id: 'hair-3', name: 'Lange Mähne', req: ['chain', 8, 'Erreiche eine Kette von ×8.'] },
-      { id: 'hair-5', name: 'Tolle', req: ['sevens', 25, 'Spiele 25 Siebenen.'] },
-      { id: 'hair-8', name: 'Afro', req: ['duels', 15, 'Gewinne 15 Duelle.'] },
-      { id: 'hair-9', name: 'Flechtzöpfe mit Dutt', req: ['kniffe', 3, 'Lerne oder stufe 3 Kniffe.'] },
-      { id: 'hair-10', name: 'Undercut mit Zopf', req: ['fast', 3, 'Gewinne 3 Duelle in höchstens 16 Zügen.'] },
-      { id: 'hair-11', name: 'Glamourwellen', req: ['casino', 1, 'Räume das erste Casino aus.'] },
-      { id: 'hair-12', name: 'Irokese', req: ['burnt', 10, 'Fackle 10 Tische ab.'] }
+      { id: 'hair-6', name: 'Bob mit Pony', req: ['duels', 10, 'Gewinne 10 Duelle.'] },
+      { id: 'hair-2', name: 'Lockenkopf', req: ['duels', 25, 'Gewinne 25 Duelle.'] },
+      { id: 'hair-24', name: 'Pixie', req: ['duels', 30, 'Gewinne 30 Duelle.'] },
+      { id: 'hair-11', name: 'Glamourwellen', req: ['casino', 2, 'Räume 2 Casinos aus.'] },
+      { id: 'hair-12', name: 'Irokese', req: ['burnt', 10, 'Fackle 10 Tische ab.'] },
+      { id: 'hair-17', name: 'Wuschelkopf', req: ['played', 400, 'Spiele 400 Karten.'] },
+      { id: 'hair-8', name: 'Afro', req: ['duels', 60, 'Gewinne 60 Duelle.'] },
+      { id: 'hair-19', name: 'Wasserwelle', req: ['foe:showgirl', 2, 'Schlage Roxy zweimal.'] },
+      { id: 'hair-26', name: 'Topfschnitt', req: ['losses', 12, 'Verliere 12 Duelle.'] },
+      { id: 'none', name: 'Glatze', req: ['burned', 10, 'Verbrenne 10 Karten.'] },
+      { id: 'hair-13', name: 'Gelfrisur', req: ['bought', 30, 'Kaufe 30-mal bei Manfred.'] },
+      { id: 'hair-7', name: 'Pferdeschwanz', req: ['played', 800, 'Spiele 800 Karten.'] },
+      { id: 'hair-23', name: 'Flat Top', req: ['foe:bouncer', 4, 'Schlage Schrank viermal.'] },
+      { id: 'hair-3', name: 'Lange Mähne', req: ['chain', 12, 'Erreiche eine Kette von ×12.'] },
+      { id: 'hair-25', name: 'Haarkranz', req: ['duels', 150, 'Gewinne 150 Duelle.'] },
+      { id: 'hair-9', name: 'Flechtzöpfe mit Dutt', req: ['kniffe', 8, 'Lerne oder stufe 8 Kniffe.'] },
+      { id: 'hair-10', name: 'Undercut mit Zopf', req: ['fast', 12, 'Gewinne 12 Duelle in höchstens 16 Zügen.'] },
+      { id: 'hair-15', name: 'Dreadlocks', req: ['chain', 14, 'Erreiche eine Kette von ×14.'] },
+      { id: 'hair-21', name: 'Vokuhila', req: ['foe:barkeeper', 6, 'Schlage Bruno sechsmal.'] },
+      { id: 'hair-20', name: 'Dutt', req: ['aces', 120, 'Spiele 120 Asse.'] },
+      { id: 'hair-22', name: 'Zwei Zöpfe', req: ['eights', 150, 'Spiele 150 Achten.'] },
+      { id: 'hair-16', name: 'Zwei Dutts', req: ['pairs', 150, 'Lege 150-mal mehrere Karten auf einmal.'] },
+      { id: 'hair-5', name: 'Tolle', req: ['sevens', 120, 'Spiele 120 Siebenen.'] },
+      { id: 'hair-14', name: 'Langer Mittelscheitel', req: ['played', 1500, 'Spiele 1.500 Karten.'] },
+      { id: 'hair-18', name: 'Sidecut', req: ['elites', 25, 'Schlage 25 Elite-Gegner.'] }
     ],
     hairColor: [
       { id: 'schwarz', name: 'Schwarz', color: '#40343a', ramp: ['#0c080c', '#181218', '#2a2028', '#40343a', '#74626a'] },
       { id: 'braun', name: 'Braun', color: '#8e5a28', ramp: ['#24100a', '#40200e', '#683a18', '#8e5a28', '#c08a48'] },
       { id: 'blond', name: 'Blond', color: '#f6b848', ramp: ['#3a1a08', '#a85a18', '#d88a28', '#f6b848', '#ffe08a'] },
       { id: 'rot', name: 'Rot', color: '#e44a22', ramp: ['#30060a', '#7a1010', '#b8241a', '#e44a22', '#ff8a40'], req: ['burnt', 3, 'Fackle 3 Tische ab.'] },
-      { id: 'grau', name: 'Silbergrau', color: '#b8b6ba', ramp: ['#1c1a22', '#56545e', '#8a8892', '#b8b6ba', '#e8e6e4'], req: ['duels', 25, 'Gewinne 25 Duelle.'] },
-      { id: 'weiss', name: 'Schlohweiß', color: '#f0ece8', ramp: ['#2a2630', '#9a94a2', '#cac6cc', '#f0ece8', '#ffffff'], req: ['casino', 2, 'Räume 2 Casinos aus.'] },
-      { id: 'tuerkis', name: 'Türkis', color: '#3cc2a8', ramp: ['#081e1e', '#0e4a44', '#1a8274', '#3cc2a8', '#a0f4dc'], req: ['kniffe', 5, 'Lerne oder stufe 5 Kniffe.'] },
-      { id: 'glut', name: 'Glutorange', color: '#ff8a1e', ramp: ['#300a04', '#a02808', '#e0500e', '#ff8a1e', '#ffd060'], req: ['overkill', 2, 'Übertriff ein Glutziel um das Doppelte.'] }
+      { id: 'weiss', name: 'Schlohweiß', color: '#f0ece8', ramp: ['#2a2630', '#9a94a2', '#cac6cc', '#f0ece8', '#ffffff'], req: ['casino', 3, 'Räume 3 Casinos aus.'] },
+      { id: 'kupfer', name: 'Kupfer', color: '#c8662a', ramp: ['#2a0c06', '#5e2410', '#9a4218', '#c8662a', '#f0a05a'], req: ['eights', 60, 'Spiele 60 Achten.'] },
+      { id: 'grau', name: 'Silbergrau', color: '#b8b6ba', ramp: ['#1c1a22', '#56545e', '#8a8892', '#b8b6ba', '#e8e6e4'], req: ['duels', 80, 'Gewinne 80 Duelle.'] },
+      { id: 'glut', name: 'Glutorange', color: '#ff8a1e', ramp: ['#300a04', '#a02808', '#e0500e', '#ff8a1e', '#ffd060'], req: ['overkill', 2, 'Übertriff ein Glutziel um das Doppelte.'] },
+      { id: 'gift', name: 'Giftgrün', color: '#7cc832', ramp: ['#0c1e08', '#225210', '#4a8c1c', '#7cc832', '#d0f47a'], req: ['foe:curse-dealer', 3, 'Schlage Mortimer dreimal.'] },
+      { id: 'platin', name: 'Platinblond', color: '#f2dca0', ramp: ['#3a2c18', '#a88a50', '#d8ba78', '#f2dca0', '#fff6d8'], req: ['foe:boss-label', 1, 'Schlage Papa Platin.'] },
+      { id: 'nachtblau', name: 'Nachtblau', color: '#34509a', ramp: ['#080a20', '#141e4a', '#223472', '#34509a', '#7a9ae0'], req: ['curfew', 10, 'Gewinne 10 Duelle zur Sperrstunde.'] },
+      { id: 'rosa', name: 'Bonbonrosa', color: '#f07aa8', ramp: ['#3a0c22', '#98285a', '#d04e84', '#f07aa8', '#ffc4dc'], req: ['sealed', 12, 'Lass bei Esme 12 Karten veredeln.'] },
+      { id: 'tuerkis', name: 'Türkis', color: '#3cc2a8', ramp: ['#081e1e', '#0e4a44', '#1a8274', '#3cc2a8', '#a0f4dc'], req: ['kniffe', 10, 'Lerne oder stufe 10 Kniffe.'] },
+      { id: 'violett', name: 'Violett', color: '#8a52c2', ramp: ['#160a2a', '#3a1c66', '#5e3494', '#8a52c2', '#c8a0f0'], req: ['curses', 40, 'Lass Gegner 40-mal unter einem Fluch ziehen.'] }
     ],
     beard: [
       { id: 'none', name: 'Glatt rasiert' },
-      { id: 'beard-4', name: 'Dreitagebart', req: ['duels', 4, 'Gewinne 4 Duelle.'] },
-      { id: 'beard-1', name: 'Zwirbelbart', req: ['duels', 8, 'Gewinne 8 Duelle.'] },
-      { id: 'beard-2', name: 'Kinnbart', req: ['specials', 20, 'Spiele 20 Spezialkarten.'] },
-      { id: 'beard-5', name: 'Koteletten', req: ['eights', 25, 'Spiele 25 Achten.'] },
-      { id: 'beard-3', name: 'Vollbart', req: ['duels', 30, 'Gewinne 30 Duelle.'] }
+      { id: 'beard-4', name: 'Dreitagebart', req: ['duels', 20, 'Gewinne 20 Duelle.'] },
+      { id: 'beard-1', name: 'Zwirbelbart', req: ['duels', 45, 'Gewinne 45 Duelle.'] },
+      { id: 'beard-6', name: 'Schnauzer', req: ['foe:barkeeper', 3, 'Schlage Bruno dreimal.'] },
+      { id: 'beard-3', name: 'Vollbart', req: ['duels', 100, 'Gewinne 100 Duelle.'] },
+      { id: 'beard-11', name: 'Kinnstreifen', req: ['fast', 8, 'Gewinne 8 Duelle in höchstens 16 Zügen.'] },
+      { id: 'beard-10', name: 'Menjou-Bärtchen', req: ['foe:cheater', 4, 'Schlage Rico, den Falschspieler, viermal.'] },
+      { id: 'beard-5', name: 'Koteletten', req: ['eights', 100, 'Spiele 100 Achten.'] },
+      { id: 'beard-7', name: 'Henriquatre', req: ['elites', 18, 'Schlage 18 Elite-Gegner.'] },
+      { id: 'beard-2', name: 'Kinnbart', req: ['specials', 100, 'Spiele 100 Spezialkarten.'] },
+      { id: 'beard-8', name: 'Backenbart', req: ['foe:boss', 25, 'Schlage 25 Bosse.'] },
+      { id: 'beard-9', name: 'Rauschebart', req: ['duels', 200, 'Gewinne 200 Duelle.'] }
     ],
     outfit: [
       { id: 'outfit-2', name: 'Unterhemd' },
-      { id: 'outfit-5', name: 'Kapuzenpulli', req: ['played', 60, 'Spiele 60 Karten.'] },
-      { id: 'outfit-1', name: 'Hemd und Weste', req: ['duels', 3, 'Gewinne 3 Duelle.'] },
-      { id: 'outfit-4', name: 'Lederjacke', req: ['duels', 12, 'Gewinne 12 Duelle.'] },
-      { id: 'outfit-6', name: 'Hawaiihemd', req: ['bank', 10, 'Kassiere in einem Duell eine Bank von 10 Mark.'] },
-      { id: 'outfit-10', name: 'Trainingsjacke', req: ['losses', 5, 'Verliere 5 Duelle.'] },
-      { id: 'outfit-13', name: 'Croupier-Weste', req: ['bought', 25, 'Kaufe 25-mal bei Manfred.'] },
-      { id: 'outfit-9', name: 'Rollkragen mit Goldkette', req: ['money', 60, 'Halte 60 Mark in der Kasse.'] },
+      { id: 'outfit-1', name: 'Hemd und Weste', req: ['duels', 15, 'Gewinne 15 Duelle.'] },
       { id: 'outfit-3', name: 'Burgunder Anzug', req: ['casino', 1, 'Räume das erste Casino aus.'] },
-      { id: 'outfit-8', name: 'Paillettenkleid', req: ['sealed', 6, 'Lass bei Esme 6 Karten veredeln.'] },
-      { id: 'outfit-12', name: 'Nadelstreifen', req: ['casino', 2, 'Räume 2 Casinos aus.'] },
-      { id: 'outfit-11', name: 'Pelzkragenmantel', req: ['casino', 4, 'Räume 4 Casinos aus.'] },
-      { id: 'outfit-7', name: 'Smoking', req: ['casino', 6, 'Räume 6 Casinos aus.'] }
+      { id: 'outfit-5', name: 'Kapuzenpulli', req: ['played', 200, 'Spiele 200 Karten.'] },
+      { id: 'outfit-16', name: 'Hemd mit Hosenträgern', req: ['duels', 35, 'Gewinne 35 Duelle.'] },
+      { id: 'outfit-4', name: 'Lederjacke', req: ['duels', 50, 'Gewinne 50 Duelle.'] },
+      { id: 'outfit-29', name: 'Zirkusdirektor', req: ['foe:boss-impresario', 1, 'Schlage den Impresario.'] },
+      { id: 'outfit-19', name: 'Charleston-Kleid', req: ['foe:taxi-dancer', 2, 'Schlage Mimi zweimal.'] },
+      { id: 'outfit-23', name: 'Feuerwehrjacke', req: ['burnt', 12, 'Fackle 12 Tische ab.'] },
+      { id: 'outfit-30', name: 'Ringelshirt', req: ['played', 500, 'Spiele 500 Karten.'] },
+      { id: 'outfit-10', name: 'Trainingsjacke', req: ['losses', 10, 'Verliere 10 Duelle.'] },
+      { id: 'outfit-12', name: 'Nadelstreifen', req: ['casino', 3, 'Räume 3 Casinos aus.'] },
+      { id: 'outfit-28', name: 'Lederkutte', req: ['foe:bruiser', 3, 'Schlage Knochen-Kalle dreimal.'] },
+      { id: 'outfit-27', name: 'Abendkleid', req: ['foe:boss-donna', 3, 'Schlage Donna Scarlatta dreimal.'] },
+      { id: 'outfit-24', name: 'Sträflingshemd', req: ['losses', 15, 'Verliere 15 Duelle.'] },
+      { id: 'outfit-17', name: 'Kapitänsuniform', req: ['foe:boss-captain', 1, 'Schlage Kapitänin Fortuna.'] },
+      { id: 'outfit-14', name: 'Trenchcoat', req: ['curfew', 8, 'Gewinne 8 Duelle zur Sperrstunde.'] },
+      { id: 'outfit-20', name: 'Bomberjacke', req: ['elites', 15, 'Schlage 15 Elite-Gegner.'] },
+      { id: 'outfit-11', name: 'Pelzkragenmantel', req: ['casino', 5, 'Räume 5 Casinos aus.'] },
+      { id: 'outfit-13', name: 'Croupier-Weste', req: ['bought', 40, 'Kaufe 40-mal bei Manfred.'] },
+      { id: 'outfit-8', name: 'Paillettenkleid', req: ['sealed', 10, 'Lass bei Esme 10 Karten veredeln.'] },
+      { id: 'outfit-6', name: 'Hawaiihemd', req: ['bank', 15, 'Kassiere in einem Duell eine Bank von 15 Mark.'] },
+      { id: 'outfit-9', name: 'Rollkragen mit Goldkette', req: ['money', 100, 'Halte 100 Mark in der Kasse.'] },
+      { id: 'outfit-22', name: 'Jeansjacke', req: ['sold', 5, 'Verkaufe 5 Trinkets an Manfred.'] },
+      { id: 'outfit-26', name: 'Strickjacke', req: ['healed', 5, 'Kaufe 5 Streichhölzer nach.'] },
+      { id: 'outfit-15', name: 'Weißes Dinnerjackett', req: ['last', 5, 'Gewinne 5 Duelle mit dem letzten Streichholz.'] },
+      { id: 'outfit-7', name: 'Smoking', req: ['casino', 7, 'Räume 7 Casinos aus.'] },
+      { id: 'outfit-25', name: 'Goldjackett', req: ['overkill', 4, 'Übertriff ein Glutziel um das Vierfache.'] },
+      { id: 'outfit-21', name: 'Hausmantel', req: ['money', 120, 'Halte 120 Mark in der Kasse.'] },
+      { id: 'outfit-18', name: 'Zauberumhang', req: ['swaps', 12, 'Spiele 12-mal Tausch.'] }
     ],
     hat: [
       { id: 'none', name: 'Ohne Hut' },
-      { id: 'hat-4', name: 'Baseballkappe', req: ['duels', 6, 'Gewinne 6 Duelle.'] },
-      { id: 'hat-2', name: 'Schiebermütze', req: ['duels', 10, 'Gewinne 10 Duelle.'] },
-      { id: 'hat-7', name: 'Strickmütze', req: ['curfew', 3, 'Gewinne 3 Duelle zur Sperrstunde.'] },
-      { id: 'hat-5', name: 'Bandana', req: ['curses', 15, 'Lass Gegner 15-mal unter einem Fluch ziehen.'] },
-      { id: 'hat-6', name: 'Croupier-Schirm', req: ['skips', 20, 'Lass Gegner 20-mal aussetzen.'] },
-      { id: 'hat-1', name: 'Fedora', req: ['foe:boss', 3, 'Schlage 3 Bosse.'] },
+      { id: 'hat-4', name: 'Baseballkappe', req: ['duels', 12, 'Gewinne 12 Duelle.'] },
+      { id: 'hat-2', name: 'Schiebermütze', req: ['duels', 40, 'Gewinne 40 Duelle.'] },
+      { id: 'hat-1', name: 'Fedora', req: ['foe:boss', 8, 'Schlage 8 Bosse.'] },
       { id: 'hat-9', name: 'Cowboyhut', req: ['foe:bluffer', 2, 'Schlage Texas-Theo zweimal.'] },
-      { id: 'hat-3', name: 'Zylinder', req: ['casino', 3, 'Räume 3 Casinos aus.'] },
-      { id: 'hat-8', name: 'Krone', req: ['casino', 8, 'Räume alle 8 Casinos aus.'] }
+      { id: 'hat-5', name: 'Bandana', req: ['curses', 15, 'Lass Gegner 15-mal unter einem Fluch ziehen.'] },
+      { id: 'hat-7', name: 'Strickmütze', req: ['curfew', 6, 'Gewinne 6 Duelle zur Sperrstunde.'] },
+      { id: 'hat-10', name: 'Melone', req: ['bought', 25, 'Kaufe 25-mal bei Manfred.'] },
+      { id: 'hat-20', name: 'Schlapphut', req: ['foe:black-widow', 3, 'Schlage Vera, die Schwarze Witwe, dreimal.'] },
+      { id: 'hat-12', name: 'Baskenmütze', req: ['aces', 60, 'Spiele 60 Asse.'] },
+      { id: 'hat-3', name: 'Zylinder', req: ['casino', 4, 'Räume 4 Casinos aus.'] },
+      { id: 'hat-16', name: 'Federstirnband', req: ['sealed', 8, 'Lass bei Esme 8 Karten veredeln.'] },
+      { id: 'hat-13', name: 'Kapitänsmütze', req: ['foe:sailor', 3, 'Schlage Matrose Hein dreimal.'] },
+      { id: 'hat-15', name: 'Feuerwehrhelm', req: ['burnt', 30, 'Fackle 30 Tische ab.'] },
+      { id: 'hat-23', name: 'Diadem', req: ['foe:boss-baroness', 1, 'Schlage die Baronin von Hohenstein.'] },
+      { id: 'hat-11', name: 'Kreissäge', req: ['rerolls', 10, 'Lass Manfred 10-mal neu auslegen.'] },
+      { id: 'hat-14', name: 'Fes', req: ['sacrificed', 25, 'Wirf mit Opfer 25 Karten ab.'] },
+      { id: 'hat-18', name: 'Pork Pie', req: ['foe:pianist', 6, 'Schlage Fingers, den Pianisten, sechsmal.'] },
+      { id: 'hat-19', name: 'Heiligenschein', req: ['nodraw', 3, 'Gewinne 3 Duelle, ohne eine einzige Karte zu ziehen.'] },
+      { id: 'hat-6', name: 'Croupier-Schirm', req: ['skips', 40, 'Lass Gegner 40-mal aussetzen.'] },
+      { id: 'hat-21', name: 'Uschanka', req: ['curfew', 15, 'Gewinne 15 Duelle zur Sperrstunde.'] },
+      { id: 'hat-22', name: 'Narrenkappe', req: ['losses', 30, 'Verliere 30 Duelle.'] },
+      { id: 'hat-8', name: 'Krone', req: ['casino', 8, 'Räume alle 8 Casinos aus.'] },
+      { id: 'hat-17', name: 'Teufelshörner', req: ['foe:boss-prince', 1, 'Schlage den Fürsten.'] }
     ],
     acc: [
-      { id: 'acc-1', name: 'Nickelbrille', req: ['specials', 8, 'Spiele 8 Spezialkarten.'] },
-      { id: 'acc-4', name: 'Goldkreolen', req: ['duels', 9, 'Gewinne 9 Duelle.'] },
-      { id: 'acc-3', name: 'Zigarre', req: ['burned', 10, 'Verbrenne 10 Karten.'] },
+      { id: 'acc-20', name: 'Pflaster', req: ['losses', 5, 'Verliere 5 Duelle.'] },
+      { id: 'acc-11', name: 'Streichholz im Mundwinkel', req: ['burned', 5, 'Verbrenne 5 Karten.'] },
+      { id: 'acc-4', name: 'Goldkreolen', req: ['duels', 45, 'Gewinne 45 Duelle.'] },
+      { id: 'acc-18', name: 'Rose hinterm Ohr', req: ['sealed', 5, 'Lass bei Esme 5 Karten veredeln.'] },
+      { id: 'acc-12', name: 'Narbe', req: ['last', 2, 'Gewinne 2 Duelle mit dem letzten Streichholz.'] },
+      { id: 'acc-22', name: 'Federboa', req: ['foe:boss-eddie', 1, 'Schlage Samt-Eddie.'] },
+      { id: 'acc-1', name: 'Nickelbrille', req: ['specials', 50, 'Spiele 50 Spezialkarten.'] },
+      { id: 'acc-21', name: 'Katzenaugenbrille', req: ['foe:card-counter', 3, 'Schlage Dr. Zahl dreimal.'] },
+      { id: 'acc-9', name: 'Herzbrille', req: ['foe:influencer', 3, 'Schlage Lucky Luis dreimal.'] },
+      { id: 'acc-15', name: 'Nasenring', req: ['kniffe', 6, 'Lerne oder stufe 6 Kniffe.'] },
+      { id: 'acc-3', name: 'Zigarre', req: ['burned', 15, 'Verbrenne 15 Karten.'] },
+      { id: 'acc-6', name: 'Monokel', req: ['foe:boss', 15, 'Schlage 15 Bosse.'] },
+      { id: 'acc-14', name: 'Kopfhörer', req: ['foe:producer', 1, 'Schlage Milan.'] },
+      { id: 'acc-8', name: 'Runde Sonnenbrille', req: ['played', 1000, 'Spiele 1.000 Karten.'] },
       { id: 'acc-2', name: 'Pilotenbrille', req: ['flawless', 1, 'Räume ein Casino aus, ohne ein Streichholz zu verlieren.'] },
-      { id: 'acc-7', name: 'Perlenkette', req: ['money', 40, 'Halte 40 Mark in der Kasse.'] },
-      { id: 'acc-6', name: 'Monokel', req: ['foe:boss', 8, 'Schlage 8 Bosse.'] },
-      { id: 'acc-5', name: 'Augenklappe', req: ['losses', 10, 'Verliere 10 Duelle.'] }
+      { id: 'acc-7', name: 'Perlenkette', req: ['money', 90, 'Halte 90 Mark in der Kasse.'] },
+      { id: 'acc-19', name: 'Lutscher', req: ['foe:cigarette-girl', 5, 'Schlage Lola fünfmal.'] },
+      { id: 'acc-5', name: 'Augenklappe', req: ['losses', 25, 'Verliere 25 Duelle.'] },
+      { id: 'acc-16', name: 'Augenmaske', req: ['foe:pickpocket', 6, 'Schlage Sally sechsmal.'] },
+      { id: 'acc-17', name: 'Karte hinterm Ohr', req: ['held', 4, 'Trage 4 Spezialkarten zugleich im Deck.'] },
+      { id: 'acc-13', name: 'Roter Schal', req: ['trinkets', 10, 'Trage 10 Trinkets in einem Run.'] },
+      { id: 'acc-10', name: 'Pfeife', req: ['burned', 25, 'Verbrenne 25 Karten.'] }
     ],
     tattoo: [
       { id: 'tattoo-1', name: 'Flamme am Hals', req: ['burnt', 5, 'Fackle 5 Tische ab.'] },
-      { id: 'tattoo-2', name: 'Pik-Ass auf der Brust', req: ['aces', 25, 'Spiele 25 Asse.'] },
-      { id: 'tattoo-3', name: 'Farbenband an der Schulter', req: ['chain', 10, 'Erreiche eine Kette von ×10.'] },
-      { id: 'tattoo-4', name: 'Würfel am Hals', req: ['specials', 40, 'Spiele 40 Spezialkarten.'] },
+      { id: 'tattoo-13', name: 'Spinnennetz an der Schulter', req: ['foe:black-widow', 2, 'Schlage Vera, die Schwarze Witwe, zweimal.'] },
       { id: 'tattoo-5', name: 'Flammen am Schlüsselbein', req: ['burnt', 15, 'Fackle 15 Tische ab.'] },
-      { id: 'tattoo-6', name: 'Rose an der Schulter', req: ['sealed', 10, 'Lass bei Esme 10 Karten veredeln.'] },
+      { id: 'tattoo-2', name: 'Pik-Ass auf der Brust', req: ['aces', 50, 'Spiele 50 Asse.'] },
+      { id: 'tattoo-19', name: 'Streichholz am Schlüsselbein', req: ['healed', 3, 'Kaufe 3 Streichhölzer nach.'] },
+      { id: 'tattoo-15', name: 'Stern unter dem Auge', req: ['glut', 800, 'Sammle 800 Glut in einem Duell.'] },
       { id: 'tattoo-7', name: 'Pik unter dem Auge', req: ['losses', 15, 'Verliere 15 Duelle.'] },
-      { id: 'tattoo-8', name: 'Farbenkette um den Hals', req: ['pairs', 30, 'Lege 30-mal mehrere Karten auf einmal.'] },
+      { id: 'tattoo-11', name: 'Anker an der Schulter', req: ['foe:sailor', 1, 'Schlage Matrose Hein.'] },
+      { id: 'tattoo-10', name: 'Glückssieben', req: ['sevens', 77, 'Spiele 77 Siebenen.'] },
       { id: 'tattoo-9', name: 'Schlange an der Schulter', req: ['curses', 30, 'Lass Gegner 30-mal unter einem Fluch ziehen.'] },
-      { id: 'tattoo-10', name: 'Glückssieben', req: ['sevens', 77, 'Spiele 77 Siebenen.'] }
+      { id: 'tattoo-14', name: 'Herz mit Dolch', req: ['pushed', 8, 'Zwinge einen Gegner in einem Duell, 8 Karten zu ziehen.'] },
+      { id: 'tattoo-8', name: 'Farbenkette um den Hals', req: ['pairs', 120, 'Lege 120-mal mehrere Karten auf einmal.'] },
+      { id: 'tattoo-3', name: 'Farbenband an der Schulter', req: ['chain', 15, 'Erreiche eine Kette von ×15.'] },
+      { id: 'tattoo-16', name: 'Drache über der Schulter', req: ['chain', 16, 'Erreiche eine Kette von ×16.'] },
+      { id: 'tattoo-12', name: 'Schwalbe auf der Brust', req: ['fast', 15, 'Gewinne 15 Duelle in höchstens 16 Zügen.'] },
+      { id: 'tattoo-4', name: 'Würfel am Hals', req: ['specials', 120, 'Spiele 120 Spezialkarten.'] },
+      { id: 'tattoo-6', name: 'Rose an der Schulter', req: ['sealed', 15, 'Lass bei Esme 15 Karten veredeln.'] },
+      { id: 'tattoo-18', name: 'Strichcode am Hals', req: ['bought', 60, 'Kaufe 60-mal bei Manfred.'] },
+      { id: 'tattoo-17', name: 'Totenkopf in Flammen', req: ['burnt', 40, 'Fackle 40 Tische ab.'] }
     ]
   };
   var TABS = [['skin', 'Haut'], ['hair', 'Frisur'], ['hairColor', 'Haarfarbe'], ['beard', 'Bart'], ['outfit', 'Outfit'], ['hat', 'Hut'], ['acc', 'Extras'], ['tattoo', 'Tattoos']];
   var MULTI = { tattoo: true, acc: true }; // hiervon lassen sich mehrere zugleich tragen
+  /* Extras, die denselben Platz brauchen, schließen einander aus: Wer eines wählt, legt das andere ab. */
+  var SLOT = { 'acc-1': 'eyes', 'acc-2': 'eyes', 'acc-5': 'eyes', 'acc-6': 'eyes', 'acc-8': 'eyes', 'acc-9': 'eyes', 'acc-16': 'eyes', 'acc-21': 'eyes',
+    'acc-3': 'mouth', 'acc-10': 'mouth', 'acc-11': 'mouth', 'acc-19': 'mouth',
+    'acc-7': 'neck', 'acc-13': 'neck', 'acc-22': 'neck' };
   var DEFAULT = { skin: 'sand', hair: 'hair-1', hairColor: 'braun', beard: 'none', outfit: 'outfit-2', hat: 'none', acc: [], tattoo: [] };
 
   function find(kind, id) { return PARTS[kind].filter(function (p) { return p.id === id; })[0]; }
@@ -141,9 +226,10 @@
   }
   function flush() { var list = waiting; waiting = []; list.forEach(function (fn) { fn(); }); }
   /* Ebenen von unten nach oben: [Bild, Rampe oder null, Maske oder null]. */
-  var FACE_INK = { 'tattoo-7': true };          // sitzt im Gesicht: nach den Gesichtsschatten, vor den Zügen
-  var UNDER_HAIR = { 'acc-7': true };           // Kette: unter langem Haar
-  var HAIR_OFF = { 'hair-8': { 'hat-2': true, 'hat-3': true, 'hat-4': true, 'hat-7': true } }; // Afro passt unter diese Hüte nicht
+  var FACE_INK = { 'tattoo-7': true, 'tattoo-15': true };          // sitzt im Gesicht: nach den Gesichtsschatten, vor den Zügen
+  var UNDER_HAIR = { 'acc-7': true, 'acc-13': true, 'acc-22': true }; // Kette, Schal, Boa: unter Bart und langem Haar
+  var HAIR_OFF = { 'hair-8': { 'hat-2': true, 'hat-3': true, 'hat-4': true, 'hat-7': true, 'hat-10': true, 'hat-11': true, 'hat-12': true,
+    'hat-13': true, 'hat-14': true, 'hat-18': true } }; // Afro passt unter diese Hüte nicht
   function layers(cfg, mood) {
     var skin = find('skin', cfg.skin).ramp, hairRamp = find('hairColor', cfg.hairColor).ramp, list = [['body-a', skin]];
     cfg.tattoo.forEach(function (id) { if (!FACE_INK[id]) list.push([id]); });
@@ -151,8 +237,8 @@
     list.push(['face-' + mood + '-skin', skin]);
     cfg.tattoo.forEach(function (id) { if (FACE_INK[id]) list.push([id]); });
     list.push(['face-' + mood]);
-    if (cfg.beard !== 'none') list.push([cfg.beard, hairRamp]);
     cfg.acc.forEach(function (id) { if (UNDER_HAIR[id]) list.push([id]); });
+    if (cfg.beard !== 'none') list.push([cfg.beard, hairRamp]);
     // Unter einem Hut verschwindet das Haar dort, wo die Hutmaske deckt (assets/avatar/<hut>-hairmask.png).
     var hidden = cfg.hat !== 'none' && HAIR_OFF[cfg.hair] && HAIR_OFF[cfg.hair][cfg.hat];
     if (cfg.hair !== 'none' && !hidden) list.push([cfg.hair, hairRamp, cfg.hat !== 'none' ? cfg.hat + '-hairmask' : null]);
@@ -254,7 +340,11 @@
     function choose(kind, id) {
       if (MULTI[kind]) {
         var at = cfg[kind].indexOf(id);
-        if (at >= 0) cfg[kind].splice(at, 1); else cfg[kind].push(id);
+        if (at >= 0) cfg[kind].splice(at, 1);
+        else {
+          if (SLOT[id]) cfg[kind] = cfg[kind].filter(function (other) { return SLOT[other] !== SLOT[id]; });
+          cfg[kind].push(id);
+        }
       } else cfg[kind] = id;
       ZU.audio.select(true);
       save();
@@ -286,7 +376,7 @@
         grid.appendChild(tile);
       });
       info.textContent = tab === 'tattoo' ? 'Tattoos lassen sich kombinieren. Unter manchem Outfit sind sie nicht zu sehen.'
-        : tab === 'acc' ? 'Extras lassen sich kombinieren.'
+        : tab === 'acc' ? 'Extras lassen sich kombinieren – nur je eine Brille, ein Stück im Mund und eines um den Hals.'
         : 'Neue Teile erspielst du dir – sie kosten keine Asche. Unter ????? steht, was dafür zu tun ist.';
     }
     render();

@@ -40,8 +40,11 @@ body.nobg { background: radial-gradient(ellipse at 50% 85%, var(--bg-mid, #34170
 #screen, #overlay, #pops { position: absolute; inset: 0; }
 #screen { z-index: 1; }
 #overlay, #pops { pointer-events: none; }
-#screen.enter { animation: screen-in .32s ease-out; }
-@keyframes screen-in { from { opacity: 0; transform: scale(1.03); } to { opacity: 1; transform: none; } }
+/* Bildschirmwechsel: Der alte Bildschirm räumt ab (.leave), der neue baut sich in Stufen auf (.enter, siehe „Übergänge" unten). */
+#screen.enter { animation: screen-in .22s ease-out; }
+@keyframes screen-in { from { opacity: 0; } to { opacity: 1; } }
+#screen.leave { animation: screen-out .15s ease-in forwards; pointer-events: none; }
+@keyframes screen-out { to { opacity: 0; translate: 0 12px; } }
 #fxcanvas { position: absolute; inset: 0; pointer-events: none; z-index: 40; image-rendering: pixelated; }
 #overlay { z-index: 50; }
 #pops { z-index: 60; }
@@ -182,9 +185,16 @@ body.nobg { background: radial-gradient(ellipse at 50% 85%, var(--bg-mid, #34170
 }
 .banner { position: absolute; left: 0; right: 0; top: 262px; height: 140px; display: flex; align-items: center; justify-content: center; pointer-events: none;
   background: linear-gradient(90deg, transparent, rgba(0,0,0,.82) 18%, rgba(0,0,0,.82) 82%, transparent); animation: banner 1.3s cubic-bezier(.2,.9,.3,1) forwards; }
-.banner span { font-family: var(--px-wide); font-size: 76px; color: var(--ember-hot); letter-spacing: 3px; text-shadow: 0 6px 0 #8a3508, 0 0 40px rgba(255,140,40,.8); animation: banner-text 1.3s cubic-bezier(.3,1.5,.5,1) forwards; animation-duration: inherit; }
+.banner span { font-family: var(--px-wide); font-size: calc(76px * var(--fit, 1)); color: var(--ember-hot); letter-spacing: 3px; text-shadow: 0 6px 0 #8a3508, 0 0 40px rgba(255,140,40,.8); white-space: nowrap; }
+/* Die Buchstaben springen einzeln herein und wippen danach; --sp dehnt die Zeiten bei langsamer Spielgeschwindigkeit. */
+.banner em { display: inline-block; font-style: normal; white-space: nowrap; }
+.banner b { display: inline-block; font: inherit; color: inherit;
+  animation: letter-in calc(.42s * var(--sp, 1)) cubic-bezier(.3,1.7,.5,1) backwards, letter-wave calc(.9s * var(--sp, 1)) ease-in-out infinite;
+  animation-delay: calc((var(--i) * 34ms + 60ms) * var(--sp, 1)), calc((var(--i) * 70ms + 520ms) * var(--sp, 1)); }
+@keyframes letter-in { 0% { opacity: 0; transform: translateY(-46px) scale(2.2) rotate(-14deg); } 100% { opacity: 1; transform: none; } }
+@keyframes letter-wave { 0%, 100% { translate: 0 0; } 50% { translate: 0 -5px; } }
 .banner.lose span { color: #b9b3ab; text-shadow: 0 6px 0 #33302c; }
-.banner.swap span { color: var(--ivory); font-size: 56px; text-shadow: 0 5px 0 var(--burgundy); }
+.banner.swap span { color: var(--ivory); font-size: calc(56px * var(--fit, 1)); text-shadow: 0 5px 0 var(--burgundy); }
 @keyframes banner { 0% { transform: scaleY(0); opacity: 0; } 12% { transform: scaleY(1); opacity: 1; } 82% { transform: scaleY(1); opacity: 1; } 100% { transform: scaleY(0); opacity: 0; } }
 @keyframes banner-text { 0% { transform: scale(3) rotate(-4deg); opacity: 0; } 16% { transform: scale(1) rotate(0); opacity: 1; } 22% { transform: scale(1.08); } 28% { transform: scale(1); } 100% { transform: scale(1.04); } }
 .ghost { position: absolute; pointer-events: none; z-index: 5; }
@@ -258,7 +268,8 @@ body.nobg { background: radial-gradient(ellipse at 50% 85%, var(--bg-mid, #34170
 .cardstatic.large { zoom: 1.45; }
 .cardstatic.clickable { cursor: pointer; }
 .cardstatic.burnable:hover .card.front { box-shadow: inset 0 0 0 4px var(--red), inset 0 0 0 6px var(--ember); }
-.cardstatic.burning { animation: burning .42s ease-in forwards; }
+/* Ersatz, falls der Browser keine Masken kann (sonst frisst sich der Brandrand durch die Karte, siehe .burn-away). */
+.burning { animation: burning .42s ease-in forwards; }
 @keyframes burning { to { transform: scale(.2) rotate(18deg); filter: brightness(3) sepia(1) saturate(6) hue-rotate(-20deg); opacity: 0; } }
 
 /* ---------- Duell ---------- */
@@ -306,7 +317,8 @@ body.nobg { background: radial-gradient(ellipse at 50% 85%, var(--bg-mid, #34170
 .chain.c2 { background: #c8402f; box-shadow: 0 0 14px rgba(255,110,50,.6); } .chain.c2 .flame { filter: none; animation: flick .35s steps(2) infinite; }
 .chain.c3 { background: linear-gradient(180deg, #ffd75e, #f08a24); box-shadow: 0 0 24px rgba(255,170,60,.9); } .chain.c3 b { color: #2a1202; } .chain.c3 .flame { filter: none; animation: flick .2s steps(2) infinite; }
 @keyframes flick { 0% { transform: scale(1) rotate(-4deg); } 100% { transform: scale(1.18) rotate(4deg); } }
-.glutnum { font-family: var(--px-wide); font-weight: normal; font-size: 30px; color: var(--ember-hot); text-shadow: 0 3px 0 rgba(0,0,0,.6); justify-self: start; transform-origin: 0 50%; }
+.glutnum { font-family: var(--px-wide); font-weight: normal; font-size: 30px; color: var(--ember-hot); justify-self: start; transform-origin: 0 50%;
+  text-shadow: 0 3px 0 rgba(0,0,0,.6), 0 0 calc(var(--heat, 0) * 26px) rgba(255,140,40,.95); scale: calc(1 + var(--heat, 0) * .26); transition: scale .35s cubic-bezier(.3,1.6,.5,1); }
 
 .prompt { position: absolute; left: 50%; top: 448px; transform: translate(-50%, 0) scale(.8); max-width: 640px; padding: 9px 18px; border-radius: 12px; background: var(--ivory); color: var(--ink); font-size: 15px; text-align: center; box-shadow: 0 5px 0 rgba(0,0,0,.45); opacity: 0; pointer-events: none; z-index: 35; transition: opacity .2s, transform .2s cubic-bezier(.3,1.6,.5,1); }
 .prompt.on { opacity: 1; transform: translate(-50%, 0) scale(1); }
@@ -1098,3 +1110,116 @@ body.nobg { background: radial-gradient(ellipse at 50% 85%, var(--bg-mid, #34170
 .cred-names { font-family: var(--px); font-size: 15px; letter-spacing: .5px; color: var(--ivory); margin-top: 3px; line-height: 1.35; }
 .cred-note { font-size: 11.5px; line-height: 1.35; color: #b9ab92; margin: 3px 0 0; }
 .cred-note a { color: #ffd75e; }
+
+
+/* ================= Effekte: Wertung, Feuer, Übergänge, Brand, Folie ================= */
+
+/* ---------- Die Rechnung über dem Ablagestapel ---------- */
+.calc { position: absolute; z-index: 900; translate: -50% -50%; display: flex; flex-direction: column; align-items: center; gap: 4px; pointer-events: none;
+  transition: transform .19s cubic-bezier(.5,0,.9,.6), opacity .19s ease-in; }
+.calc b { font-family: var(--px-wide); font-weight: normal; line-height: 1; font-size: calc(36px + var(--hot, 0) * 24px); color: var(--ember-hot); transform-origin: 50% 80%;
+  text-shadow: 0 3px 0 #000, 3px 0 0 #000, -3px 0 0 #000, 0 -3px 0 #000, 0 6px 0 rgba(0,0,0,.5); }
+.calc.hot b { color: #fff3c4; text-shadow: 0 3px 0 #8a3508, 3px 0 0 #8a3508, -3px 0 0 #8a3508, 0 -3px 0 #8a3508, 0 0 20px #ff7b3a; }
+.calc.blazing b { color: #fff; text-shadow: 0 3px 0 #b3261e, 3px 0 0 #b3261e, -3px 0 0 #b3261e, 0 -3px 0 #b3261e, 0 0 24px #ff7b3a, 0 0 54px rgba(255,120,40,.75); }
+.calc i { font-style: normal; font-family: var(--px); font-size: 14px; letter-spacing: 1px; color: #ffe9b0; padding: 3px 9px 1px; border-radius: 6px; background: rgba(0,0,0,.66); white-space: nowrap; }
+.calc i:empty { display: none; }
+.calc.fly { opacity: .2; }
+.tagpop { animation: tagpop .3s cubic-bezier(.3,1.6,.5,1); }
+@keyframes tagpop { 0% { transform: scale(.4) rotate(-8deg); } 60% { transform: scale(1.2) rotate(3deg); } 100% { transform: none; } }
+
+/* ---------- Feuer: Je näher das Glutziel, desto mehr brennt der Tisch (--heat: 0 bis 1) ---------- */
+.firecv { display: block; image-rendering: pixelated; pointer-events: none; }
+.board-fire { position: absolute; left: 766px; top: 126px; }
+.tablefire { position: absolute; left: 252px; right: 252px; top: 14px; bottom: 14px; border-radius: 26px; overflow: hidden; pointer-events: none; }
+.tablefire .firecv { position: absolute; left: 0; bottom: 0; }
+.duel .tablefelt { transition: box-shadow .5s, border-color .5s;
+  box-shadow: inset 0 0 0 3px rgba(0,0,0,.45), inset 0 0 90px rgba(0,0,0,.55), inset 0 -70px 120px -40px rgba(255,110,30, calc(var(--heat, 0) * .55)),
+    0 6px 0 rgba(0,0,0,.4), 0 0 calc(var(--heat, 0) * 44px) rgba(255,120,40, calc(var(--heat, 0) * .5)); }
+.duel.warm .tablefelt { border-color: #c8662a; }
+.duel.ablaze .tablefelt { border-color: #ffb040; }
+.duel.warm .scoreboard { border-color: rgba(255,150,60,.7); }
+
+/* ---------- Übergänge: Der neue Bildschirm baut sich in Stufen auf ---------- */
+/* translate und opacity statt transform: So vertragen sich die Auftritte mit Elementen, die selbst ein transform tragen. */
+@keyframes in-up { from { opacity: 0; translate: 0 30px; } }
+@keyframes in-down { from { opacity: 0; translate: 0 -40px; } }
+@keyframes in-left { from { opacity: 0; translate: -80px 0; } }
+@keyframes in-right { from { opacity: 0; translate: 80px 0; } }
+@keyframes in-rise { from { opacity: 0; translate: 0 150px; } }
+@keyframes felt-in { from { opacity: 0; scale: .95; } }
+#screen.enter .hud { animation: in-down .42s cubic-bezier(.2,1.3,.4,1) backwards; }
+#screen.enter .screen:not(.title) > h1:not(.huge) { animation: in-down .4s cubic-bezier(.2,1.3,.4,1) .04s backwards; }
+#screen.enter .screen:not(.title) > .sub { animation: in-up .38s cubic-bezier(.2,1.3,.4,1) .1s backwards; }
+#screen.enter .screen:not(.title):not(.shop) > .btn, #screen.enter .screen > .btnrow { animation: in-up .4s cubic-bezier(.2,1.3,.4,1) .3s backwards; }
+#screen.enter .casino-stage, #screen.enter .br-head, #screen.enter .av-body { animation: in-up .45s cubic-bezier(.2,1.2,.4,1) .08s backwards; }
+/* Laden: Manfred taucht hinter dem Tresen auf, die Regale fallen der Reihe nach an ihren Platz. */
+#screen.enter .shop-left { animation: in-rise .55s cubic-bezier(.2,1.25,.4,1) .06s backwards; }
+#screen.enter .esme-door { animation: in-left .4s cubic-bezier(.2,1.3,.4,1) .3s backwards; }
+#screen.enter .shop-main .shelf, #screen.enter .shop-main .shelf-top > :not(.shelf) { animation: in-down .42s cubic-bezier(.2,1.35,.4,1) backwards; }
+#screen.enter .shelf-top > :nth-child(1) { animation-delay: .10s; }
+#screen.enter .shelf-top > :nth-child(2) { animation-delay: .17s; }
+#screen.enter .shelf-top > :nth-child(3) { animation-delay: .24s; }
+#screen.enter .shelf-pair > :nth-child(1) { animation-delay: .30s; }
+#screen.enter .shelf-pair > :nth-child(2) { animation-delay: .37s; }
+#screen.enter .shelf-pair > :nth-child(3) { animation-delay: .44s; }
+#screen.enter .esme-main > * { animation: in-up .42s cubic-bezier(.2,1.3,.4,1) backwards; }
+#screen.enter .esme-main > :nth-child(1) { animation-delay: .10s; }
+#screen.enter .esme-main > :nth-child(2) { animation-delay: .16s; }
+#screen.enter .esme-main > :nth-child(3) { animation-delay: .22s; }
+#screen.enter .esme-main > :nth-child(4) { animation-delay: .30s; }
+#screen.enter .shop-next { animation: in-up .4s cubic-bezier(.2,1.3,.4,1) .52s backwards; }
+/* Tisch: Die Tafeln fahren von den Seiten herein, der Filz geht auf. */
+#screen.enter .p-left { animation: in-left .45s cubic-bezier(.2,1.2,.4,1) backwards; }
+#screen.enter .p-right { animation: in-right .45s cubic-bezier(.2,1.2,.4,1) backwards; }
+#screen.enter .tablefelt { animation: felt-in .4s ease-out backwards; }
+#screen.enter .scoreboard { animation: in-up .4s cubic-bezier(.2,1.3,.4,1) .28s backwards; }
+#screen.enter .stockpile { animation: in-down .4s cubic-bezier(.2,1.3,.4,1) .18s backwards; }
+/* … und beim Abgang wieder hinaus, sobald die Karten eingesammelt sind (DuelView.leave). */
+.duel.leaving { pointer-events: none; }
+.duel.leaving .p-left, .duel.leaving .p-right { transition: translate .3s cubic-bezier(.5,0,.8,.4) .14s, opacity .3s ease-in .14s; opacity: 0; }
+.duel.leaving .p-left { translate: -290px 0; }
+.duel.leaving .p-right { translate: 290px 0; }
+.duel.leaving .tablefelt, .duel.leaving .scoreboard, .duel.leaving .stockpile, .duel.leaving .tablefire, .duel.leaving .board-fire, .duel.leaving .stagedim {
+  transition: opacity .22s ease-in .26s; opacity: 0; }
+
+/* ---------- Brand: Ein gezackter Rand frisst sich durch die Karte (ZU.fx.burn) ---------- */
+.burn-away { -webkit-mask-size: 1400% 100%; mask-size: 1400% 100%; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; pointer-events: none;
+  animation: burn-away .64s steps(14, jump-none) forwards !important; }
+@keyframes burn-away { from { -webkit-mask-position: 0 0; mask-position: 0 0; } to { -webkit-mask-position: 100% 0; mask-position: 100% 0; } }
+.burn-edge { position: absolute; inset: 0; z-index: 9; background-size: 1400% 100%; background-repeat: no-repeat; image-rendering: pixelated; pointer-events: none;
+  animation: burn-edge .64s steps(14, jump-none) forwards; }
+@keyframes burn-edge { from { background-position: 0 0; } to { background-position: 100% 0; } }
+.deckgrid.locked { pointer-events: none; }
+
+/* ---------- Folie: seltene Spezialkarten und veredelte Karten schimmern ---------- */
+/* Farbige Streifen liegen wie Lack über der Karte (auf hellem Papier abdunkelnd, auf dem schwarzen Joker-Rahmen aufhellend)
+   und wandern mit der Neigung; darüber zieht in Abständen ein weißes Glanzlicht. */
+.card .foil { position: absolute; inset: 0; overflow: hidden; pointer-events: none;
+  --f1: rgba(255,90,170,.75); --f2: rgba(90,200,255,.75); --f3: rgba(255,225,90,.75); }
+.card .foil i { position: absolute; left: -100%; top: -100%; width: 300%; height: 300%; will-change: transform; transition: transform .12s linear;
+  mix-blend-mode: multiply; opacity: .5;
+  background: repeating-linear-gradient(115deg, transparent 0 8%, var(--f1) 8% 10.5%, var(--f2) 10.5% 13%, var(--f3) 13% 15.5%, transparent 15.5% 27%); }
+.card.special.b-wild .foil i { mix-blend-mode: color-dodge; opacity: .6; }
+.card .foil::after { content: ''; position: absolute; inset: -20% -80%; background: linear-gradient(105deg, transparent 44%, rgba(255,255,255,.55) 50%, transparent 56%);
+  animation: foil-glint 6.5s ease-in-out infinite; animation-delay: var(--fd, 0s); }
+@keyframes foil-glint { 0%, 62% { translate: -75% 0; } 88%, 100% { translate: 75% 0; } }
+.card .foil.f-r2 { --f1: rgba(240,170,40,.8); --f2: rgba(255,225,120,.7); --f3: rgba(226,120,40,.8); }
+.card .foil.f-seal i { opacity: .42; }
+.card .foil.s-glut { --f1: rgba(255,110,40,.85); --f2: rgba(255,200,80,.75); --f3: rgba(220,60,30,.85); }
+.card .foil.s-gold { --f1: rgba(240,180,50,.85); --f2: rgba(255,230,140,.75); --f3: rgba(214,150,30,.85); }
+.card .foil.s-zuend { --f1: rgba(255,210,90,.85); --f2: rgba(255,150,60,.75); --f3: rgba(255,235,160,.8); }
+.card .foil.s-haken { --f1: rgba(70,210,180,.85); --f2: rgba(150,240,220,.7); --f3: rgba(58,165,143,.85); }
+.card .foil.s-bumerang { --f1: rgba(214,170,100,.85); --f2: rgba(240,215,160,.7); --f3: rgba(185,138,74,.85); }
+.card .foil.s-irrlicht { --f1: rgba(170,120,255,.85); --f2: rgba(215,190,255,.7); --f3: rgba(120,90,220,.85); }
+.card .foil.s-anker { --f1: rgba(100,150,240,.85); --f2: rgba(180,210,255,.7); --f3: rgba(60,100,200,.85); }
+.spr.unplayable .foil, .spr.dimmed .foil { opacity: .35; }
+
+/* ---------- Kleinkram: Der Nachziehstapel liegt nicht tot da ---------- */
+.stockpile .card:nth-child(3) { animation: stock-idle 5.5s ease-in-out infinite; }
+.duel.myturn:not(.busy) .stockpile.active .card:nth-child(3) { animation-duration: 2.4s; }
+@keyframes stock-idle { 0%, 100% { translate: 0 0; rotate: 0deg; } 50% { translate: -1px -3px; rotate: -.8deg; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .card .foil::after, .stockpile .card:nth-child(3) { animation: none; }
+  .banner b { animation: letter-in calc(.42s * var(--sp, 1)) cubic-bezier(.3,1.7,.5,1) backwards; }
+}

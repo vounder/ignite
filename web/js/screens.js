@@ -91,12 +91,16 @@
       cards.forEach(function (card) {
         var el = ZU.cardStatic(ZU.CARDS[card.def], { cls: burn ? 'clickable burnable' : '', bind: card.bind, seal: card.seal, flaw: card.flaw });
         if (burn) el.addEventListener('click', function () {
+          if (done || el._burning) return;
+          el._burning = true;
+          grid.classList.add('locked'); // während es brennt, keine zweite Karte anzünden
           ZU.audio.burn();
           var p = ZU.stagePos(el);
-          fx.burst(p.x, p.y, { n: 40, speed: 300, life: 1.3 });
-          fx.smoke(p.x, p.y, 16);
-          el.classList.add('burning');
-          setTimeout(function () { finish(card.id); }, 420);
+          fx.flash(p.x, p.y + p.h * 0.4, { r: 90, color: '#ff9f3a' });
+          fx.burn(el, { ms: 720 }).then(function () {
+            fx.smoke(p.x, p.y, 10);
+            setTimeout(function () { finish(card.id); }, 160);
+          });
         });
         grid.appendChild(el);
       });
