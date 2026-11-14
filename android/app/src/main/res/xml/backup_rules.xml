@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Gesichert werden Spielstand und Anmeldung (WebView-Daten), nicht die nachgeladenen Spieldateien. -->
+<full-backup-content>
+    <exclude domain="file" path="web/" />
+</full-backup-content>

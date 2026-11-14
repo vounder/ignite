@@ -38,9 +38,11 @@
         'Der Spielserver selbst führt keine Zugriffsprotokolle. Zum Schutz vor Missbrauch hält er IP-Adressen höchstens eine Stunde im Arbeitsspeicher.</p>' +
         '<h3>Speicher im Browser</h3>' +
         '<p>Spielstand, Statistik und Einstellungen liegen im lokalen Speicher deines Browsers und bleiben auf deinem Gerät. Es gibt keine Analyse, kein Tracking und keine Werbung. ' +
-        'Damit sich das Spiel als App installieren lässt, richtet dein Browser eine App-Hülle (Service Worker) ein; sie speichert keine Inhalte und keine Daten über dich.</p>' +
+        'Damit sich das Spiel als App installieren lässt, richtet dein Browser eine App-Hülle (Service Worker) ein. Ist das Spiel als App installiert oder „Offline spielen“ eingeschaltet, legt sie die Dateien des Spiels auf deinem Gerät ab, damit es ohne Internet startet; Daten über dich speichert sie nicht. ' +
+        'Die Android-App bringt diese Dateien mit. Beide fragen beim Start den Server, ob es eine neuere Fassung gibt, und laden sie nach. ' +
+        'Bist du angemeldet und spielst ohne Internet, merkt sich dein Gerät beendete Runs und geänderten Fortschritt und überträgt sie beim nächsten Kontakt an dein Konto.</p>' +
         '<h3>Konto (freiwillig)</h3>' +
-        '<p>Wenn du ein Konto anlegst, speichern wir Name, E-Mail-Adresse, ein nicht umkehrbar verschlüsseltes Passwort, das Registrierungsdatum, deine Spielstatistik (Runs, Siege, Bestwert, höchster Akt) und deinen Spielfortschritt (Asche, Freischaltungen, Upgrades, Einsätze, besiegte Gegner). ' +
+        '<p>Wenn du ein Konto anlegst, speichern wir Name, E-Mail-Adresse, ein nicht umkehrbar verschlüsseltes Passwort, das Registrierungsdatum, deine Spielstatistik (Runs, Siege, Bestwert, höchster Akt) und deinen Spielfortschritt (Asche, Freischaltungen, Upgrades, Einsätze, besiegte Gegner). Zu gemeldeten Runs merken wir uns 90 Tage lang eine zufällige Kennung, damit keiner doppelt zählt. ' +
         'Das dient der Anmeldung und dem Sichern der Statistik (Art. 6 Abs. 1 lit. b DSGVO). Die E-Mail-Adresse wird ausschließlich zum Zurücksetzen des Passworts verwendet.</p>' +
         '<p>Nach der Anmeldung setzt die Seite ein technisch notwendiges Sitzungs-Cookie (30 Tage). Weitere Cookies gibt es nicht.</p>' +
         '<p>Die Daten bleiben gespeichert, bis du dein Konto löschst. Das geht jederzeit im Spiel unter „Konto“.</p>' +

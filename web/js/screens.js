@@ -290,6 +290,36 @@
         ], { cls: 'small' });
       })]));
     }
+    // Offline spielen: im Browser ein Schalter, in der installierten App und der Android-App nur die Anzeige.
+    // Ein fertig geladenes Update lässt sich hier übernehmen – nicht mitten im Run, dort wartet es bis zum Menü.
+    var offline = ZU.offline;
+    if (offline.inApp() || offline.supported()) {
+      var offNote = h('span', 'set-note'), offCtl = h('div', 'setctl');
+      var renderOffline = function () {
+        var on = offline.wanted(), kids = [offNote];
+        offNote.textContent = on ? offline.label() : '';
+        if (offline.status.state === 'update' && !inRun) {
+          kids.push(btn('Neu starten', 'small ember', function () { offline.restart(); }));
+        } else if (!app.isInstalled()) {
+          kids.push(btn(on ? 'An' : 'Aus', 'small' + (on ? ' on' : ''), function () { offline.enable(!on); renderOffline(); },
+            'Legt das ganze Spiel auf diesem Gerät ab (rund 55 MB). Es startet dann auch ohne Internet und holt Updates von selbst.'));
+        }
+        offCtl.replaceChildren.apply(offCtl, kids);
+      };
+      var offStop = offline.onChange(function () {
+        if (!offCtl.isConnected) { offStop(); return; }
+        renderOffline();
+      });
+      renderOffline();
+      rows.push(h('div', 'setrow', [h('span', null, 'Offline spielen'), offCtl]));
+    }
+    var apk = app.android();
+    if (apk) {
+      rows.push(h('div', 'setrow', [h('span', null, apk.update ? 'App-Update' : 'Android-App'), h('div', 'setctl', [
+        h('span', 'set-note', apk.update ? 'Version ' + apk.name : app.androidSize()),
+        btn('Herunterladen', 'small' + (apk.update ? ' ember' : ''), function () { app.askAndroid(); })
+      ])]));
+    }
     var buttons = [btn(inRun ? 'Weiterspielen' : 'Schließen', 'ember', function () { ZU.modal.close(entry); })];
     if (inRun) {
       buttons.unshift(btn('Anleitung', 'felt', function () { helpModal(); }));
@@ -522,6 +552,28 @@
     return slot;
   }
 
+  /* Hinweis oben links im Hauptmenü: Eine neue Fassung des Spiels ist geladen (ein Neustart übernimmt sie),
+     oder es gibt eine neuere Android-App. */
+  function updateSlot() {
+    var slot = h('div', 'update-slot'), shown = '';
+    function render() {
+      var apk = ZU.app.android();
+      var kind = ZU.offline.status.state === 'update' ? 'game' : apk && apk.update ? 'app' : '';
+      if (kind === shown) return;
+      shown = kind;
+      slot.innerHTML = '';
+      if (kind === 'game') {
+        slot.appendChild(h('div', 'update-note', [h('span', null, 'Neue Fassung geladen'), btn('Neu starten', 'small ember', function () { ZU.offline.restart(); })]));
+      } else if (kind === 'app') {
+        slot.appendChild(h('div', 'update-note', [h('span', null, 'Neue App-Version ' + apk.name), btn('Herunterladen', 'small ember', function () { ZU.app.downloadAndroid(); })]));
+      }
+    }
+    var offGame = ZU.offline.onChange(render), offApp = ZU.app.onChange(render);
+    slot._off = function () { offGame(); offApp(); };
+    render();
+    return slot;
+  }
+
   /* Einziger Hinweis aufs Konto: am Ende eines Runs, solange man nicht angemeldet ist. */
   function accountCta() {
     if (!ZU.account.available || ZU.account.user) return null;
@@ -630,7 +682,7 @@
     ]));
     Array.prototype.forEach.call(buttons.children, function (child, i) { child.style.setProperty('--i', i); });
 
-    var slot = accountSlot();
+    var slot = accountSlot(), news = updateSlot();
     var screen = h('div', 'screen menu title ' + (intro ? 'intro' : 'ready quick'), [
       art,
       h('div', 'title-shade'),
@@ -638,6 +690,7 @@
       hand,
       buttons,
       slot,
+      news,
       h('div', 'menu-version', 'v' + ZU.VERSION)
     ]);
     root.appendChild(screen);
@@ -668,7 +721,7 @@
       setTimeout(function () { if (game.screen === 'menu' && !ZU.modal.isOpen()) helpModal(); }, 600);
     }
     setTimeout(function () { if (game.screen === 'menu') unlockedPopup(game); }, intro ? 1400 : 450);
-    return function () { slot._off(); logo.destroy(); scene.stop(); };
+    return function () { slot._off(); news._off(); logo.destroy(); scene.stop(); };
   };
 
   /* Titelkulisse aus Ebenen: Raum, die Herren und Damen der sechs Casinos, davor der Tisch.

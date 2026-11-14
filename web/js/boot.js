@@ -116,9 +116,56 @@
     });
   }
 
+  /* ---------- Update beim Start ---------- */
+  /* Liegt beim Start eine neuere Fassung vor (js/offline.js), wird sie hier geladen und die Seite neu
+     gestartet. „Später“ spielt mit der vorhandenen weiter; das Update lädt dann im Hintergrund zu Ende
+     und wartet im Hauptmenü. Schlägt es fehl (Netz weg), geht es ebenfalls einfach weiter. */
+  function update(pending) {
+    return Promise.resolve(pending).then(function (job) {
+      if (!job) return;
+      return new Promise(function (resolve) {
+        var left = false, bar = h('i', 'load-fill'), pct = h('span', 'load-pct', '0 %');
+        var el = h('div', 'loadveil on slow', [h('div', 'load-box', [
+          h('div', 'load-match', [h('i', 'load-flame')]),
+          h('div', 'load-line', 'Neue Fassung wird geladen …'),
+          h('div', 'load-bar', [bar]),
+          pct,
+          ZU.btn('Später', 'small load-later', leave)
+        ])]);
+        document.getElementById('stage').appendChild(el);
+        function show() {
+          var s = ZU.offline.status;
+          if (s.state !== 'load' || !s.total) return;
+          var part = Math.min(1, s.done / s.total);
+          bar.style.width = (part * 100).toFixed(0) + '%';
+          pct.textContent = Math.floor(part * 100) + ' %';
+        }
+        var off = ZU.offline.onChange(show);
+        show();
+        function leave() {
+          if (left) return;
+          left = true;
+          off();
+          el.classList.add('out');
+          setTimeout(function () { el.remove(); }, 260);
+          resolve();
+        }
+        job.done.then(function (ready) {
+          if (left) return;
+          if (!ready) { leave(); return; }
+          bar.style.width = '100%';
+          pct.textContent = '100 %';
+          ZU.offline.restart();
+          setTimeout(leave, 8000); // sollte der Neustart ausbleiben
+        });
+      });
+    }).catch(function () {});
+  }
+
   ZU.boot = {
     wait: wait,
     splash: splash,
+    update: update,
     /* Start des Spiels: Vorspann (einmal je Besuch) und währenddessen alles laden, was der Titel zeigt. */
     start: function (coreUrls) {
       var seen = false;

@@ -181,8 +181,9 @@ Tasten: `1`–`9` spielt Handkarten, `Leertaste` zieht, `Enter` legt die Auswahl
 | `js/account.js` | Anbindung an die Konto-API des Servers |
 | `js/legal.js` | Impressum, Datenschutz, Lizenzen samt Betreiberangaben |
 | `js/boot.js` | Studio-Vorspann, Ladebildschirm und Übergangsschleier |
-| `js/app.js` | Installation als App und Vollbild-Abfrage auf Touch-Geräten |
-| `manifest.webmanifest`, `sw.js` | App-Manifest und App-Hülle (Service Worker, speichert nichts zwischen) |
+| `js/app.js` | Installation als App, Vollbild-Abfrage auf Touch-Geräten, Angebot der Android-App |
+| `js/offline.js` | Offline spielen und Updates: legt das Spiel auf dem Gerät ab, holt neue Fassungen |
+| `manifest.webmanifest`, `sw.js` | App-Manifest und App-Hülle (Service Worker): liefert das Spiel ohne Netz aus dem Gerätespeicher |
 
 Regeln und Darstellung sind getrennt: `engine.js` und `run.js` laufen ohne DOM
 und werden per Simulation getestet.
@@ -200,9 +201,45 @@ dann ohne Browserleisten im Vollbild und im Querformat.
 - **Einstellungen:** „Vollbild" schaltet um, „Beim Start" legt auf Touch-Geräten
   fest, ob gefragt wird (Fragen, Immer, Nie), und „Als App" installiert das
   Spiel, sobald der Browser das anbietet – auch am Rechner.
-- Die App-Hülle `sw.js` speichert nichts zwischen: Jeder Start lädt den
-  aktuellen Stand, ohne Netz erscheint nur ein kurzer Hinweis. Ohne Server
-  (Datei per Doppelklick) gibt es keine Installation.
+- Ohne Server (Datei per Doppelklick) gibt es keine Installation.
+
+## Offline spielen und Updates
+
+Das Spiel läuft auch ohne Internet, sobald es einmal vollständig auf dem Gerät
+liegt (rund 55 MB), und holt neue Fassungen von selbst:
+
+- **Installierte Web-App** (Android, iPhone über „Zum Home-Bildschirm“, Rechner):
+  legt das Spiel nach dem ersten Start im Hintergrund ab.
+- **Im Browser:** nur auf Wunsch, *Einstellungen → Offline spielen*. Dort steht
+  auch der Stand (Lädt … %, Bereit, Update bereit).
+- **Android-App:** bringt das Spiel fertig mit, siehe
+  [`../android/README.md`](../android/README.md). Auf Android-Geräten bieten die
+  Start-Abfrage und die Einstellungen den Download an, sobald der Server eine
+  App bereithält (`APP_DIR`, siehe [`../server/README.md`](../server/README.md)).
+  Vor dem Download fragt das Spiel kurz nach („Offline-Version laden?“) und
+  nennt in einem Satz, wie die Installation abläuft.
+
+So funktioniert es (`js/offline.js`, `sw.js`):
+
+- Der Server nennt unter `/files.json` jede Datei des Spiels mit SHA-256 und
+  eine Kennung der ganzen Fassung (`server/filelist.js`, wird aus `web/`
+  errechnet – es gibt nichts von Hand zu pflegen).
+- Weicht die Kennung von der gespeicherten ab, werden nur die geänderten Dateien
+  geladen, gegen ihre SHA-256 geprüft und als neue Fassung abgelegt. Erst wenn
+  sie vollständig ist, löst sie die alte ab – und nur mit einem Neustart der
+  Seite, nie mitten im Spiel.
+- **Beim Start mit Netz** wird ein Update sofort geladen (Ladebildschirm „Neue
+  Fassung wird geladen …“, mit „Später“) und das Spiel startet in der neuen
+  Fassung. Dauert die Antwort des Servers länger als 2,5 Sekunden, geht es mit
+  der vorhandenen los; das Update lädt dann im Hintergrund, und im Hauptmenü
+  erscheint „Neue Fassung geladen · Neu starten“. Im laufenden Spiel wird alle
+  30 Minuten nachgesehen, sobald es wieder in den Vordergrund kommt.
+- **Ohne Netz** startet die gespeicherte Fassung. Konto-Funktionen ruhen dann;
+  wer auf dem Gerät angemeldet war, dessen beendete Runs und Fortschritt werden
+  gemerkt und beim nächsten Kontakt nachgereicht (`js/account.js`). Der Stand
+  auf dem Gerät gilt dabei als der neuere.
+- Musik wird in Stücken geladen (Range); die App-Hülle beantwortet das auch aus
+  dem Speicher, sonst bliebe Safari stumm.
 
 Die App-Symbole erzeugt `python web/tools/make_icons.py` aus `assets/logo.png`.
 
@@ -241,6 +278,14 @@ prüft Kartenerhaltung, Terminierung, Speichern/Laden und Determinismus. Die
 Ausgabe zeigt außerdem die Siegquoten je Gegner als grobe Balance-Übersicht.
 
 Die Tests des Servers laufen mit `node server/test.js`.
+
+```bash
+node web/tests/offline_e2e.js
+```
+
+Prüft im echten Browser (braucht Playwright und Node ≥ 22.13): Offline-Ablage,
+Start ohne Netz, Updates beim Start und im Hintergrund, das Nachreichen ans
+Konto und das Angebot der Android-App.
 
 ```bash
 node web/tests/balance.js 1500

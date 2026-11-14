@@ -1,4 +1,5 @@
-/* Zündung – App und Vollbild: Installation als App (Startbildschirm) und die Vollbild-Abfrage auf Touch-Geräten. */
+/* Zündung – App und Vollbild: Installation als App (Startbildschirm), die Vollbild-Abfrage auf Touch-Geräten
+   und das Angebot der Android-App (Download von der eigenen Seite, siehe android/README.md). */
 (function (ZU) {
   'use strict';
 
@@ -10,6 +11,13 @@
   /* Als App gestartet (ohne Browserleisten). Beim Laden bestimmt: Die Abfrage „display-mode: fullscreen"
      träfe später auch auf das Vollbild im Browser zu. */
   var installed = media('(display-mode: fullscreen)') || media('(display-mode: standalone)') || navigator.standalone === true;
+  /* Die Android-App meldet sich über window.ZuendungApp; sie ist immer „installiert“ und im Vollbild. */
+  var shell = window.ZuendungApp || null, shellInfo = null;
+  if (shell) {
+    installed = true;
+    try { shellInfo = JSON.parse(shell.info()); } catch (e) { shellInfo = {}; }
+  }
+  var android = null; // Angebot des Servers: { name, url, size, update }
 
   // Chrome und verwandte Browser melden so, dass sich die Seite installieren lässt; der Dialog darf erst nach einem Tipp erscheinen.
   window.addEventListener('beforeinstallprompt', function (ev) { ev.preventDefault(); installEvent = ev; changed(); });
@@ -25,6 +33,47 @@
 
   var app = {
     isInstalled: function () { return installed; },
+    /* Läuft in der Android-App (nicht im Browser). */
+    isShell: function () { return !!shell; },
+    isAndroid: function () { return /Android/i.test(navigator.userAgent); },
+    /* Die Android-App zum Herunterladen: im Browser auf Android-Geräten das Angebot, in der App nur eine
+       neuere Fassung der App selbst (update: true). null, solange der Server keine anbietet. */
+    android: function () { return android; },
+    /* Fragt vor dem Download kurz nach, ob die Offline-Fassung gewünscht ist, und sagt in einem Satz, wie die
+       Installation abläuft. Ein Update der schon installierten App lädt ohne Rückfrage. */
+    askAndroid: function () {
+      if (!android) return;
+      if (android.update) { app.downloadAndroid(); return; }
+      var h = ZU.h, btn = ZU.btn, size = app.androidSize();
+      var wrap = h('div', 'appask', null, { role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Offline-Version laden' });
+      function close() {
+        window.removeEventListener('keydown', onKey, true);
+        wrap.remove();
+      }
+      function onKey(ev) {
+        ev.stopPropagation();
+        if (ev.code === 'Escape') close();
+      }
+      wrap.appendChild(h('div', 'appask-card', [
+        h('h2', null, 'Offline-Version laden?'),
+        h('p', 'appask-app', 'Die Android-App bringt das ganze Spiel mit' + (size ? ' (' + size + ')' : '') + ' und läuft auch ohne Internet. Updates holt sie von selbst.'),
+        h('div', 'appask-actions', [
+          btn('Herunterladen', 'ember', function () { close(); app.downloadAndroid(); }),
+          btn('Nicht jetzt', 'felt', close)
+        ]),
+        h('p', 'appask-hint', 'Zum Installieren die geladene Datei öffnen. Android fragt dabei einmal nach der Erlaubnis.')
+      ]));
+      window.addEventListener('keydown', onKey, true);
+      document.body.appendChild(wrap);
+    },
+    /* Öffnet den Download; in der App über den Browser des Geräts. */
+    androidSize: function () { return android && android.size ? Math.round(android.size / 1048576) + '\u00a0MB' : ''; },
+    downloadAndroid: function () {
+      if (!android) return;
+      var url = new URL(android.url, location.href).href;
+      if (shell) { try { shell.open(url); return; } catch (e) { /* dann wie im Browser */ } }
+      location.href = url;
+    },
     /* Geräte, die vor allem mit dem Finger bedient werden (Handy, Tablet). */
     isTouch: function () { return media('(pointer: coarse)'); },
     /* iPhone und iPad: keine Installation per Knopf, nur über „Teilen → Zum Home-Bildschirm". */
@@ -40,7 +89,7 @@
       if (!ev) return Promise.resolve();
       return Promise.resolve(ev.prompt()).catch(function () {});
     },
-    canFullscreen: function () { return !!document.fullscreenEnabled && !!document.documentElement.requestFullscreen; },
+    canFullscreen: function () { return !shell && !!document.fullscreenEnabled && !!document.documentElement.requestFullscreen; },
     isFullscreen: function () { return !!document.fullscreenElement; },
     enterFullscreen: function () {
       if (!app.canFullscreen()) return Promise.resolve();
@@ -56,6 +105,20 @@
       return Promise.resolve(document.exitFullscreen()).catch(function () {});
     },
     toggleFullscreen: function () { return app.isFullscreen() ? app.leaveFullscreen() : app.enterFullscreen(); },
+    /* Zurück-Taste der Android-App: schließt den obersten Dialog, pausiert den Run oder geht ins Hauptmenü.
+       false heißt: Hier gibt es nichts mehr zu schließen (die App legt sich dann in den Hintergrund). */
+    back: function () {
+      var game = ZU.game;
+      if (!game || !game.screen) return false;
+      if (ZU.modal.isOpen()) {
+        var top = ZU.modal.top();
+        if (top && !top.locked) ZU.modal.close(top);
+        return true;
+      }
+      if (game.screen === 'menu') return false;
+      if (game.run && game.screen !== 'starter') game.pause(); else game.toMenu();
+      return true;
+    },
     /* Meldet Änderungen (installierbar geworden, installiert, Vollbild an/aus); gibt die Abmeldung zurück. */
     onChange: function (fn) {
       listeners.push(fn);
@@ -69,10 +132,11 @@
     iosHint: 'Teilen-Symbol antippen, dann „Zum Home-Bildschirm“.',
 
     init: function (game) {
-      // Ohne Server (Datei per Doppelklick geöffnet) gibt es keine App-Hülle.
-      if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+      // Ohne Server (Datei per Doppelklick geöffnet) gibt es keine App-Hülle; die Android-App bringt ihre eigene mit.
+      if (!shell && 'serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
         navigator.serviceWorker.register('sw.js').catch(function () {});
       }
+      loadAndroid();
       if (installed || !app.isTouch()) return;
       var mode = app.startMode(game);
       if (mode === 'always' && app.canFullscreen()) {
@@ -83,6 +147,18 @@
       }
     }
   };
+
+  /* Fragt den Server nach der Android-App (app/android.json). Fehlt sie, bleibt das Angebot aus. */
+  function loadAndroid() {
+    if (!window.fetch || !/^https?:$/.test(location.protocol) || !(shell || app.isAndroid())) return;
+    fetch('app/android.json', { cache: 'no-store' }).then(function (res) { return res.ok ? res.json() : null; }).then(function (info) {
+      if (!info || typeof info.file !== 'string' || !/^[\w.-]+\.apk$/.test(info.file)) return;
+      var code = Math.floor(Number(info.versionCode)) || 0;
+      if (shell && !(code > (Number(shellInfo.versionCode) || 0))) return;
+      android = { name: String(info.versionName || ''), url: 'app/' + info.file, size: Number(info.size) || 0, update: !!shell };
+      changed();
+    }).catch(function () { /* kein Netz oder kein Angebot */ });
+  }
 
   function wasAsked() {
     try { return sessionStorage.getItem(ASKED) === '1'; } catch (e) { return false; }
@@ -116,7 +192,8 @@
     }
     function render() {
       var full = app.canFullscreen(), install = app.canInstall(), ios = !install && app.isIOS();
-      var actions = [];
+      var apk = app.android(), actions = [];
+      if (apk) actions.push(btn('Offline-Version (App)', 'ember', function () { done(); app.askAndroid(); }));
       if (install) actions.push(btn('Als App installieren', 'ember', function () { done(); app.install(); }));
       if (full) actions.push(btn('Vollbild', 'ember', function () { done(); app.enterFullscreen(); }));
       actions.push(btn(full || install ? 'Nicht jetzt' : 'Alles klar', full || install ? 'felt' : 'ember', function () { done(); }));

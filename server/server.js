@@ -10,6 +10,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { promisify } = require('node:util');
 const { sendMail } = require('./mail');
+const { createFileList } = require('./filelist');
 
 let DatabaseSync;
 try {
@@ -23,6 +24,7 @@ const scrypt = promisify(crypto.scrypt);
 const DAY = 24 * 60 * 60 * 1000;
 const SESSION_DAYS = 30;
 const RESET_MINUTES = 60;
+const REPORTED_DAYS = 90;
 const COOKIE = 'zs';
 const MAX_BODY = 24 * 1024;
 const MAX_SCORE = 100000000;
@@ -31,7 +33,8 @@ const MIME = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
   '.json': 'application/json; charset=utf-8', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml',
   '.ico': 'image/x-icon', '.ttf': 'font/ttf', '.wav': 'audio/wav', '.mp3': 'audio/mpeg', '.ogg': 'audio/ogg',
-  '.md': 'text/plain; charset=utf-8', '.txt': 'text/plain; charset=utf-8', '.webmanifest': 'application/manifest+json; charset=utf-8'
+  '.md': 'text/plain; charset=utf-8', '.txt': 'text/plain; charset=utf-8', '.webmanifest': 'application/manifest+json; charset=utf-8',
+  '.apk': 'application/vnd.android.package-archive'
 };
 
 function readConfig(env, overrides) {
@@ -40,6 +43,8 @@ function readConfig(env, overrides) {
     host: env.HOST || '127.0.0.1',
     webRoot: path.resolve(env.WEB_ROOT || path.join(__dirname, '..', 'web')),
     dataDir: path.resolve(env.DATA_DIR || path.join(__dirname, 'data')),
+    // Ablage der Android-App (android.json und die APK), ausgeliefert unter /app/. Leer: kein Download.
+    appDir: env.APP_DIR ? path.resolve(env.APP_DIR) : '',
     publicUrl: (env.PUBLIC_URL || '').replace(/\/+$/, ''),
     trustProxy: env.TRUST_PROXY === '1',
     smtp: env.SMTP_HOST ? {
@@ -106,6 +111,12 @@ function createApp(overrides) {
       user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       expires INTEGER NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS reported (
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      run_key TEXT NOT NULL,
+      at INTEGER NOT NULL,
+      PRIMARY KEY (user_id, run_key)
+    );
   `);
 
   // Spalte für den Meta-Fortschritt nachziehen (Datenbanken aus früheren Versionen)
@@ -130,7 +141,9 @@ function createApp(overrides) {
     reset: db.prepare('SELECT * FROM resets WHERE token_hash = ?'),
     deleteResetsOf: db.prepare('DELETE FROM resets WHERE user_id = ?'),
     purgeSessions: db.prepare('DELETE FROM sessions WHERE expires < ?'),
-    purgeResets: db.prepare('DELETE FROM resets WHERE expires < ?')
+    purgeResets: db.prepare('DELETE FROM resets WHERE expires < ?'),
+    insertReported: db.prepare('INSERT OR IGNORE INTO reported (user_id, run_key, at) VALUES (?, ?, ?)'),
+    purgeReported: db.prepare('DELETE FROM reported WHERE at < ?')
   };
 
   function log() {
@@ -154,6 +167,7 @@ function createApp(overrides) {
     for (const [key, entry] of attempts) if (entry.reset < now) attempts.delete(key);
     q.purgeSessions.run(now);
     q.purgeResets.run(now);
+    q.purgeReported.run(now - REPORTED_DAYS * DAY);
   }, 10 * 60 * 1000);
   sweep.unref();
 
@@ -312,6 +326,12 @@ function createApp(overrides) {
       const user = currentUser(req);
       if (!user) return fail(res, 401, 'auth');
       if (limited('run:' + user.id, 120, 60 * 60 * 1000)) return fail(res, 429, 'rate');
+      // Kennung des Runs: Kommt dieselbe Meldung noch einmal (Verbindung riss vor der Antwort ab,
+      // Nachreichen aus der Offline-App), zählt sie nicht doppelt.
+      if (typeof body.id === 'string' && /^[\w-]{8,40}$/.test(body.id)
+        && q.insertReported.run(user.id, body.id, Date.now()).changes === 0) {
+        return send(res, 200, publicUser(user));
+      }
       const counts = body.countRun !== false;
       q.setStats.run(
         user.runs + (counts ? 1 : 0),
@@ -382,7 +402,8 @@ function createApp(overrides) {
 
   /* ---------- Statische Dateien ---------- */
   const HIDDEN = /^\/(tools|tests)(\/|$)/;
-  function serveStatic(req, res, pathname, versioned) {
+  function serveStatic(req, res, pathname, versioned, root) {
+    root = root || config.webRoot;
     let rel;
     try {
       rel = decodeURIComponent(pathname);
@@ -391,8 +412,8 @@ function createApp(overrides) {
     }
     if (rel.includes('\0') || HIDDEN.test(rel) || /(^|\/)\./.test(rel)) return notFound(res);
     if (rel.endsWith('/')) rel += 'index.html';
-    const file = path.normalize(path.join(config.webRoot, rel));
-    if (file !== config.webRoot && !file.startsWith(config.webRoot + path.sep)) return notFound(res);
+    const file = path.normalize(path.join(root, rel));
+    if (file !== root && !file.startsWith(root + path.sep)) return notFound(res);
     fs.stat(file, (error, stat) => {
       if (error || !stat.isFile()) return notFound(res);
       const etag = 'W/"' + stat.size.toString(16) + '-' + Math.floor(stat.mtimeMs).toString(16) + '"';
@@ -404,6 +425,7 @@ function createApp(overrides) {
         'Last-Modified': stat.mtime.toUTCString(),
         'Accept-Ranges': 'bytes'
       };
+      if (file.endsWith('.apk')) headers['Content-Disposition'] = 'attachment; filename="' + path.basename(file) + '"';
       if (req.headers['if-none-match'] === etag) {
         res.writeHead(304, headers);
         return res.end();
@@ -431,6 +453,28 @@ function createApp(overrides) {
     });
   }
 
+  /* Dateiliste für die Offline-Web-App und die Android-App (siehe filelist.js). */
+  const fileList = createFileList(config.webRoot);
+  function serveFileList(req, res) {
+    let list;
+    try {
+      list = fileList();
+    } catch (error) {
+      console.error('Dateiliste nicht lesbar', error);
+      return notFound(res);
+    }
+    const etag = '"' + list.build + '"';
+    const headers = { 'Content-Type': MIME['.json'], 'Cache-Control': 'no-cache', 'ETag': etag };
+    if (req.headers['if-none-match'] === etag) {
+      res.writeHead(304, headers);
+      return res.end();
+    }
+    const payload = Buffer.from(JSON.stringify(list));
+    headers['Content-Length'] = payload.length;
+    res.writeHead(200, headers);
+    res.end(req.method === 'HEAD' ? undefined : payload);
+  }
+
   function notFound(res) {
     res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' });
     res.end('Nicht gefunden');
@@ -456,6 +500,10 @@ function createApp(overrides) {
       if (req.method !== 'GET' && req.method !== 'HEAD') {
         res.writeHead(405, { Allow: 'GET, HEAD' });
         return res.end();
+      }
+      if (url.pathname === '/files.json') return serveFileList(req, res);
+      if (url.pathname.startsWith('/app/')) {
+        return config.appDir ? serveStatic(req, res, url.pathname.slice(4), url.searchParams.has('v'), config.appDir) : notFound(res);
       }
       return serveStatic(req, res, url.pathname, url.searchParams.has('v'));
     }
