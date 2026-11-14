@@ -1127,7 +1127,8 @@ body.nobg { background: radial-gradient(ellipse at 50% 85%, var(--bg-mid, #34170
 
 /* ---------- Feuer: Je näher das Glutziel, desto mehr brennt der Tisch (--heat: 0 bis 1) ---------- */
 .firecv { display: block; image-rendering: pixelated; pointer-events: none; }
-.board-fire { position: absolute; left: 766px; top: 126px; }
+/* mittig auf der Oberkante der Glutanzeige (innen 206 px breit, Feuer 192 px; der Rahmen ist 2 px stark) */
+.scoreboard .board-fire { position: absolute; left: 7px; bottom: calc(100% + 2px); }
 .tablefire { position: absolute; left: 252px; right: 252px; top: 14px; bottom: 14px; border-radius: 26px; overflow: hidden; pointer-events: none; }
 .tablefire .firecv { position: absolute; left: 0; bottom: 0; }
 .duel .tablefelt { transition: box-shadow .5s, border-color .5s;
@@ -1177,7 +1178,7 @@ body.nobg { background: radial-gradient(ellipse at 50% 85%, var(--bg-mid, #34170
 .duel.leaving .p-left, .duel.leaving .p-right { transition: translate .3s cubic-bezier(.5,0,.8,.4) .14s, opacity .3s ease-in .14s; opacity: 0; }
 .duel.leaving .p-left { translate: -290px 0; }
 .duel.leaving .p-right { translate: 290px 0; }
-.duel.leaving .tablefelt, .duel.leaving .scoreboard, .duel.leaving .stockpile, .duel.leaving .tablefire, .duel.leaving .board-fire, .duel.leaving .stagedim {
+.duel.leaving .tablefelt, .duel.leaving .scoreboard, .duel.leaving .stockpile, .duel.leaving .tablefire, .duel.leaving .stagedim {
   transition: opacity .22s ease-in .26s; opacity: 0; }
 
 /* ---------- Brand: Ein gezackter Rand frisst sich durch die Karte (ZU.fx.burn) ---------- */
