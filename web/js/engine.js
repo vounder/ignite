@@ -391,7 +391,9 @@
     this.noProgress = 0;
     this.triggered = 0;
     this.phase = 'resolving';
+    this.salvo = actor === 'player' ? check.order.length : 0; // Breitseite: wie viele Karten dieser Zug zusammen legt
     check.order.forEach(function (id) { self._putOnTable(actor, id, 'hand', ev); });
+    this.salvo = 0;
     var single = check.order.length === 1 && this.def(check.order[0]).special;
     if (actor === 'player' && check.order.length >= 2) {
       this.stats.pairs++;
@@ -647,6 +649,24 @@
       if (this.has('serientaeter') && grow.wins) { pct += 0.06 * grow.wins; trig.push('serientaeter'); }
       if (this.has('gluecksstraehne') && grow.streak) { pct += 0.10 * grow.streak; trig.push('gluecksstraehne'); }
       if (pct > 0) { points = Math.round(points * (1 + pct)); steps.push({ ids: trig.slice(grown), pct: pct, f: 1 + pct, round: true, v: points }); }
+      // Glut-Mult: Jedes dieser Trinkets ist ein eigener Faktor – zusammen multiplizieren sie sich.
+      var mult = function (tid, f) {
+        f = Math.round(f * 100) / 100;
+        if (f <= 1) return;
+        points = Math.round(points * f);
+        if (f >= 2) doubled = true;
+        trig.push(tid);
+        steps.push({ id: tid, f: f, round: true, v: points });
+      };
+      if (this.has('brandbeschleuniger')) mult('brandbeschleuniger', 1.5);
+      if (this.has('chefsache') && this.kind === 'boss') mult('chefsache', 3);
+      if (this.has('oel-ins-feuer')) mult('oel-ins-feuer', Math.pow(1.5, this.douse.length));
+      if (this.has('schaulustige')) mult('schaulustige', 1 + 0.1 * this.hand.opp.length);
+      if (this.has('hexenfeuer') && this.status.curse.opp > 0) mult('hexenfeuer', 2);
+      if (this.has('breitseite') && this.salvo > 1) mult('breitseite', 2);
+      if (this.has('weissglut')) mult('weissglut', 1 + 0.1 * this.chain);
+      if (this.has('kerbholz') && grow.burnt) mult('kerbholz', 1 + 0.25 * grow.burnt);
+      if (this.has('vabanque')) mult('vabanque', 3);
       this.glut += points;
       event.score = { base: base, chain: this.chain, eff: effChain, points: points, glut: this.glut, doubled: doubled, steps: steps, adds: adds };
       var step = this.has('afterburner') ? 2 : 1;

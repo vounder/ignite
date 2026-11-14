@@ -88,7 +88,6 @@
       urls.push(ZU.deckArt(run.s.starter, 'back'));
       run.s.trinkets.forEach(function (id) { add('trinkets/' + id + '.png'); });
       (run.s.kniffe || []).forEach(function (k) { add('kniffe/' + k.id + '.png'); });
-      if (run.s.kniffOffer && run.s.kniffOffer.id) add('kniffe/' + run.s.kniffOffer.id + '.png');
       (run.s.perks || []).forEach(function (id) { add('perks/' + id + '.png'); });
       run.s.collection.forEach(function (card) {
         if (ZU.CARDS[card.def].special) add('special/' + card.def + '.png');
@@ -255,6 +254,9 @@
         // In der Nachglut zählt der Run schon als Sieg; dann wird nur noch der Bestwert gemeldet.
         ZU.account.reportRun({ won: false, score: run.s.score, act: run.s.act, countRun: !run.s.endless });
         this.go('defeat');
+      } else if (result.gone) {
+        // Vabanque: Die Niederlage hat das Trinket gekostet.
+        ZU.fx.banner(ZU.TRINKETS[result.gone].name + ' verspielt!', 'lose', 1500).then(function () { self.go('select'); });
       } else {
         this.go('select');
       }

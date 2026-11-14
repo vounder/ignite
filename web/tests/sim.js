@@ -25,8 +25,19 @@ function check(duel) {
   assert.ok(duel.chain >= 1);
 }
 
+/* Die angezeigte Rechnung muss aufgehen: Grundwert × Kette, dann jeder Schritt, ergibt genau die gutgeschriebene Glut. */
+function checkScore(e) {
+  if (e.t !== 'play' || !e.score) return;
+  let v = e.score.base * e.score.eff;
+  (e.score.steps || []).forEach(st => {
+    v = st.round ? Math.round(v * st.f) : v * st.f;
+    assert.strictEqual(st.v, v, 'Rechenschritt stimmt nicht: ' + JSON.stringify(st));
+  });
+  assert.strictEqual(v, e.score.points, 'Rechnung ergibt nicht die Glut der Karte');
+}
+
 function record(events) {
-  events.forEach(e => { eventTypes[e.t] = (eventTypes[e.t] || 0) + 1; assert.ok(e.t, 'Ereignis ohne Typ'); });
+  events.forEach(e => { eventTypes[e.t] = (eventTypes[e.t] || 0) + 1; assert.ok(e.t, 'Ereignis ohne Typ'); checkScore(e); });
 }
 
 function playDuel(run, rnd) {
@@ -83,19 +94,9 @@ function shop(run, rnd) {
   const s = run.s;
   // Privileg: ein Angebot je Akt, in Akt 1 immer die Mehrfachwahl, von der Neuen Auslage unberührt
   assert.strictEqual(s.perkOffer.act, s.act, 'Privileg-Angebot gehört zum laufenden Akt');
-  // Kniff: neuer Kniff oder nächste Stufe; nie über die Plätze oder Stufe 3 hinaus
-  const kn = s.kniffOffer;
-  assert.strictEqual(kn.act, s.act, 'Kniff-Angebot gehört zum laufenden Akt');
-  if (kn.id && !kn.sold) {
-    assert.ok(ZU.KNIFFE[kn.id] && kn.level >= 1 && kn.level <= 3 && kn.price >= 1);
-    if (kn.fresh) assert.ok(run.kniffe().length < run.kniffSlots() && !run.kniffe().some(k => k.id === kn.id));
-    else assert.strictEqual(run.kniffe().find(k => k.id === kn.id).level, kn.level - 1);
-    if (s.money >= kn.price && rnd.next() < 0.7) {
-      run.buyKniff();
-      assert.strictEqual(run.kniffe().find(k => k.id === kn.id).level, kn.level);
-      assert.throws(() => run.buyKniff());
-    }
-  }
+  // Kniffe gibt es im Laden nicht mehr.
+  assert.strictEqual(s.kniffOffer, undefined);
+  assert.strictEqual(typeof run.buyKniff, 'undefined');
   const perkBefore = JSON.stringify(s.perkOffer);
   if (!s.perkOffer.sold && s.money >= s.perkOffer.price && rnd.next() < 0.8) {
     const lives = s.lives, id = run.buyPerk();
@@ -239,7 +240,7 @@ for (let n = 0; n < RUNS; n++) {
   assert.strictEqual(ZU.Meta.feat(ZU.Meta.get(), 'sevens'), 10, 'Summen-Zählwerk addiert');
   assert.strictEqual(ZU.Meta.feat(ZU.Meta.get(), 'chain'), 4, 'Bestwert-Zählwerk hält das Maximum');
   assert.strictEqual(ZU.Meta.isFound(ZU.Meta.get(), 'starter', 'igniter'), true);
-  assert.deepStrictEqual(ZU.Meta.openOffers(ZU.Meta.get()), ['starter:igniter']);
+  assert.deepStrictEqual(ZU.Meta.openOffers(ZU.Meta.get()), ['starter:igniter', 'kniff:pasch-7', 'kniff:pasch-8', 'kniff:pasch-zahl']);
   assert.strictEqual(ZU.Meta.unlock('starter', 'igniter').error, 'poor');
   assert.strictEqual(ZU.Meta.upgrade('reserve').error, 'hidden');
   const run = ZU.Run.start('classic', 77, ZU.Meta.runOptions());
@@ -474,13 +475,86 @@ for (let i = 1; i < ZU.CASINOS.length; i++) assert.ok(ZU.CASINOS[i].ash > ZU.CAS
   assert.ok(ev.some(x => x.t === 'kniff' && x.id === 'pasch-8' && x.count === 2));
   // Zündler startet mit Siebenerpasch; alte Spielstände mit „Flinke Finger" bekommen Pasch Stufe 3.
   assert.deepStrictEqual(ZU.Run.start('igniter', 5).kniffe(), [{ id: 'pasch-7', level: 2 }]);
-  // Staffelung: ohne ausgeräumtes Casino nur die einfachen Kniffe.
   const fresh = ZU.Run.start('classic', 5, ZU.Meta.runOptions(ZU.Meta.defaults()));
-  assert.ok(fresh.kniffPool().length > 0 && fresh.kniffPool().every(id => ZU.KNIFFE[id].tier === 0));
+  assert.deepStrictEqual(fresh.kniffe(), [], 'ohne Hinterzimmer kein Kniff');
   assert.strictEqual(fresh.kniffSlots(), 1);
 }
 
-// Nach dem Boss gehört der Laden schon zum nächsten Akt; der Kniff ist wie das Privileg nur einmal je Akt zu haben.
+// Kniffe gibt es nur im Hinterzimmer: mit Asche freischalten, aufstufen, ausrüsten. Laden und Boss-Beute bieten keine mehr an.
+{
+  ZU.Profile._memory = null;
+  let meta = ZU.Meta.get();
+  assert.deepStrictEqual(ZU.KNIFF_IDS.filter(id => ZU.Meta.kniffFound(meta, id)), ['pasch-7', 'pasch-8', 'pasch-zahl'], 'ohne ausgeräumtes Casino nur die einfachen');
+  assert.ok(ZU.Meta.openOffers(meta).includes('kniff:pasch-8'));
+  assert.strictEqual(ZU.Meta.buyKniff('pasch-8').error, 'poor');
+  assert.strictEqual(ZU.Meta.buyKniff('pasch').error, 'hidden');
+  meta.ash = 200; meta.maxStake = 1; ZU.Meta.put(meta);
+  assert.strictEqual(ZU.Meta.suggest(ZU.Meta.get(), 'unlock')[0].kind, 'kniff', 'der erste Kniff ist die erste Empfehlung');
+  assert.strictEqual(ZU.Meta.kniffCost(ZU.Meta.get(), 'pasch-bild'), 10);
+  assert.deepStrictEqual(ZU.Meta.buyKniff('pasch-bild'), { ok: true, level: 1 });
+  meta = ZU.Meta.get();
+  assert.strictEqual(meta.ash, 190);
+  assert.deepStrictEqual(meta.loadout, ['pasch-bild'], 'der erste Kniff ist gleich ausgerüstet');
+  assert.strictEqual(ZU.Meta.kniffCost(meta, 'pasch-bild'), 12);
+  assert.strictEqual(ZU.Meta.buyKniff('pasch-bild').level, 2);
+  assert.strictEqual(ZU.Meta.kniffCost(ZU.Meta.get(), 'pasch-bild'), 20);
+  assert.strictEqual(ZU.Meta.buyKniff('pasch-bild').level, 3);
+  assert.strictEqual(ZU.Meta.buyKniff('pasch-bild').error, 'max');
+  assert.strictEqual(ZU.Meta.get().ash, 200 - 10 - 12 - 20);
+  assert.strictEqual(ZU.Meta.feat(ZU.Meta.get(), 'kniffe'), 3, 'Lernen und Aufstufen zählen fürs Zählwerk');
+  // Ein Platz: Der zweite Kniff bleibt abgelegt, bis man tauscht oder „Zweite Hand" kauft.
+  assert.strictEqual(ZU.Meta.buyKniff('pasch-7').level, 2);
+  assert.deepStrictEqual(ZU.Meta.get().loadout, ['pasch-bild']);
+  assert.strictEqual(ZU.Meta.equipKniff('pasch-7', true).error, 'full');
+  assert.strictEqual(ZU.Meta.equipKniff('pasch-zahl', true).error, 'locked');
+  assert.deepStrictEqual(ZU.Meta.runOptions().kniffe, [{ id: 'pasch-bild', level: 3 }]);
+  assert.strictEqual(ZU.Meta.equipKniff('pasch-bild', false).ok, true);
+  assert.strictEqual(ZU.Meta.equipKniff('pasch-7', true).ok, true);
+  assert.deepStrictEqual(ZU.Meta.runOptions().kniffe, [{ id: 'pasch-7', level: 2 }]);
+  assert.strictEqual(ZU.Meta.upgrade('kniffplatz').ok, true);
+  assert.strictEqual(ZU.Meta.equipKniff('pasch-bild', true).ok, true);
+  const run = ZU.Run.start('classic', 11, ZU.Meta.runOptions());
+  assert.deepStrictEqual(run.kniffe(), [{ id: 'pasch-7', level: 2 }, { id: 'pasch-bild', level: 3 }]);
+  // Die Schachtel bringt ihren Kniff zusätzlich mit; ist er auch ausgerüstet, gilt die höhere Stufe.
+  ZU.Meta.buyKniff('pasch-7');
+  assert.deepStrictEqual(ZU.Run.start('igniter', 5, ZU.Meta.runOptions()).kniffe(), [{ id: 'pasch-7', level: 3 }, { id: 'pasch-bild', level: 3 }]);
+  // Speichern und Laden: Stufen und Ausrüstung bleiben, Unsinn fliegt raus, nie mehr ausgerüstet als Plätze.
+  const stored = ZU.Meta.get();
+  assert.deepStrictEqual(ZU.Meta.clean(JSON.parse(JSON.stringify(stored))), stored);
+  const odd = ZU.Meta.clean({ kniffe: { 'pasch-8': 9, 'pasch-bild': 1, nix: 2 }, loadout: ['pasch-8', 'nix', 'pasch-8', 'pasch-bild', 'pasch-7'] });
+  assert.deepStrictEqual(odd.kniffe, { 'pasch-8': 3, 'pasch-bild': 1 });
+  assert.deepStrictEqual(odd.loadout, ['pasch-8']);
+  assert.strictEqual(ZU.Meta.touched(odd), true);
+  // Im Run kommt kein Kniff mehr dazu: kein Angebot im Laden, keine Stufe als Boss-Beute.
+  run.s.table = 2; run.s.money = 500;
+  run.s.encounters[2].kind = 'boss';
+  run._openShop();
+  assert.strictEqual(run.s.kniffOffer, undefined);
+  const boss = ZU.Run.start('classic', 12, ZU.Meta.runOptions());
+  boss.s.table = 2;
+  const d = boss.newDuel(); d.start(); d.winner = 'player'; d.phase = 'ended';
+  boss.finishDuel(d);
+  assert.ok(boss.s.reward && boss.s.reward.kniff === undefined);
+  // Alte Spielstände: ein offenes Kniff-Angebot verfällt, die Kniffe des laufenden Runs bleiben.
+  const old = JSON.parse(JSON.stringify(run.s));
+  old.kniffOffer = { id: 'pasch-8', level: 2, price: 9, sold: false, act: 2 };
+  old.reward = { type: 'card', options: [], binds: [], skip: 5, kniff: 'pasch-7' };
+  const shelf = {};
+  globalThis.localStorage = { getItem: key => (key in shelf ? shelf[key] : null), setItem: (key, value) => { shelf[key] = String(value); }, removeItem: key => { delete shelf[key]; } };
+  localStorage.setItem('zuendung.web.run.v1', JSON.stringify(old));
+  const back = ZU.Run.load();
+  delete globalThis.localStorage;
+  assert.ok(back, 'alter Spielstand lädt');
+  assert.strictEqual(back.s.kniffOffer, undefined);
+  assert.strictEqual(back.s.reward.kniff, undefined);
+  assert.deepStrictEqual(back.kniffe(), run.kniffe());
+  // „Kniff im Ärmel" gibt es nicht mehr: 18 Asche zurück.
+  assert.strictEqual(ZU.Meta.clean({ ash: 5, upgrades: { startkniff: 1 } }).ash, 23);
+  assert.strictEqual(ZU.Meta.UPGRADES.startkniff, undefined);
+  ZU.Profile._memory = null;
+}
+
+// Nach dem Boss gehört der Laden schon zum nächsten Akt.
 {
   const run = ZU.Run.start('classic', 909);
   run.s.table = 2; run.s.money = 500;
@@ -488,23 +562,24 @@ for (let i = 1; i < ZU.CASINOS.length; i++) assert.ok(ZU.CASINOS[i].ash > ZU.CAS
   assert.strictEqual(run.s.act, 2);
   assert.strictEqual(run.s.table, -1);
   assert.strictEqual(run.s.perkOffer.act, 2);
-  assert.strictEqual(run.s.kniffOffer.act, 2);
-  const offer = JSON.stringify(run.s.kniffOffer);
-  run.buyKniff();
-  assert.throws(() => run.buyKniff());
   run.leaveShop();
   assert.strictEqual(run.s.act, 2); assert.strictEqual(run.s.table, 0);
   run._openShop();
-  assert.strictEqual(run.s.kniffOffer.sold, true, 'im selben Akt kein zweiter Kniff');
   assert.strictEqual(run.s.table, 0);
 }
 
-// Glutziel: Wer es erreicht, gewinnt sofort; die Ziele steigen steil, und der Überschuss zahlt ohne Deckel.
+// Glutziel: Wer es erreicht, gewinnt sofort; die Ziele steigen mit Akt und Casino, und der Überschuss zahlt ohne Deckel.
 {
   const run = ZU.Run.start('classic', 31337);
   const t1 = run.glutTarget('battle'), tBoss = run.glutTarget('boss');
   run.s.act = 3;
-  assert.ok(tBoss > t1 && run.glutTarget("battle") >= t1 * 4, 'Ziele wachsen mit Art und Akt');
+  assert.ok(tBoss > t1 && run.glutTarget("battle") >= t1 * 2.5 && run.glutTarget("battle") < t1 * 4, 'Ziele wachsen mit Art und Akt, aber nicht mehr aufs Doppelte je Akt');
+  assert.deepStrictEqual([ZU.GLUT_TARGET.perAct, ZU.GLUT_TARGET.perCasino], [1.7, 0.25]);
+  {
+    const far = ZU.Meta.defaults(); far.maxStake = far.stake = 4;
+    const high = ZU.Run.start('classic', 1, ZU.Meta.runOptions(ZU.Meta.clean(far)));
+    assert.strictEqual(high.glutTarget('battle'), 1200, 'fünftes Casino: +25 % je Haus');
+  }
   run.s.act = 1;
   const duel = run.newDuel();
   duel.start();
@@ -525,6 +600,97 @@ for (let i = 1; i < ZU.CASINOS.length; i++) assert.ok(ZU.CASINOS[i].ash > ZU.CAS
   const early = ZU.Run.start('classic', 5), late = ZU.Run.start('classic', 5);
   late.s.act = 5;
   assert.ok(late.baseReward('battle') > early.baseReward('battle') * 1.5 && late._price(20) > early._price(20));
+}
+
+// Glut-Mult: Jedes Stück ist ein eigener Faktor; zusammen multiplizieren sie sich. Vabanque geht bei einer Niederlage verloren.
+{
+  const plainDef = id => { const c = ZU.CARDS[id]; return !c.special && !'78AJ'.includes(c.rank); };
+  /* Legt eine einzelne normale Karte (oder zwei gleiche Werte als Zug) mit den gegebenen Trinkets und liefert die Wertung. */
+  const score = (trinkets, setup, salvo) => {
+    const run = ZU.Run.start('classic', 606);
+    run.s.trinkets = trinkets.slice();
+    if (setup && setup.run) setup.run(run);
+    const d = run.newDuel();
+    d.start();
+    d.phase = 'action'; d.active = 'player'; d.pending = null; d.afterDraw = null;
+    d.status.curse.player = 0; d.status.curse.opp = 0;
+    if (setup && setup.duel) setup.duel(d);
+    const card = d.hand.player.concat(d.stocks.player).find(id => plainDef(d.cards[id].def));
+    if (!d.hand.player.includes(card)) { d.stocks.player.splice(d.stocks.player.indexOf(card), 1); d.hand.player.push(card); }
+    d.pile.push(d._register(d.cards[card].def, 'house', false));
+    const ev = [];
+    d.salvo = salvo || 0;
+    d._putOnTable('player', card, 'hand', ev);
+    const sc = ev.find(e => e.t === 'play').score;
+    checkScore(ev.find(e => e.t === 'play'));
+    return { points: sc.points, plain: sc.base * sc.eff, steps: sc.steps, d: d };
+  };
+  const f = r => r.points / r.plain;
+  assert.strictEqual(f(score([])), 1);
+  assert.strictEqual(f(score(['brandbeschleuniger'])), 1.5);
+  assert.strictEqual(f(score(['chefsache'])), 1, 'Chefsache ruht am gewöhnlichen Tisch');
+  assert.strictEqual(f(score(['chefsache'], { duel: d => { d.kind = 'elite'; } })), 1);
+  assert.strictEqual(f(score(['chefsache'], { duel: d => { d.kind = 'boss'; } })), 3);
+  assert.strictEqual(f(score(['oel-ins-feuer'], { duel: d => { d.douse = []; } })), 1);
+  assert.strictEqual(f(score(['oel-ins-feuer'], { duel: d => { d.douse = ['sand']; } })), 1.5);
+  assert.strictEqual(f(score(['oel-ins-feuer'], { duel: d => { d.douse = ['blanket', 'water']; d.chain = 4; } })), 2.25);
+  const crowd = score(['schaulustige'], { duel: d => { d.hand.opp.length = 5; } });
+  assert.strictEqual(f(crowd), 1.5, '+×0,1 je Handkarte des Gegners');
+  assert.strictEqual(f(score(['hexenfeuer'])), 1);
+  assert.strictEqual(f(score(['hexenfeuer'], { duel: d => { d.status.curse.opp = 1; } })), 2);
+  assert.strictEqual(f(score(['breitseite'])), 1, 'einzelne Karte: keine Breitseite');
+  assert.strictEqual(f(score(['breitseite'], null, 2)), 2);
+  assert.strictEqual(f(score(['weissglut'], { duel: d => { d.chain = 10; } })), 2);
+  assert.strictEqual(f(score(['weissglut'], { duel: d => { d.chain = 5; } })), 1.5);
+  assert.strictEqual(f(score(['kerbholz'])), 1);
+  assert.strictEqual(f(score(['kerbholz'], { run: r => { r.s.burntCount = 4; } })), 2);
+  assert.strictEqual(f(score(['vabanque'])), 3);
+  // zusammen: ×1,5 · ×2 · ×3 = ×9 – nicht +350 %
+  const all = score(['brandbeschleuniger', 'hexenfeuer', 'vabanque'], { duel: d => { d.chain = 4; d.status.curse.opp = 2; } });
+  assert.strictEqual(f(all), 9);
+  assert.deepStrictEqual(all.steps.map(st => st.id), ['brandbeschleuniger', 'hexenfeuer', 'vabanque']);
+  // Breitseite im echten Zug: Zwei Könige mit dem Pasch – beide Karten zählen doppelt, eine einzelne danach nicht.
+  {
+    const run = ZU.Run.start('classic', 607);
+    run.s.trinkets = ['breitseite'];
+    run.s.kniffe = [{ id: 'pasch', level: 3 }];
+    const d = run.newDuel(); d.start();
+    d.phase = 'action'; d.active = 'player'; d.pending = null; d.afterDraw = null; d.target = 1e9;
+    const kings = ['hearts-K', 'spades-K'].map(def => { const id = d._register(def, 'player', false); d.hand.player.push(id); return id; });
+    d.pile.push(d._register('hearts-9', 'house', false));
+    const plays = d.play('player', kings).filter(e => e.t === 'play' && e.score);
+    assert.strictEqual(plays.length, 2);
+    plays.forEach(e => { checkScore(e); assert.deepStrictEqual(e.score.steps.map(st => st.id), ['breitseite']); });
+    assert.strictEqual(d.salvo, 0);
+  }
+  // Kerbholz zählt abgefackelte Tische des Runs; Vabanque ist nach einer Niederlage fort.
+  {
+    const run = ZU.Run.start('classic', 608);
+    run.s.trinkets = ['vabanque', 'kerbholz'];
+    let d = run.newDuel(); d.start();
+    d.glut = d.target; d.phase = 'action'; d.active = 'player'; d.pending = null;
+    const card = d.hand.player.find(id => !d.def(id).special);
+    d.pile.push(d._register(d.cards[card].def, 'house', false));
+    d.play('player', [card]);
+    assert.strictEqual(run.finishDuel(d).burnt, true);
+    assert.strictEqual(run.s.burntCount, 1);
+    run.afterPayout();
+    if (run.s.phase === 'reward') run.chooseReward(null);
+    run.leaveShop();
+    d = run.newDuel(); d.start();
+    assert.strictEqual(d.grow.burnt, 1);
+    d.winner = 'opp'; d.phase = 'ended';
+    const lost = run.finishDuel(d);
+    assert.strictEqual(lost.won, false);
+    assert.strictEqual(lost.gone, 'vabanque');
+    assert.deepStrictEqual(run.s.trinkets, ['kerbholz']);
+  }
+  // Jedes Trinket hat ein Bild, und alles außerhalb der Grundausstattung hat eine Bedingung.
+  const fs = require('fs'), path = require('path');
+  ZU.TRINKET_IDS.forEach(id => {
+    assert.ok(fs.existsSync(path.join(__dirname, '..', 'assets', 'trinkets', id + '.png')), 'Bild fehlt: ' + id);
+    assert.ok(ZU.Meta.BASE.trinket.includes(id) || ZU.Meta.REQ['trinket:' + id], 'weder Grundausstattung noch Bedingung: ' + id);
+  });
 }
 
 // Die 7 lässt nur noch 1 Karte ziehen und niemanden aussetzen.

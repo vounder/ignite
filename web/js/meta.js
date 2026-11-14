@@ -10,7 +10,8 @@
     starter: ['classic'],
     trinket: ['lucky-chip', 'ashtray', 'false-bottom', 'ledger', 'fuse', 'brass-knuckles', 'pocket-watch', 'gold-tooth', 'cellar-key', 'counterfeit', 'loyalty',
       'kreuzfeuer', 'bauernopfer', 'rotlicht', 'volle-zehn', 'erster-funke', 'volles-haus', 'heisse-ware', 'endspurt',
-      'schwarzer-peter', 'schadenfreude', 'bierdeckel', 'trinkgeld', 'rabattmarke', 'nachtschicht'],
+      'schwarzer-peter', 'schadenfreude', 'bierdeckel', 'trinkgeld', 'rabattmarke', 'nachtschicht',
+      'brandbeschleuniger', 'chefsache', 'oel-ins-feuer', 'schaulustige'],
     special: ['stillstand', 'addieren', 'spion', 'fluch', 'hodl', 'opfer'],
     seal: ['glut', 'gold', 'anker']
   };
@@ -156,6 +157,12 @@
     'trinket:brandpraemie': ['burnt', 2, 'Fackle 2 Tische ab.'],
     'trinket:hausfreund': ['sealed', 3, 'Lass bei Esme 3 Karten veredeln.'],
     'trinket:teufelspakt': ['casino', 4, '', NIE],
+    // --- Glut-Mult ---
+    'trinket:hexenfeuer': ['curses', 5, 'Lass Gegner 5-mal unter einem Fluch ziehen.'],
+    'trinket:breitseite': ['pairs', 6, 'Lege 6-mal mehrere Karten auf einmal.'],
+    'trinket:weissglut': ['chain', 9, 'Erreiche eine Kette von ×9.'],
+    'trinket:kerbholz': ['burnt', 4, 'Fackle 4 Tische ab.'],
+    'trinket:vabanque': ['last', 1, 'Gewinne ein Duell mit dem letzten Streichholz.'],
     // --- Spezialkarten ---
     'special:zytokinese': ['deck', 22, 'Baue ein Deck aus 22 Karten.'],
     'special:zocken': ['foe:bookie', 1, 'Schlage Quoten-Otto.'],
@@ -211,11 +218,10 @@
       aschesieb: { name: 'Aschesieb', text: '+10 % Asche je Stufe.', costs: [12, 20, 30] },
       reserve: { name: 'Reserveholz', text: 'Du beginnst mit einem vierten Streichholz.', costs: [25] },
       tarot: { name: 'Viertes Blatt', text: 'Esme legt ein Paket mehr aus.', costs: [16] },
-      kniffplatz: { name: 'Zweite Hand', text: 'Du kannst einen Kniff mehr je Stufe tragen (ohne Ausbau: 1).', costs: [15, 30] },
-      startkniff: { name: 'Kniff im Ärmel', text: 'Du beginnst jeden Run mit einem zufälligen einfachen Kniff.', costs: [18] },
+      kniffplatz: { name: 'Zweite Hand', text: 'Du kannst einen Kniff mehr je Stufe ausrüsten (ohne Ausbau: 1).', costs: [15, 30] },
       gluecksbringer: { name: 'Glücksbringer', text: 'Du beginnst jeden Run mit einem zufälligen gewöhnlichen Trinket.', costs: [22] }
     },
-    UPGRADE_IDS: ['startgeld', 'etui', 'stammkunde', 'spuernase', 'sparbuch', 'zuendelei', 'schaufenster', 'handschlag', 'trinkgeld', 'aschesieb', 'reserve', 'tarot', 'kniffplatz', 'startkniff', 'gluecksbringer'],
+    UPGRADE_IDS: ['startgeld', 'etui', 'stammkunde', 'spuernase', 'sparbuch', 'zuendelei', 'schaufenster', 'handschlag', 'trinkgeld', 'aschesieb', 'reserve', 'tarot', 'kniffplatz', 'gluecksbringer'],
 
     /* Casinos als Stufen. Der Name STAKES und die Felder stake/maxStake stammen von den früheren „Einsätzen"
        und bleiben, damit gespeicherte Profile und Konten weiter passen. */
@@ -223,7 +229,7 @@
     ASH: { battle: 1, elite: 2, boss: 5, victory: 8 },
 
     defaults: function () {
-      return { ash: 0, earned: 0, unlocked: {}, upgrades: {}, stake: 0, maxStake: 0, cv: ZU.CASINO_VERSION, defeated: {}, feats: {} };
+      return { ash: 0, earned: 0, unlocked: {}, upgrades: {}, kniffe: {}, loadout: [], stake: 0, maxStake: 0, cv: ZU.CASINO_VERSION, defeated: {}, feats: {} };
     },
 
     /* Bringt gespeicherte oder vom Server gelieferte Daten in eine gültige Form. */
@@ -253,9 +259,23 @@
       if (raw.upgrades && typeof raw.upgrades === 'object') {
         // „Flinke Finger“ als Upgrade wurde gestrichen: Wer es gekauft hatte, bekommt die 20 Asche zurück.
         if (raw.upgrades.flinkefinger) meta.ash = Math.min(meta.ash + 20, 100000000);
+        // „Kniff im Ärmel“ ebenso: Kniffe schaltet man jetzt selbst frei und rüstet sie aus. 18 Asche zurück.
+        if (raw.upgrades.startkniff) meta.ash = Math.min(meta.ash + 18, 100000000);
         M.UPGRADE_IDS.forEach(function (id) {
           var level = count(raw.upgrades[id], M.UPGRADES[id].costs.length);
           if (level) meta.upgrades[id] = level;
+        });
+      }
+      // Kniffe: freigeschaltet mit ihrer Stufe; ausgerüstet sind höchstens so viele, wie Plätze da sind.
+      if (raw.kniffe && typeof raw.kniffe === 'object') {
+        ZU.KNIFF_IDS.forEach(function (id) {
+          var level = count(raw.kniffe[id], 3);
+          if (level) meta.kniffe[id] = Math.max(level, ZU.KNIFFE[id].start);
+        });
+      }
+      if (Array.isArray(raw.loadout)) {
+        raw.loadout.forEach(function (id) {
+          if (meta.kniffe[id] && meta.loadout.indexOf(id) < 0 && meta.loadout.length < M.kniffSlots(meta)) meta.loadout.push(id);
         });
       }
       if (raw.defeated && typeof raw.defeated === 'object') {
@@ -282,7 +302,7 @@
 
     /* Hat das Profil schon Fortschritt? Entscheidet beim Anmelden, welcher Stand gilt. */
     touched: function (meta) {
-      return !!meta && (meta.earned > 0 || meta.maxStake > 0 || Object.keys(meta.unlocked || {}).length > 0 || Object.keys(meta.upgrades || {}).length > 0);
+      return !!meta && (meta.earned > 0 || meta.maxStake > 0 || Object.keys(meta.unlocked || {}).length > 0 || Object.keys(meta.upgrades || {}).length > 0 || Object.keys(meta.kniffe || {}).length > 0);
     },
 
     get: function () {
@@ -392,7 +412,55 @@
       M.UPGRADE_IDS.forEach(function (id) {
         if (!M.level(meta, id) && M.req('upgrade', id) && M.isFound(meta, 'upgrade', id)) list.push('upgrade:' + id);
       });
+      ZU.KNIFF_IDS.forEach(function (id) {
+        if (!M.kniffLevel(meta, id) && M.kniffFound(meta, id)) list.push('kniff:' + id);
+      });
       return list;
+    },
+
+    /* ---------- Kniffe ----------
+       Es gibt sie nur hier: mit Asche freischalten, mit Asche aufstufen, ausrüsten. Der Run nimmt mit, was ausgerüstet ist. */
+    kniffLevel: function (meta, id) { return (meta.kniffe && meta.kniffe[id]) || 0; },
+    /* Zu haben, sobald genug Casinos ausgeräumt sind. */
+    kniffFound: function (meta, id) { return !!ZU.KNIFFE[id] && (M.kniffLevel(meta, id) > 0 || ZU.KNIFFE[id].tier <= (meta.maxStake || 0)); },
+    kniffSlots: function (meta) { return 1 + M.level(meta, 'kniffplatz'); },
+    /* Asche für den nächsten Schritt: Freischalten (auf der Grundstufe) oder die nächste Stufe. null = voll ausgebaut. */
+    kniffCost: function (meta, id) {
+      var spec = ZU.KNIFFE[id], level = M.kniffLevel(meta, id);
+      if (!level) return spec.price;
+      return level >= 3 ? null : Math.round(spec.price * ZU.KNIFF_LEVEL_COST[level + 1]);
+    },
+    buyKniff: function (id) {
+      var meta = M.get();
+      if (!ZU.KNIFFE[id]) return { ok: false, error: 'unknown' };
+      if (!M.kniffFound(meta, id)) return { ok: false, error: 'hidden' };
+      var price = M.kniffCost(meta, id), level = M.kniffLevel(meta, id);
+      if (price == null) return { ok: false, error: 'max' };
+      if (meta.ash < price) return { ok: false, error: 'poor' };
+      meta.ash -= price;
+      meta.kniffe[id] = level ? level + 1 : ZU.KNIFFE[id].start;
+      // Ein neuer Kniff wandert gleich in einen freien Platz.
+      if (!level && meta.loadout.length < M.kniffSlots(meta)) meta.loadout.push(id);
+      meta.feats.kniffe = (meta.feats.kniffe || 0) + 1;
+      M.put(meta);
+      return { ok: true, level: meta.kniffe[id] };
+    },
+    isEquipped: function (meta, id) { return (meta.loadout || []).indexOf(id) >= 0; },
+    /* Rüstet einen freigeschalteten Kniff aus oder legt ihn ab. */
+    equipKniff: function (id, on) {
+      var meta = M.get(), at = meta.loadout.indexOf(id);
+      if (!M.kniffLevel(meta, id)) return { ok: false, error: 'locked' };
+      if (on && at < 0) {
+        if (meta.loadout.length >= M.kniffSlots(meta)) return { ok: false, error: 'full' };
+        meta.loadout.push(id);
+      } else if (!on && at >= 0) meta.loadout.splice(at, 1);
+      M.put(meta);
+      return { ok: true };
+    },
+    /* Was ein neuer Run an Kniffen mitnimmt. */
+    loadout: function (meta) {
+      return (meta.loadout || []).filter(function (id) { return M.kniffLevel(meta, id) > 0; }).slice(0, M.kniffSlots(meta))
+        .map(function (id) { return { id: id, level: M.kniffLevel(meta, id) }; });
     },
 
     cost: function (kind, id) {
@@ -424,7 +492,7 @@
     /* Vorschläge fürs Hinterzimmer, je Reiter ('unlock' oder 'upgrade'): die besten Stücke, die entdeckt, noch nicht
        gekauft und bezahlbar sind – das wertvollste zuerst. Reicht die Asche für weniger als drei, folgen die
        nächstgünstigen als Sparziel (afford: false, missing: fehlende Asche). */
-    UPGRADE_WORTH: { startkniff: 9, kniffplatz: 8, gluecksbringer: 9, reserve: 9, aschesieb: 8, etui: 7, startgeld: 6, schaufenster: 6, tarot: 5, stammkunde: 5 },
+    UPGRADE_WORTH: { kniffplatz: 8, gluecksbringer: 9, reserve: 9, aschesieb: 8, etui: 7, startgeld: 6, schaufenster: 6, tarot: 5, stammkunde: 5 },
     suggest: function (meta, tab, count) {
       var list = [];
       if (tab === 'upgrade') {
@@ -441,6 +509,14 @@
                 : [4, 6, 8, 10][ZU.CARDS[id].rarity];
             list.push({ kind: pair[0], id: id, cost: M.cost(pair[0], id), worth: worth });
           });
+        });
+        // Kniffe: Der erste ist das Wichtigste überhaupt (ohne ihn kein Mehrfachlegen); weitere und Stufen folgen im Mittelfeld.
+        var owned = Object.keys(meta.kniffe || {}).length, room = M.kniffSlots(meta) - owned;
+        ZU.KNIFF_IDS.forEach(function (id) {
+          var cost = M.kniffCost(meta, id), level = M.kniffLevel(meta, id);
+          if (cost == null || !M.kniffFound(meta, id)) return;
+          if (!level && room-- <= 0) return; // nur so viele neue Kniffe vorschlagen, wie Plätze frei sind
+          list.push({ kind: 'kniff', id: id, cost: cost, worth: !owned ? 12 : level && M.isEquipped(meta, id) ? 8 : level ? 3 : 6 });
         });
       }
       var can = list.filter(function (x) { return x.cost <= meta.ash; }).sort(function (a, b) { return b.worth - a.worth || a.cost - b.cost; });
@@ -495,9 +571,8 @@
         bossTip: M.level(meta, 'trinkgeld') * 0.2,
         burnDiscount: M.level(meta, 'zuendelei') * 0.25,
         luckyTrinket: M.level(meta, 'gluecksbringer') > 0,
-        kniffTier: meta.maxStake || 0,
-        kniffSlots: 1 + M.level(meta, 'kniffplatz'),
-        startKniff: M.level(meta, 'startkniff') > 0,
+        kniffSlots: M.kniffSlots(meta),
+        kniffe: M.loadout(meta),
         trinkets: open('trinket', ZU.TRINKET_IDS),
         specials: open('special', ZU.SPECIAL_IDS),
         seals: open('seal', ZU.SEAL_IDS),

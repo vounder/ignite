@@ -2,13 +2,13 @@
 (function (ZU) {
   'use strict';
 
-  ZU.VERSION = '2.10.1';
+  ZU.VERSION = '2.11.0';
   /* Stand der Casino-Liste. Ändert sich die Reihenfolge, rechnen js/meta.js und js/run.js gespeicherte Stände um. */
   ZU.CASINO_VERSION = 2;
   ZU.CASINO_REMAP = [0, 1, 3, 5, 6, 7]; // alter Index (sechs Häuser) → neuer Index (acht Häuser) // im Hauptmenü unten rechts angezeigt
   /* Build-Kennung: wird an alle Asset-Adressen gehängt, damit Browser und CDN nach einem Update frische
      Dateien holen. Nicht von Hand ändern: web/tools/stamp_version.py setzt den Wert. */
-  ZU.BUILD = '705bcaa8c9';
+  ZU.BUILD = 'c47ae35770';
   ZU.asset = function (path) { return 'assets/' + path + '?v=' + ZU.BUILD; };
 
   ZU.HAND_SIZE = 7;
@@ -242,8 +242,10 @@
   ZU.TRINKET_SURCHARGE = 0.12; // Aufschlag je getragenem Trinket, als Anteil des Preises
   /* Mit jedem Akt wachsen Prämien und Preise um diesen Anteil – damit Prozent-Effekte ihren Wert behalten. */
   ZU.ACT_GROWTH = 0.15;
-  /* Glutziel je Tisch: Grundwert je Art, Faktor je Akt und Zuschlag je Casino. */
-  ZU.GLUT_TARGET = { battle: 600, elite: 800, boss: 1100, perAct: 2, perCasino: 0.5 };
+  /* Glutziel je Tisch: Grundwert je Art, Faktor je Akt und Zuschlag je Casino.
+     Früher ×2 je Akt und +50 % je Casino: Das lief jedem Deck davon (ab dem zweiten Casino fiel praktisch kein Ziel mehr).
+     Nachmessen mit web/tests/glutziel.js. */
+  ZU.GLUT_TARGET = { battle: 600, elite: 800, boss: 1100, perAct: 1.7, perCasino: 0.25 };
   var trinkets = {};
   function trinket(id, name, rarity, text) {
     trinkets[id] = { id: id, name: name, rarity: rarity, price: ZU.TRINKET_PRICES[rarity], text: text };
@@ -400,14 +402,28 @@
   trinket('brandpraemie', 'Brandprämie', 1, 'Abgefackelte Tische zahlen noch einmal 50 % der Prämie.');
   trinket('hausfreund', 'Hausfreund', 1, 'Esmes Pakete kosten 25 % weniger.');
   trinket('teufelspakt', 'Teufelspakt', 3, 'Alle deine Karten bringen doppelte Glut. Du beginnst jedes Duell verflucht (×2).');
+  // --- Glut-Mult: jedes Stück ist ein eigener Faktor auf jede Karte; mehrere davon multiplizieren sich ---
+  trinket('brandbeschleuniger', 'Brandbeschleuniger', 0, 'Alle deine Karten bringen ×1,5 Glut.');
+  trinket('chefsache', 'Chefsache', 0, 'An Bosstischen bringen deine Karten ×3 Glut.');
+  trinket('oel-ins-feuer', 'Öl ins Feuer', 1, 'Je Löschmittel, das ein Tisch gegen dich aufbietet: ×1,5 Glut auf jede Karte.');
+  trinket('schaulustige', 'Schaulustige', 1, '+×0,1 Glut je Handkarte des Gegners (bei 7 Karten: ×1,7).');
+  trinket('hexenfeuer', 'Hexenfeuer', 1, 'Solange der Gegner verflucht ist, bringen deine Karten ×2 Glut.');
+  trinket('breitseite', 'Breitseite', 1, 'Legst du mehrere Karten auf einmal, bringt jede davon ×2 Glut.');
+  trinket('weissglut', 'Weißglut', 2, '+×0,1 Glut je Stufe deiner Kette (bei Kette ×10: ×2).');
+  trinket('kerbholz', 'Kerbholz', 2, '+×0,25 Glut je Tisch, den du in diesem Run abgefackelt hast.');
+  trinket('vabanque', 'Vabanque', 2, 'Alle deine Karten bringen ×3 Glut. Verlierst du ein Duell, ist dieses Trinket fort.');
   ZU.TRINKETS = trinkets;
   ZU.TRINKET_IDS = Object.keys(trinkets);
 
   /* ---------- Kniffe ----------
      Ein Kniff ist eine Regel, welche normalen Karten in einem Zug zusammen gelegt werden dürfen. Ein Zug folgt genau
      einem Kniff. Die Stufe begrenzt die Zahl der Karten (ZU.KNIFF_LIMIT); Aufstufen macht die Züge länger.
-     tier: ab wie vielen ausgeräumten Casinos der Kniff in Runs auftaucht. */
+     Kniffe gibt es nur im Hinterzimmer: Man schaltet sie mit Asche frei, stuft sie dort auf und rüstet so viele aus,
+     wie man Plätze hat. Im Run kommt keiner dazu.
+     tier: ab wie vielen ausgeräumten Casinos der Kniff im Hinterzimmer zu haben ist; price: Asche fürs Freischalten.
+     Jede weitere Stufe kostet den Preis mal ZU.KNIFF_LEVEL_COST. */
   ZU.KNIFF_LIMIT = [0, 2, 3, 99];
+  ZU.KNIFF_LEVEL_COST = [0, 0, 1.2, 2];
   ZU.KNIFFE = {
     'pasch-7': { name: 'Siebenerpasch', glyph: '7·7', kind: 'rank', ranks: ['7'], start: 2, price: 8, tier: 0, text: 'Mehrere 7en gehen in einem Zug raus.' },
     'pasch-8': { name: 'Achterpasch', glyph: '8·8', kind: 'rank', ranks: ['8'], start: 2, price: 8, tier: 0, text: 'Mehrere 8en gehen in einem Zug raus.' },

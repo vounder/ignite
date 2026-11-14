@@ -834,7 +834,17 @@
     feuerdecke: ['chain', ['#d8c8c0', '#a8483a', '#e2b23c'], 'reflect', 'ring'],
     oelfass: ['chain', ['#3a3a3a', '#ff7b3a', '#ffd75e'], 'reflect'],
     fettbrand: ['chain', ['#ffffff', '#ffd75e', '#ff3a1e'], 'burn', 'shake'],
-    perpetuum: ['stock', ['#fff1b8', '#c79a3f', '#3aa58f'], 'flip', 'ring']
+    perpetuum: ['stock', ['#fff1b8', '#c79a3f', '#3aa58f'], 'flip', 'ring'],
+    // Glut-Mult
+    brandbeschleuniger: ['pile', ['#ffffff', '#ff9f3a', '#c8273a'], 'ignite'],
+    chefsache: ['pile', ['#ffe98a', '#a82a16', '#5a1208'], 'boss'],
+    'oel-ins-feuer': ['pile', ['#ffd75e', '#ff7b3a', '#1c1f18'], 'burn'],
+    schaulustige: ['pile', ['#ffd9a0', '#b9853f', '#33363c'], 'select'],
+    hexenfeuer: ['pile', ['#f0c8ff', '#b04ad0', '#3a1055'], 'curse', 'smoke'],
+    breitseite: ['pile', ['#ffffff', '#ffd75e', '#5a3a1a'], 'whoosh', 'shake'],
+    weissglut: ['pile', ['#ffffff', '#fff6d8', '#ffb060'], 'ignite', 'ring'],
+    kerbholz: ['pile', ['#f1e2c0', '#b9853f', '#ff7b3a'], 'tick'],
+    vabanque: ['pile', ['#ffffff', '#ffc21e', '#c8273a'], 'chip', 'ring']
   };
   DuelView.prototype.trinketFx = function (id, quick) {
     var el = this.trinketEls[id], spec = TRINKET_FX[id] || ['pile', ['#fff3c4', '#ffd75e', '#e2b23c'], 'chip'], self = this;

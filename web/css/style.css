@@ -1057,9 +1057,9 @@ body.nobg { background: radial-gradient(ellipse at 50% 85%, var(--bg-mid, #34170
 .trinket.kniff .kn-pips b { width: 8px; height: 8px; border-radius: 50%; background: #1b110c; border: 2px solid #17493a; box-sizing: border-box; }
 .trinket.kniff .kn-pips b.on { background: #ffb347; border-color: #7c1f1c; box-shadow: 0 0 5px rgba(255,150,50,.9); }
 .trinkets.many .trinket.kniff .kn-pips b, .trinkets.lots .trinket.kniff .kn-pips b { width: 6px; height: 6px; border-width: 1px; }
-.service.kniff { background: linear-gradient(180deg, #17352e, #0d211c); border: 2px solid #3aa58f; box-shadow: 0 4px 0 rgba(0,0,0,.4); }
-.service.kniff .svc-name { color: #bff3ea; font-size: 15px; }
-.service.kniff p { color: #cfe6df; }
+.br-tile.worn { border-color: #3aa58f; box-shadow: 0 0 0 2px rgba(58,165,143,.45), 0 4px 0 rgba(0,0,0,.4); }
+.br-equip { margin-top: 8px; }
+.br-equip.poor { filter: grayscale(.8) brightness(.75); }
 .br-show > .trinket.kniff .kn-pips { bottom: -11px; gap: 7px; } .br-show > .trinket.kniff .kn-pips b { width: 18px; height: 18px; border-width: 3px; }
 .br-grid.big .br-tile > .trinket.kniff .kn-pips b { width: 10px; height: 10px; }
 .service.kniff > .trinket.kniff { width: 58px; height: 58px; }
