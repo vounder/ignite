@@ -13,6 +13,12 @@
     match: ['.rr.', 'rRRr', 'rRRr', '.rr.', '.ww.', '.ww.', '.ww.', '.ww.', '.ww.', '.ww.', '.ww.', '.ww.'],
     matchOut: ['....', '.kk.', '.kk.', '.kk.', '.dd.', '.dd.', '.dd.', '.dd.', '.dd.', '.dd.', '.dd.', '.dd.'],
     matchGold: ['.yy.', 'yggy', 'yggy', '.yy.', '.gg.', '.gg.', '.gg.', '.gg.', '.gg.', '.gg.', '.gg.', '.gg.'],
+    /* Das große Streichholz der Niederlagen-Szene (ZU.matchBurn): frisch und verkohlt, 7 × 38. */
+    matchBig: ['..DDD..', '.DrRrD.', 'DrRRrrD', 'DrRrrrD', 'DrrrrrD', 'DrrrrDD', '.DrrrD.', '..DDD..'].concat(
+      [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29].map(function (i) { return i % 7 === 3 ? '..wWW..' : i % 11 === 5 ? '..WwW..' : '..wwW..'; })),
+    matchBigOut: ['.......', '.......', '..kkk..', '.kkdkk.', '.kkkkk.', '.kdkkk.', '..kkk..', '..kkk..'].concat(
+      [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26].map(function (i) { return i % 5 === 2 ? '..kdk..' : i % 9 === 4 ? '..dkk..' : '..kkk..'; }),
+      ['..dkd..', '..wdW..', '..wwW..']),
     coin: ['..gggg..', '.gyyyyG.', 'gyygGyyG', 'gyggGyyG', 'gyygGyyG', 'gyygGyyG', '.gyyyyG.', '..GGGG..'],
     flame: ['....o...', '...oo...', '..ooo.o.', '..oyoooo', '.ooyyoo.', '.oyyyyo.', 'ooywwyoo', 'ooywwyoo', '.ooyyoo.', '..oooo..'],
     lock: ['..kkkk..', '.kk..kk.', '.kk..kk.', 'gggggggg', 'gyyGGyyg', 'gyyGGyyg', 'gyyyyyyg', 'gggggggg'],
@@ -22,6 +28,7 @@
   };
   var COLORS = {
     x: '#000', r: '#e4572e', R: '#ff9f43', w: '#e9d8b0', k: '#2a2320', d: '#5a4a3c', g: '#e2b23c', G: '#9a6f24',
+    W: '#c4ad82', D: '#8f2a1c',
     y: '#ffd75e', o: '#f08a24', a: '#b9b2a8', A: '#6b665f'
   };
   var cache = {};

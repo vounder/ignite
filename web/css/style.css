@@ -476,6 +476,32 @@ body.nobg { background: radial-gradient(ellipse at 50% 85%, var(--bg-mid, #34170
 .stamp { font-family: var(--px-wide); font-size: 24px; color: #ff7a66; border: 4px solid #ff7a66; border-radius: 10px; padding: 6px 14px 3px; transform: rotate(-9deg); opacity: .9; }
 .locked-note { display: flex; align-items: center; gap: 8px; font-family: var(--px); font-size: 14px; color: var(--ivory-dim); letter-spacing: 1px; height: 50px; }
 
+/* Tisch überspringen: zweiter, kleinerer Knopf unter „Platz nehmen" */
+.invite-foot { display: flex; flex-direction: column; align-items: center; gap: 7px; }
+.invite .rewards .skipnote { color: #9fd8c4; }
+.invite.locked .rewards .skipnote { color: inherit; }
+.stamp.skipped { font-size: 18px; color: #9fd8c4; border-color: #9fd8c4; }
+
+/* Niederlage mit Restleben: das große Streichholz brennt ab (ZU.matchBurn) */
+.matchburn { position: absolute; inset: 0; pointer-events: auto; animation: mb-in .28s ease both; }
+.matchburn.out { opacity: 0; pointer-events: none; transition: opacity .3s ease; }
+@keyframes mb-in { from { opacity: 0; } to { opacity: 1; } }
+.mb-shade { position: absolute; inset: 0; background: radial-gradient(ellipse 62% 70% at 50% 42%, rgba(10,5,3,.5) 0%, rgba(10,5,3,.9) 78%); }
+.mb-stick { position: absolute; width: 56px; height: 304px; animation: mb-stand .34s cubic-bezier(.3,1.5,.5,1) both; transform-origin: 50% 100%; filter: drop-shadow(0 6px 0 rgba(0,0,0,.45)); }
+@keyframes mb-stand { from { transform: translateY(40px) scale(.6) rotate(-10deg); opacity: 0; } to { transform: none; opacity: 1; } }
+.mb-stick i { position: absolute; inset: 0; background-size: 100% 100%; background-repeat: no-repeat; image-rendering: pixelated; }
+.mb-stick .mb-fire { position: absolute; left: -32px; top: -148px; image-rendering: pixelated; pointer-events: none; }
+.mb-stick.spent { animation: mb-sag .5s ease-out forwards; }
+@keyframes mb-sag { to { transform: rotate(4deg) translateY(3px); filter: drop-shadow(0 6px 0 rgba(0,0,0,.45)) brightness(.8); } }
+.mb-info { position: absolute; left: 0; right: 0; top: 424px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.mb-rest { display: flex; gap: 16px; align-items: flex-end; height: 64px; }
+.mb-rest .ico.match { width: 20px; height: 60px; }
+.mb-rest .ico.match.going { animation: mb-pulse .5s ease-in-out infinite alternate; }
+.mb-rest .ico.match.going.spent { animation: none; opacity: .75; transform: rotate(8deg) translateY(2px); transition: transform .3s ease; }
+@keyframes mb-pulse { from { filter: brightness(1); } to { filter: brightness(1.6) drop-shadow(0 0 6px #ff9f43); } }
+.mb-text { font-family: var(--px-wide); font-size: 34px; letter-spacing: 2px; color: var(--ember-hot); text-shadow: 0 3px 0 rgba(0,0,0,.6), 0 0 22px rgba(255,140,40,.5); }
+.mb-sub { font-size: 15px; color: var(--ivory-dim); }
+
 .reward-row { display: flex; gap: 28px; margin: 24px 0 22px; }
 .reward-item { width: 270px; height: 390px; display: flex; flex-direction: column; align-items: center; justify-content: space-between; gap: 10px; padding: 22px 18px 18px; border-radius: 16px; background: linear-gradient(180deg, var(--walnut-2), var(--walnut)); border: 3px solid var(--brass-dark);
   box-shadow: inset 0 0 0 2px rgba(0,0,0,.45), 0 8px 0 rgba(0,0,0,.5); animation: dropin .5s cubic-bezier(.3,1.5,.5,1) backwards; }

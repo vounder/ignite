@@ -12,7 +12,7 @@ const assert = require('assert');
 const RUNS = Number(process.argv[2] || 400);
 const tally = {};
 const perks = {};
-let twins = 0, scored = 0;
+let twins = 0, scored = 0, skips = 0;
 let duels = 0, victories = 0, maxTurns = 0, sumTurns = 0, drawFits = 0, decisions = {}, eventTypes = {};
 
 function note(enemy, won) {
@@ -193,6 +193,28 @@ for (let n = 0; n < RUNS; n++) {
     assert.ok(++guard < 200, 'Run endet nicht');
     assert.strictEqual(run.s.phase, 'select');
     const e = run.encounter();
+    // Tisch auslassen: Den Boss nie; sonst gibt es statt Duell, Prämie, Asche und Laden die Wahl aus drei Stücken.
+    assert.strictEqual(run.canSkip(), e.kind !== 'boss' && !!run.skipReward());
+    if (e.kind === 'boss') assert.throws(() => run.skipTable(), 'der Boss lässt sich nicht auslassen');
+    if (run.canSkip() && rnd.next() < 0.18) {
+      const before = { table: run.s.table, act: run.s.act, money: run.s.money, ash: run.s.ash || 0, wins: run.s.stats.wins };
+      run.skipTable();
+      assert.strictEqual(run.s.phase, 'reward');
+      const r = run.s.reward;
+      assert.strictEqual(r.type, e.kind === 'elite' ? 'trinket' : 'card');
+      assert.ok(r.via === 'skip' && r.options.length >= 1 && r.options.length <= 3);
+      const pick = rnd.next() < 0.85 ? rnd.int(r.options.length) : null;
+      const cards = run.s.collection.length, trinkets = run.s.trinkets.length;
+      if (pick != null && r.type === 'card' && !run.specialFree()) run.chooseReward(pick, run.s.collection.find(c => ZU.CARDS[c.def].special).id);
+      else run.chooseReward(pick);
+      assert.deepStrictEqual([run.s.phase, run.s.table, run.s.act, run.s.shop], ['select', before.table + 1, before.act, null], 'ohne Laden zum nächsten Tisch desselben Akts');
+      assert.deepStrictEqual([run.s.ash || 0, run.s.stats.wins], [before.ash, before.wins], 'keine Asche, kein Sieg');
+      assert.strictEqual(run.s.money, before.money + (pick == null ? r.skip : 0));
+      if (pick != null && r.type === 'trinket') assert.strictEqual(run.s.trinkets.length, trinkets + 1);
+      if (pick != null && r.type === 'card') assert.ok(run.s.collection.length === cards + 1 || run.s.collection.length === cards);
+      skips++;
+      continue;
+    }
     const duel = playDuel(run, rnd);
     const result = run.finishDuel(duel);
     note(e.enemy + ' (Akt ' + Math.min(run.s.act, 4) + ')', result.won);
@@ -201,18 +223,7 @@ for (let n = 0; n < RUNS; n++) {
     assert.ok(result.total > 0);
     let phase = run.afterPayout();
     if (phase === 'victory') { victories++; phase = run.continueEndless(); }
-    if (phase === 'reward') {
-      const r = run.s.reward;
-      const pick = rnd.next() < 0.8 ? rnd.int(r.options.length) : null;
-      if (pick != null && r.type === 'card' && !run.specialFree()) {
-        assert.throws(() => run.chooseReward(pick), 'volles Deck: ohne Tausch keine neue Spezialkarte');
-        const count = run.specialCount();
-        run.chooseReward(pick, run.s.collection.find(c => ZU.CARDS[c.def].special).id);
-        assert.strictEqual(run.specialCount(), count, 'Tausch hält die Zahl der Spezialkarten');
-      } else {
-        run.chooseReward(pick);
-      }
-    }
+    assert.strictEqual(run.s.reward, null, 'ein Sieg bringt keine Wahl mehr mit – die gibt es nur fürs Auslassen');
     assert.strictEqual(run.s.phase, 'shop');
     // Speichern/Laden muss den Zustand exakt erhalten
     const copy = new ZU.Run(JSON.parse(JSON.stringify(run.s)));
@@ -543,7 +554,25 @@ for (let i = 1; i < ZU.CASINOS.length; i++) assert.ok(ZU.CASINOS[i].ash > ZU.CAS
   boss.s.table = 2;
   const d = boss.newDuel(); d.start(); d.winner = 'player'; d.phase = 'ended';
   boss.finishDuel(d);
-  assert.ok(boss.s.reward && boss.s.reward.kniff === undefined);
+  assert.strictEqual(boss.s.reward, null, 'der Boss bringt keine Karte mehr mit');
+  // Volles Deck beim Auslassen: Ohne Tausch gibt es keine neue Spezialkarte.
+  {
+    const full = ZU.Run.start('classic', 77, Object.assign({}, ZU.Meta.runOptions(), { specialSlots: 1 }));
+    assert.ok(full.specialCount() >= 1 && !full.specialFree());
+    full.skipTable();
+    assert.strictEqual(full.s.reward.type, 'card');
+    assert.throws(() => full.chooseReward(0), 'volles Deck: ohne Tausch keine neue Spezialkarte');
+    const count = full.specialCount();
+    full.chooseReward(0, full.s.collection.find(c => ZU.CARDS[c.def].special).id);
+    assert.strictEqual(full.specialCount(), count, 'Tausch hält die Zahl der Spezialkarten');
+    assert.deepStrictEqual([full.s.phase, full.s.table], ['select', 1]);
+    // Spielstände von früher: Eine Wahl nach einem Sieg (ohne „via“) führt wie damals in den Laden.
+    const legacy = ZU.Run.start('classic', 78);
+    legacy.s.table = 1; legacy.s.phase = 'reward';
+    legacy.s.reward = { type: 'trinket', options: ['fuse'], skip: 4 };
+    legacy.chooseReward(0);
+    assert.deepStrictEqual([legacy.s.phase, legacy.s.table, legacy.has('fuse')], ['shop', 1, true]);
+  }
   // Alte Spielstände: ein offenes Kniff-Angebot verfällt, die Kniffe des laufenden Runs bleiben.
   const old = JSON.parse(JSON.stringify(run.s));
   old.kniffOffer = { id: 'pasch-8', level: 2, price: 9, sold: false, act: 2 };
@@ -796,6 +825,7 @@ console.log('Runs: %d, Duelle: %d, Siege über Akt 3: %d (%s%%), längstes Duell
   RUNS, duels, victories, (100 * victories / RUNS).toFixed(1), maxTurns);
 console.log('Entscheidungen:', decisions, 'Züge/Duell:', (sumTurns / duels).toFixed(1), 'gezogen und passend:', drawFits);
 console.log('Ebenbild: %d von %d gelegten Karten (%s je Duell)', twins, scored, (twins / duels).toFixed(2));
+console.log('Tische ausgelassen: %d', skips);
 console.log('Privilegien gekauft:', perks);
 console.log('Ereignisse:', Object.keys(eventTypes).sort().map(k => k + '=' + eventTypes[k]).join(' '));
 Object.keys(tally).sort().forEach(k => console.log('  %s  %d Duelle, Spieler gewinnt %s%%', k.padEnd(28), tally[k].n, (100 * tally[k].w / tally[k].n).toFixed(0)));

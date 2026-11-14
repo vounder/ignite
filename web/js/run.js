@@ -325,19 +325,8 @@
     ZU.Meta.noteDefeat(e.enemy);
     ZU.Meta.noteDuel(this, duel, true);
     if (!s.endless) ash = ZU.Meta.award(this);
+    // Ein Sieg zahlt Mark und Asche. Die Wahl aus drei Stücken gibt es nur noch für einen ausgelassenen Tisch (skipTable).
     s.reward = null;
-    if (e.kind === 'elite') {
-      var owned = s.trinkets;
-      var options = this._weighted(this._trinketPool(),
-        function (id) { return [50, 32, 16, 4][ZU.TRINKETS[id].rarity]; }, 3);
-      if (options.length) s.reward = { type: 'trinket', options: options, skip: 4 };
-    } else if (e.kind === 'boss') {
-      var specials = this._weighted(this._specialPool().filter(function (id) { return ZU.CARDS[id].rarity >= 1; }),
-        function (id) { return [0, 40, 40, 14][ZU.CARDS[id].rarity]; }, 3);
-      // Boss-Beute ist freier gebunden als das, was der Akt sonst hergibt.
-      var rng = this.rng, ahead = s.act + 1;
-      if (specials.length) s.reward = { type: 'card', options: specials, binds: specials.map(function () { return ZU.rollBind(rng, ahead); }), skip: 5 };
-    }
     s.phase = 'payout';
     this._sync();
     return { won: true, lines: lines, total: total, healed: healed, glut: duel.glut, maxChain: duel.maxChain, ash: ash, lostCards: lostCards, target: target, burnt: burnt, doublings: doublings };
@@ -357,6 +346,45 @@
       out.push(pool.splice(Math.min(i, pool.length - 1), 1)[0]);
     }
     return out;
+  };
+
+  /* ---------- Tisch auslassen ----------
+     Den ersten Tisch und die Elite eines Akts kann man auslassen, den Boss nie. Wer auslässt, spielt nicht, bekommt
+     weder Prämie noch Asche und kommt nicht in Manfreds Laden – dafür gibt es die Wahl aus drei Stücken: am ersten
+     Tisch Spezialkarten, bei der Elite Trinkets. */
+  Run.SKIP_REWARD = { battle: 'card', elite: 'trinket' };
+  /* Art der Belohnung fürs Auslassen des Tisches (oder null: Dieser Tisch lässt sich nicht auslassen). */
+  Run.prototype.skipReward = function (enc) {
+    enc = enc || this.encounter();
+    var type = enc ? Run.SKIP_REWARD[enc.kind] : null;
+    if (!type) return null;
+    var pool = type === 'trinket' ? this._trinketPool() : this._specialPool().filter(function (id) { return ZU.CARDS[id].rarity >= 1; });
+    return pool.length ? type : null; // nichts mehr zu holen: dann bleibt nur das Spiel
+  };
+  Run.prototype.canSkip = function () { return this.s.phase === 'select' && !!this.skipReward(); };
+  Run.prototype._rollReward = function (type) {
+    if (type === 'trinket') {
+      var options = this._weighted(this._trinketPool(), function (id) { return [50, 32, 16, 4][ZU.TRINKETS[id].rarity]; }, 3);
+      return options.length ? { type: 'trinket', options: options, skip: 4 } : null;
+    }
+    var specials = this._weighted(this._specialPool().filter(function (id) { return ZU.CARDS[id].rarity >= 1; }),
+      function (id) { return [0, 40, 40, 14][ZU.CARDS[id].rarity]; }, 3);
+    // Die Beute ist freier gebunden als das, was der Akt sonst hergibt.
+    var rng = this.rng, ahead = this.s.act + 1;
+    return specials.length ? { type: 'card', options: specials, binds: specials.map(function () { return ZU.rollBind(rng, ahead); }), skip: 5 } : null;
+  };
+  /* Lässt den aktuellen Tisch aus: Die Wahl steht an; danach geht es ohne Laden zum nächsten Tisch. */
+  Run.prototype.skipTable = function () {
+    var s = this.s;
+    if (!this.canSkip()) throw new Error('Dieser Tisch lässt sich nicht auslassen.');
+    var reward = this._rollReward(this.skipReward());
+    reward.via = 'skip';
+    s.reward = reward;
+    this.encounter().skipped = true;
+    s.stats.skipped = (s.stats.skipped || 0) + 1;
+    s.phase = 'reward';
+    this._sync();
+    this.save();
   };
 
   /* Nach der Auszahlung: Sieg über den dritten Boss, Belohnung oder Laden. */
@@ -403,7 +431,13 @@
       this._add(r.options[index], r.binds ? r.binds[index] : 'wild');
     }
     s.reward = null;
-    this._openShop();
+    if (r.via === 'skip') {
+      // Ausgelassener Tisch: kein Laden, der nächste Gegner wartet schon. (Der Boss lässt sich nicht auslassen, es bleibt also im Akt.)
+      s.table++;
+      s.phase = 'select';
+    } else {
+      this._openShop(); // Spielstände von früher: Die Wahl nach einem Sieg führt wie damals in den Laden
+    }
     this._sync();
     this.save();
   };
