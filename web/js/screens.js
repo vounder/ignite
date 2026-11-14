@@ -179,7 +179,9 @@
           '<p>Jeder Tisch hat ein <b>Glutziel</b>. Erreichst du es, brennt der Tisch: Du gewinnst sofort, auch mit voller Hand. Wer das Ziel vervielfacht, kassiert für jede Verdopplung extra Mark und Asche – ohne Obergrenze.</p>' +
           '<p>Siege zahlen <b>Mark</b>: Tischprämie, Restkarten des Gegners, Glut-Bonus, Bank und Zinsen (1 Mark je 5 gesparte Mark).</p>' +
           '<h3>Der Run</h3>' +
-          '<p>Jeder Akt hat drei Tische: Gegner, Elite, Boss. Dazwischen wartet <b>Manfreds Laden</b> mit Karten, Trinkets und Diensten. Das erste <b>Casino</b> hat drei Akte; wer es ausräumt, öffnet das nächste – größer, härter, mit eigener Hausordnung und mehr Asche.</p>' +
+          '<p>Jeder Akt hat drei Tische: Gegner, Elite, Boss. Verlierst du, kostet das ein Streichholz und es geht am selben Tisch von vorn los. Dazwischen wartet <b>Manfreds Laden</b> mit Karten, Trinkets und Diensten.</p>' +
+          '<p><b>Überspringen:</b> Den ersten Tisch und die Elite kannst du auslassen. Dann gibt es kein Duell, keine Prämie, keine Asche und keinen Laden – dafür wählst du 1 von 3 Spezialkarten (erster Tisch) oder 1 von 3 Trinkets (Elite). Der Boss muss fallen; er bringt ein Streichholz zurück.</p>' +
+          '<p> Das erste <b>Casino</b> hat drei Akte; wer es ausräumt, öffnet das nächste – größer, härter, mit eigener Hausordnung und mehr Asche.</p>' +
           '<p>Im Nebenzimmer des Ladens <b>veredelt Esme</b> normale Karten: Ein Siegel macht eine Karte für den ganzen Run stärker. Günstige Pakete haben oft einen kleinen Makel.</p>' +
           '<p><b>Trinkets</b> sind unbegrenzt, werden aber mit jedem weiteren teurer. <b>Privilegien</b> gelten den ganzen Run; Manfred bietet je Akt genau eines an.</p>' +
           '<p>Du spielst mit deinem eigenen <b>Deck</b>: Zu Beginn jedes Duells wird es gemischt, 7 Karten kommen auf die Hand, der Rest ist dein Nachziehstapel. Der Gegner zieht von seinem eigenen Stapel.</p>' +
@@ -1674,20 +1676,25 @@
     s.encounters.forEach(function (enc, i) {
       var enemy = ZU.ENEMIES[enc.enemy], state = i < s.table ? 'done' : i === s.table ? 'current' : 'locked';
       var rewards = [];
-      if (enc.kind === 'elite') rewards.push(h('li', null, 'Wahl aus 3 Trinkets'));
-      if (enc.kind === 'boss') {
-        rewards.push(h('li', null, ['Wahl aus 3 Spezialkarten · ', ZU.iconEl('match', 'match'), '+1 Streichholz']));
-      }
+      // Überspringen (nur erster Tisch und Elite): statt Duell, Prämie, Asche und Laden die Wahl aus drei Stücken.
+      var skipType = state === 'done' ? null : run.skipReward(enc), skipText = skipType === 'trinket' ? 'Wahl aus 3 Trinkets' : 'Wahl aus 3 Spezialkarten';
+      if (skipType) rewards.push(h('li', 'skipnote', 'Überspringen: ' + skipText));
+      if (enc.kind === 'boss') rewards.push(h('li', null, [ZU.iconEl('match', 'match'), '+1 Streichholz · lässt sich nicht überspringen']));
       var foot;
       if (state === 'current') {
-        foot = btn('Platz nehmen', 'big ember', function () { game.startDuel(); });
+        var sit = btn('Platz nehmen', 'big ember', function () { game.startDuel(); });
+        foot = !skipType ? sit : h('div', 'invite-foot', [sit, btn('Überspringen', 'small felt skipbtn', function () {
+          run.skipTable();
+          ZU.audio.whoosh();
+          game.go('reward');
+        }, 'Du lässt diesen Tisch aus: kein Duell, keine Prämie, keine Asche und danach kein Besuch in Manfreds Laden. Dafür: ' + skipText + '.')]);
       } else if (state === 'done') {
-        foot = h('div', 'stamp', 'Besiegt');
+        foot = h('div', 'stamp' + (enc.skipped ? ' skipped' : ''), enc.skipped ? 'Übersprungen' : 'Besiegt');
       } else {
         foot = h('div', 'locked-note', [ZU.iconEl('lock', 'lockico'), 'Noch verschlossen']);
       }
       var portrait = ZU.portraitEl(enc.enemy, 'big');
-      if (state === 'done') portrait.setBase('defeated');
+      if (state === 'done' && !enc.skipped) portrait.setBase('defeated');
       var card = h('div', 'invite ' + state + ' k-' + enc.kind, [
         h('div', 'kindtag k-' + enc.kind, ZU.KIND_LABEL[enc.kind] + (enc.kind === 'boss' ? '' : ' ' + (i + 1))),
         portrait,
@@ -1767,14 +1774,88 @@
     });
   };
 
+  /* ---------- Niederlage mit Restleben: Ein Streichholz brennt ab ----------
+     Das verlorene Streichholz steht groß in der Mitte, fängt am Kopf Feuer und brennt herunter; darunter steht, wie
+     viele noch bleiben. Dahinter räumt der Tisch ab und baut sich neu auf (game.rematch). Ein Tipp kürzt die Szene ab.
+     Liefert ein Versprechen, das sich einlöst, sobald ausgeteilt werden darf. */
+  ZU.matchBurn = function (left) {
+    var W = 56, H = 304, X = 640, TOP = 62, sp = ZU.speed || 1;
+    var fresh = h('i', 'mb-fresh'), char = h('i', 'mb-char');
+    fresh.style.backgroundImage = 'url(' + ZU.icon('matchBig') + ')';
+    char.style.backgroundImage = 'url(' + ZU.icon('matchBigOut') + ')';
+    var fire = ZU.fire(20, 26, 6, 'mb-fire');
+    var stick = h('div', 'mb-stick', [char, fresh, fire.el]);
+    var rest = h('div', 'mb-rest');
+    for (var i = 0; i < left; i++) rest.appendChild(ZU.iconEl('match', 'match'));
+    var gone = ZU.iconEl('match', 'match going');
+    rest.appendChild(gone);
+    var text = h('div', 'mb-text', left === 1 ? 'Dein letztes Streichholz' : 'Noch ' + left + ' Streichhölzer');
+    var sub = h('div', 'mb-sub', left === 1 ? 'Verlierst du es, endet der Run.' : 'Neuer Anlauf am selben Tisch.');
+    var el = h('div', 'matchburn', [h('div', 'mb-shade'), stick, h('div', 'mb-info', [rest, text, sub])]);
+    stick.style.left = (X - W / 2) + 'px';
+    stick.style.top = TOP + 'px';
+    document.getElementById('pops').appendChild(el);
+
+    // Ablauf in Sekunden: hinstellen, anreißen, abbrennen, verlöschen, abtreten.
+    var T_LIGHT = 0.4, T_BURN = 0.62, T_OUT = 1.95, T_END = 2.75, t = 0, lit = false, out = false, done = false, spark = 0, finish;
+    var promise = new Promise(function (resolve) { finish = resolve; });
+    function edge(p) { return TOP + 18 + p * (H - 46); } // Höhe des Brandrands auf der Bühne
+    function end() {
+      if (done) return;
+      done = true;
+      ZU.offFrame(tick);
+      fire.set(0);
+      el.classList.add('out');
+      setTimeout(function () { fire.destroy(); el.remove(); }, 320);
+      finish();
+    }
+    var tick = ZU.onFrame(function (dt) {
+      t += dt * sp;
+      if (ZU.game && ZU.game.screen !== 'duel') { end(); return; } // der Spieler ist inzwischen woanders
+      if (!lit && t >= T_LIGHT) {
+        lit = true;
+        ZU.audio.match();
+        ZU.audio.ignite();
+        fire.set(0.75);
+        fire.kick(0.9);
+        fx.flash(X, TOP + 24, { r: 170, alpha: 0.9 });
+        fx.burst(X, TOP + 20, { n: 30, speed: 300, cone: 0.9 });
+      }
+      var p = Math.max(0, Math.min(1, (t - T_BURN) / (T_OUT - T_BURN)));
+      if (lit && !out) {
+        var y = edge(p);
+        fresh.style.clipPath = fresh.style.webkitClipPath = 'inset(' + ((y - TOP) / H * 100).toFixed(1) + '% 0 0 0)';
+        fire.el.style.top = (y - TOP - 148) + 'px';
+        fire.set(0.75 - p * 0.3);
+        spark += dt * sp;
+        if (spark > 0.06) { spark = 0; fx.burst(X + ZU.rand(-12, 12), y - 8, { n: 2, speed: 170, cone: 0.7, life: 0.9, size: ZU.rand(3, 6) }); }
+      }
+      if (!out && t >= T_OUT) {
+        out = true;
+        fire.set(0);
+        ZU.audio.burn();
+        fx.smoke(X, edge(1) - 10, 18);
+        fx.smoke(X, TOP + 80, 10);
+        stick.classList.add('spent');
+        gone.style.backgroundImage = 'url(' + ZU.icon('matchOut') + ')';
+        gone.classList.add('spent');
+        fx.punch(text);
+      }
+      if (t >= T_END) end();
+    });
+    el.addEventListener('pointerdown', function () { if (t > 0.5) { t = Math.max(t, T_END); } });
+    return promise;
+  };
+
   /* ---------- Belohnung ---------- */
   screens.reward = function (game, root) {
     var run = game.run, reward = run.s.reward;
     ZU.bg.set('shop');
     var bar = hud(game);
     var row = h('div', 'reward-row');
-    var chosen = false;
-    function leave() { game.go('shop'); }
+    var chosen = false, skipped = reward.via === 'skip';
+    // Nach einem ausgelassenen Tisch geht es ohne Laden zum nächsten Gegner.
+    function leave() { game.go(run.s.phase === 'select' ? 'select' : 'shop'); }
     reward.options.forEach(function (id, index) {
       var item, name, text;
       if (reward.type === 'trinket') {
@@ -1824,7 +1905,8 @@
     });
     var screen = h('div', 'screen reward', [
       bar.el,
-      h('h1', null, reward.type === 'trinket' ? 'Elite besiegt · Wähle ein Trinket' : 'Boss besiegt · Wähle eine Spezialkarte'),
+      h('h1', null, skipped ? (reward.type === 'trinket' ? 'Elite übersprungen · Wähle ein Trinket' : 'Tisch übersprungen · Wähle eine Spezialkarte')
+        : reward.type === 'trinket' ? 'Elite besiegt · Wähle ein Trinket' : 'Boss besiegt · Wähle eine Spezialkarte'),
       h('p', 'sub', reward.type === 'trinket' ? 'Trinkets wirken für den Rest des Runs.'
         : run.specialFree() ? 'Die Karte wandert dauerhaft in dein Deck.' : 'Dein Deck ist voll (' + run.specialSlots() + ' Spezialkarten): Die neue Karte ersetzt eine alte.'),
       row,

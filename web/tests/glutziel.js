@@ -66,10 +66,6 @@ for (let n = 0; n < RUNS; n++) {
     if (result.burnt) a.burnt++;
     const phase = run.afterPayout();
     if (phase === 'victory') { victories++; break; }
-    if (phase === 'reward') {
-      const r = run.s.reward;
-      run.chooseReward(r.type === 'card' && !run.specialFree() ? null : rnd.int(r.options.length));
-    }
     shop(run);
   }
 }

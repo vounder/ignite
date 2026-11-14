@@ -122,6 +122,15 @@ zugehörigen Elemente blenden sich selbst aus.
   Streichholz und neuer Auslage. Drei Streichhölzer sind die Leben. Nach dem
   letzten Boss des Casinos geht es optional endlos in der Nachglut weiter –
   dort gibt es keine Asche mehr.
+- **Niederlage:** Kostet ein Streichholz; solange eines bleibt, geht es am
+  selben Tisch sofort von vorn los (`game.rematch`). Das verlorene Streichholz
+  brennt dabei groß in der Mitte ab (`ZU.matchBurn`), während sich der Tisch
+  neu aufbaut – die Tischwahl kommt nicht dazwischen.
+- **Überspringen:** Den ersten Tisch und die Elite eines Akts kann man
+  auslassen (`run.skipTable`), den Boss nie. Wer auslässt, bekommt kein Duell,
+  keine Prämie, keine Asche und keinen Ladenbesuch – dafür die Wahl aus drei
+  Stücken: am ersten Tisch Spezialkarten, bei der Elite Trinkets. Ein Sieg
+  bringt nur noch Mark und Asche, der Boss dazu ein Streichholz zurück.
 - **Schachteln:** 16 Startdecks (`ZU.STARTERS`), jedes mit eigenem Etikett: einem Schachtelbild und einer
   Kartenrückseite (`assets/decks/<id>-box.png` und `-back.png`). Im Run tragen alle eigenen Karten, der
   Nachziehstapel und der Deck-Knopf die Rückseite der gewählten Schachtel; der Gegner spielt mit der

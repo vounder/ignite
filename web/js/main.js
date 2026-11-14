@@ -170,6 +170,7 @@
       ZU.bg.setEmber(inRun ? 0.3 + 0.7 * progress : 0.35);
       root.classList.remove('enter', 'leave');
       root.innerHTML = '';
+      if (name !== 'duel') this._hold = null;
       this.profile = ZU.Profile.load();
       if (name === 'duel') {
         var enc = this.run.encounter();
@@ -177,9 +178,11 @@
         ZU.audio.music(this.run.music(enc.kind === 'boss'));
         if (enc.kind === 'boss') ZU.audio.boss();
         var duel = this.run.newDuel();
-        this.view = new ZU.DuelView(this, this.run, duel);
-        this.view.mount(root);
-        this.view.begin();
+        var view = this.view = new ZU.DuelView(this, this.run, duel), hold = this._hold;
+        this._hold = null;
+        view.mount(root);
+        // Nach einer Niederlage wartet das Austeilen, bis das Streichholz abgebrannt ist.
+        if (hold) hold.then(function () { if (!view.destroyed) view.begin(); }); else view.begin();
       } else {
         this.cleanup = ZU.screens[name](this, root) || null;
       }
@@ -239,27 +242,38 @@
         });
         return;
       }
+      // Verloren, aber der Run geht weiter: Es gibt nur diesen einen Tisch, also geht es dort gleich von vorn los –
+      // ohne Umweg über die Tischwahl. Hat es ein Streichholz gekostet, brennt es vorher groß in der Mitte ab.
       if (result.spared) {
-        ZU.fx.banner('Phönixfeder!', 'win', 1500).then(function () { self.go('select'); });
+        ZU.fx.banner('Phönixfeder!', 'win', 1500).then(function () { self.rematch(false); });
         ZU.audio.match();
         return;
       }
       if (result.saved) {
-        ZU.fx.banner('Goldenes Streichholz!', 'win', 1500).then(function () { self.go('select'); });
+        ZU.fx.banner('Goldenes Streichholz!', 'win', 1500).then(function () { self.rematch(false); });
         ZU.audio.match();
         return;
       }
-      ZU.audio.match();
       if (run.s.phase === 'defeat') {
+        ZU.audio.match();
         // In der Nachglut zählt der Run schon als Sieg; dann wird nur noch der Bestwert gemeldet.
         ZU.account.reportRun({ won: false, score: run.s.score, act: run.s.act, countRun: !run.s.endless });
         this.go('defeat');
       } else if (result.gone) {
         // Vabanque: Die Niederlage hat das Trinket gekostet.
-        ZU.fx.banner(ZU.TRINKETS[result.gone].name + ' verspielt!', 'lose', 1500).then(function () { self.go('select'); });
+        ZU.audio.match();
+        ZU.fx.banner(ZU.TRINKETS[result.gone].name + ' verspielt!', 'lose', 1500).then(function () { self.rematch(true); });
       } else {
-        this.go('select');
+        this.rematch(true);
       }
+    },
+
+    /* Neuer Anlauf am selben Tisch nach einer Niederlage. burnt: Ein Streichholz ging verloren – es brennt groß ab,
+       während sich dahinter der Tisch neu aufbaut; erst danach wird ausgeteilt. */
+    rematch: function (burnt) {
+      if (!this.run || this.screen !== 'duel') { this.go('select'); return; }
+      this._hold = burnt ? ZU.matchBurn(this.run.s.lives) : null;
+      this.go('duel');
     }
   };
 
