@@ -73,7 +73,9 @@ laden. Der Schlüssel liegt nie im Repository, sondern kommt über die Umgebung:
 3. Beide Dateien in den `APP_DIR` des Servers legen (siehe
    [`../server/README.md`](../server/README.md)), die APK zuerst, `android.json`
    zuletzt: Sie schaltet den Download im Spiel frei und meldet installierten
-   Apps die neue Version. Alte APKs dürfen liegen bleiben.
+   Apps die neue Version. Alte APKs dürfen liegen bleiben. Eine veröffentlichte
+   APK nie unter demselben Namen ersetzen: Cloudflare hält sie stundenlang vor.
+   Jede neue APK bekommt eine neue Version und damit einen neuen Dateinamen.
 
 Wer die App zum ersten Mal lädt, muss dem Browser einmal erlauben, Apps zu
 installieren („unbekannte Quellen“); Android fragt von selbst danach.

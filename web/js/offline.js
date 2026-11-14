@@ -254,7 +254,13 @@
         if (status.state === 'ready' || status.state === 'error') O.check();
       });
       if (bridge) return appCheck(2500);
-      if (!supported() || !wanted(g.profile.settings)) return Promise.resolve(null);
+      if (!supported()) return Promise.resolve(null);
+      if (!wanted(g.profile.settings)) {
+        // Liegt noch eine Fassung von früher im Speicher (Einstellungen zurückgesetzt), würde sie ohne Updates
+        // ewig weiterlaufen: wegräumen, ab dem nächsten Start kommt das Spiel wieder vom Netz.
+        clear();
+        return Promise.resolve(null);
+      }
       persist();
       return readState().then(function (state) { return hasBuild(state.current); }).then(function (have) {
         if (have) return run(2500).then(function (job) { return job && job.update ? job : null; });

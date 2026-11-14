@@ -115,6 +115,13 @@ Esme (`esme/esme.png`, sechs Bilder zu 384 Pixel: ruhig, Blinzeln, gierig, gener
 Siegel (`seals/`, sieben Siegel und der Makel, 64×64) entstanden am 12.11.2026 auf dieselbe Weise; Skripte und
 Prompts liegen unter `/data/ignite/art/esme/`. `upgrades/tarot.png` ist das Irrlicht-Siegel, vergrößert.
 
+Schachteln (`decks/`, 13.11.2026): je Startschachtel eine Kartenrückseite (`<id>-back.png`, 208×292) und die
+Schachtel selbst (`<id>-box.png`, 480×320, freigestellt), dazu die Hausrückseite der Gegner (`house-back.png`).
+Erst entstand die Rückseite (Stilvorlage: drei Kartenvorderseiten aus `cards/faces.png`), dann die Schachtel mit
+dieser Rückseite als Vorlage für das Etikett. Motive und Farben stehen in `/data/ignite/art/decks/decks.tsv`,
+die Prompts in `gen.sh`, das Freistellen und Verkleinern in `build.py` (Aufruf mit dem Pfad des Arbeitsverzeichnisses);
+`shots.cjs` fotografiert Schachtelwahl, Hinterzimmer und Duell.
+
 Upgrades (`upgrades/`, 13 Stück, 12.11.2026): je ein Symbol für die dauerhaften Upgrades im Hinterzimmer,
 erzeugt wie die Trinkets (Bögen auf Chroma-Grün, Skripte unter `/data/ignite/art/upgrades/`).
 
@@ -132,18 +139,26 @@ Each cell holds ONE separate chunky object, centred in its cell, all at the
 same scale, with a wide empty green gap between neighbours …“, gefolgt von den
 neun Motiven und derselben Stilzeile wie oben.
 
-### Kulisse des Titelbildschirms (`title/`, seit 12.11.2026 in Ebenen)
+### Kulisse des Titelbildschirms (`title/alley.png`, seit 13.11.2026)
 
-Die Kulisse besteht aus `room.png` (Raum ohne Menschen, 1280×720), `table.png`
-(nur der Tisch im Vordergrund, darüber durchsichtig) und sechs Figuren
-`cast-<id>.png` – den Herren und Damen der sechs Casinos (Hausherr, Impresario,
-Kapitänin Fortuna, Baronin von Hohenstein, Direktor Monopol, Der Fürst). Jede
-Figur ist ein Streifen aus drei Bildern zu 440×480 (ruhig, Blinzeln, Grinsen);
-Bild 2 und 3 sind Bild 1 mit ausgetauschtem Gesicht, damit nichts springt.
-Erzeugt mit der Codex CLI auf Chroma-Grün (Vorlage: das jeweilige Porträt aus
-`enemies/`), freigestellt und zusammengesetzt mit den Skripten unter
-`/data/ignite/art/title/work/`. `js/screens.js` (`titleScene`) legt die Ebenen
-übereinander und lässt die Figuren atmen, blinzeln und grinsen.
+Die Gasse hinter dem Casino bei Nacht und Regen: links Laterne, Klimaanlage und
+Müllcontainer, in der Tiefe die Hintertür mit Neonschild, rechts die
+Ziegelwand, an der die eigene Figur lehnt. Ein Bild, 1600×900 und 255 Farben
+(größer als die Bühne, damit die Kamerafahrt zur Tür beim Aufbruch nicht
+verpixelt). Erzeugt mit der Codex CLI nach einer Bildvorlage des Urhebers
+(dieselbe Gasse mit einer angelehnten Figur); Rohbild und Proben liegen unter
+`/data/ignite/art/title-alley/`. Laterne, Neon, Dampf und Regen sind kein Teil
+des Bildes, sondern CSS (`.al-*` in `css/style.css`); `js/screens.js`
+(`alleyScene`) setzt die Kulisse zusammen und stellt die Figur davor.
+
+### Frühere Kulisse des Titelbildschirms in Ebenen (`title/room.png`, `table.png`, `cast-*.png`, entfernt)
+
+Vom 12. bis 13.11.2026 bestand die Kulisse aus dem Hinterzimmer ohne Menschen,
+dem Tisch im Vordergrund und sechs Figuren `cast-<id>.png` – den Herren und
+Damen der Casinos als Streifen aus drei Bildern zu 440×480 (ruhig, Blinzeln,
+Grinsen). Erzeugt mit der Codex CLI auf Chroma-Grün, Skripte unter
+`/data/ignite/art/title/work/`. Die Dateien stehen in der Git-Historie
+(zuletzt in Version 2.8.2).
 
 Die Bilder der Häuser für die Casino-Wahl liegen unter `casinos/<id>.png`
 (480×270, ebenfalls 12.11.2026, Vorlage war die alte Titelkulisse).
@@ -238,3 +253,19 @@ Differenzen zum Körper und brauchen ihn darunter. Entstanden über eine magenta
 einzeln gezeichnet und danach registriert wird. Skripte, Prompts und Prüfbilder: `/data/ignite/art/avatar/v2/` (erste Fassung in `v1/`);
 die vierte Runde mit 75 Teilen (`hair-13…26`, `beard-6…11`, `outfit-14…30`, `hat-10…23`, `acc-8…22`, `tattoo-11…19`) liegt in `v4/`
 (`mkparts.py` → `parts4.tsv`, `batch.sh`, `cut.py`, `check.py`).
+
+#### Die ganze Figur für den Titelbildschirm (`avatar/full/`)
+
+Alle Teile noch einmal in ganzer Länge: die Figur lehnt lässig an einer Wand, Kopf leicht gedreht und geneigt, ein Fuß
+an der Mauer. Ebenen je 240×360 (auf der Bühne doppelt so groß), dieselben Namen und dieselben fünf Graustufen wie beim Brustbild.
+Unterschiede: `head.png` ist nur Kopf und Hals; alles darunter bringt das Outfit mit – `outfit-N.png` die Kleidung von den
+Schultern bis zu den Schuhen, `outfit-N-skin.png` die nackte Haut dieses Outfits (Arme, Beine, Ausschnitt) in Graustufen.
+Das ist nötig, weil jedes Outfit die Arme etwas anders hält (Hände in den Taschen, an der Hüfte). Tattoos werden beim
+Zeichnen auf die Haut beschnitten (`fullLayers`/`paintFull` in `js/avatar.js`).
+Entstanden wie das Brustbild über eine magentafarbene Schablone, hier mit fünf Magentatönen für die fünf Hautstufen, damit
+sich die neu gezeichneten Arme und Beine als Haut zurücklesen lassen. Jedes Teil bekam als zweite Vorlage sein Gegenstück
+vom Brustbild, damit Entwurf und Farben übereinstimmen; die Outfits wurden um Hose, Rock und Schuhe ergänzt (`LOW` in
+`mkparts_full.py`). Die Grundfigur musste Shorts tragen (der Bildfilter lehnt unbekleidete Figuren ab), sie werden zu Haut
+umgerechnet. Skripte, Prompts und Prüfbilder: `/data/ignite/art/avatar/full/` (`fb1_base.py`, `fb2_body.py`, `fb3_faces.py`,
+`fb_refs.py`, `mkparts_full.py` → `parts.tsv`, `fbatch.sh`/`fgen.sh`, `fcut.py`, `fcheck.py`).
+Ein neues Teil braucht seitdem zwei Bilder: eines für das Brustbild und eines für die ganze Figur.

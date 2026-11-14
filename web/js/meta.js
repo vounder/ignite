@@ -14,7 +14,7 @@
     special: ['stillstand', 'addieren', 'spion', 'fluch', 'hodl', 'opfer'],
     seal: ['glut', 'gold', 'anker']
   };
-  var STARTER_COST = { igniter: 8, cheater: 10, alchemist: 10 };
+  var STARTER_COST = { igniter: 8, cheater: 10, alchemist: 10, hearts: 10, carny: 10, picked: 10, hoarder: 10, straw: 12, cat: 12, conman: 12, snoop: 10, noble: 12, jeweler: 12, banker: 12, devil: 16 };
 
   /* Zählwerke: 'sum' wird aufaddiert, 'max' merkt sich den besten Wert. Nur diese Schlüssel werden gespeichert. */
   var FEATS = {
@@ -34,6 +34,18 @@
     'starter:igniter': ['sevens', 10, 'Spiele 10 Siebenen.'],
     'starter:cheater': ['foe:cheater', 2, 'Schlage Rico, den Falschspieler, zweimal.'],
     'starter:alchemist': ['bank', 10, 'Kassiere in einem Duell eine Bank von 10 Mark.'],
+    'starter:hearts': ['played', 150, 'Spiele 150 Karten.'],
+    'starter:carny': ['eights', 15, 'Spiele 15 Achten.'],
+    'starter:picked': ['burned', 5, 'Verbrenne 5 Karten.'],
+    'starter:hoarder': ['deck', 20, 'Trage ein Deck mit 20 Karten.'],
+    'starter:straw': ['burnt', 3, 'Fackle 3 Tische ab.'],
+    'starter:cat': ['curses', 8, 'Lass Gegner 8-mal unter einem Fluch ziehen.'],
+    'starter:conman': ['aces', 15, 'Spiele 15 Asse.'],
+    'starter:snoop': ['foe:card-counter', 2, 'Schlage Dr. Zahl zweimal.'],
+    'starter:noble': ['elites', 4, 'Schlage 4 Elite-Gegner.'],
+    'starter:jeweler': ['sealed', 3, 'Lass bei Esme 3 Karten veredeln.'],
+    'starter:banker': ['money', 40, 'Halte 40 Mark auf einmal.'],
+    'starter:devil': ['casino', 3, 'Räume drei Casinos aus.'],
     // --- Trinkets der ersten Serie ---
     'trinket:heartblood': ['duels', 3, 'Gewinne 3 Duelle.'],
     'trinket:black-series': ['duels', 6, 'Gewinne 6 Duelle.'],

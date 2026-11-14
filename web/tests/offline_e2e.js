@@ -164,6 +164,15 @@ function copyWeb(target) {
   assert.strictEqual(synced.remote, 7, 'und liegt jetzt am Konto');
   assert.deepStrictEqual(JSON.parse(synced.left), { user: 'Offliner', runs: [], meta: false });
 
+  // --- Einstellung verloren, Ablage noch da: Sie wird beim Start weggeräumt statt ohne Updates weiterzulaufen ---
+  await page.evaluate(() => { const profile = ZU.Profile.load(); profile.settings.offline = false; ZU.Profile.save(profile); });
+  await page.reload();
+  await menu(page);
+  await page.waitForFunction(async () => (await caches.keys()).length === 0, null, { timeout: 10000 });
+  assert.strictEqual(await page.evaluate(() => ZU.offline.status.state), 'off');
+  await page.evaluate(() => ZU.offline.enable(true));
+  await state(page, 'ready');
+
   // --- Ablage wieder ausschalten ---
   await page.evaluate(() => ZU.offline.enable(false));
   await page.waitForFunction(async () => (await caches.keys()).length === 0, null, { timeout: 10000 });

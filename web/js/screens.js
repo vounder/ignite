@@ -105,7 +105,7 @@
         grid.appendChild(el);
       });
       entry = ZU.modal.open([
-        h('h2', null, swap ? 'Welche Spezialkarte soll weichen?' : burn ? 'Welche Karte soll brennen?' : 'Dein Deck · ' + run.s.collection.length + ' Karten'),
+        h('h2', null, swap ? 'Welche Spezialkarte soll weichen?' : burn ? 'Welche Karte soll brennen?' : 'Dein Deck · ' + (ZU.STARTER[run.s.starter] ? ZU.STARTER[run.s.starter].name + ' · ' : '') + run.s.collection.length + ' Karten'),
         h('p', 'modal-text', swap
           ? 'Dein Deck fasst ' + run.specialSlots() + ' Spezialkarten. Die gewählte Karte verschwindet, die neue nimmt ihren Platz ein.'
           : burn
@@ -596,7 +596,10 @@
     var lives = h('div', 'lives');
     var slots = h('div', 'trinkets');
     var deckCount = h('b', null, String(s.collection.length));
-    var deckBtn = h('button', 'btn deckbtn', [ZU.iconEl('deck', 'deckico'), h('span', null, 'Deck'), deckCount]);
+    // Das Deck trägt die Rückseite der gewählten Schachtel.
+    var deckMini = h('i', 'deckmini');
+    deckMini.style.backgroundImage = 'url(' + ZU.deckArt(s.starter, 'back') + ')';
+    var deckBtn = h('button', 'btn deckbtn', [deckMini, h('span', null, 'Deck'), deckCount]);
     deckBtn.addEventListener('click', function () { ZU.audio.click(); deckModal(game, false); });
     var scoreEl = h('b', null, ZU.fmt(s.score));
     var bar = h('div', 'hud', [
@@ -639,11 +642,9 @@
   /* ---------- Hauptmenü ---------- */
   var screens = {};
 
-  /* Titelbildschirm: das Hinterzimmer als Kulisse, der Schriftzug wird von einem Streichholz entzündet
-     und brennt danach; unten liegt die eigene Hand auf dem Filz. Nur beim ersten Mal läuft das Anzünden
-     in voller Länge – ein Klick überspringt es. */
-  var TITLE_HAND = [['hearts-Q'], ['fluch', 'clubs'], ['spades-K'], ['diamonds-A'], ['hodl', 'red'], ['clubs-J'], ['tausch', 'wild']];
-
+  /* Titelbildschirm: die Gasse hinter dem Casino. Rechts lehnt die eigene Figur an der Wand, links brennt der
+     Schriftzug, entzündet von einem Streichholz. Nur beim ersten Mal läuft das Anzünden in voller Länge – ein Klick
+     überspringt es. Wer losspielt, lässt die Figur stehen: Die Kamera fährt die Gasse hinunter bis in die Hintertür. */
   screens.menu = function (game, root) {
     ZU.bg.set('menu');
     ZU.audio.music('menu');
@@ -652,24 +653,35 @@
     var intro = !game.titleSeen && !calm;
     game.titleSeen = true;
 
-    var scene = titleScene(calm), art = scene.el;
+    var scene = alleyScene(game, calm), art = scene.el;
     var logo = ZU.titleLogo('ZÜNDUNG');
+    var leaving = false;
 
-    var hand = h('div', 'title-hand');
-    TITLE_HAND.forEach(function (entry, i) {
-      var slot = h('div', 'hand-slot', [ZU.cardStatic(ZU.CARDS[entry[0]], { bind: entry[1] })]);
-      slot.style.setProperty('--a', ((i - (TITLE_HAND.length - 1) / 2) * 4.5) + 'deg');
-      slot.style.setProperty('--i', i);
-      slot.addEventListener('pointerenter', function () { ZU.audio.hover(); });
-      hand.appendChild(slot);
-    });
+    /* Aufbruch in den Run: Schriftzug und Knöpfe weichen, die Kamera fährt zur Hintertür, erst dann wechselt der Bildschirm. */
+    function depart(fn) {
+      if (leaving) return;
+      leaving = true;
+      if (calm) { fn(); return; }
+      screen.classList.add('depart');
+      logo.fan(1);
+      ZU.audio.match();
+      setTimeout(function () { ZU.audio.whoosh(); }, 420);
+      scene.depart();
+      setTimeout(fn, 1280);
+    }
+    function play(label, cls, fn) {
+      var b = btn(label, cls, fn);
+      b.addEventListener('pointerenter', function () { if (!leaving) scene.fig.setBase('smug'); });
+      b.addEventListener('pointerleave', function () { if (!leaving) scene.fig.setBase('idle'); });
+      return b;
+    }
 
     var buttons = h('div', 'menu-buttons');
-    if (saved) buttons.appendChild(btn('Weiterspielen', 'big ember', function () { game.continueRun(saved); }));
-    buttons.appendChild(btn('Neuer Run', 'big ' + (saved ? 'felt' : 'ember'), function () {
-      if (!saved) { game.go('casino'); return; }
+    if (saved) buttons.appendChild(play('Weiterspielen', 'big ember', function () { depart(function () { game.continueRun(saved); }); }));
+    buttons.appendChild(play('Neuer Run', 'big ' + (saved ? 'felt' : 'ember'), function () {
+      if (!saved) { depart(function () { game.go('casino'); }); return; }
       confirmBox('Neuen Run beginnen?', 'Der gespeicherte Run wird dabei überschrieben.', 'Neu beginnen').then(function (yes) {
-        if (yes) game.go('casino');
+        if (yes) depart(function () { game.go('casino'); });
       });
     }));
     buttons.appendChild(h('div', 'menu-row', [
@@ -683,11 +695,10 @@
     Array.prototype.forEach.call(buttons.children, function (child, i) { child.style.setProperty('--i', i); });
 
     var slot = accountSlot(), news = updateSlot();
-    var screen = h('div', 'screen menu title ' + (intro ? 'intro' : 'ready quick'), [
+    var screen = h('div', 'screen menu title alley ' + (intro ? 'intro' : 'ready quick'), [
       art,
       h('div', 'title-shade'),
       logo,
-      hand,
       buttons,
       slot,
       news,
@@ -699,7 +710,7 @@
       if (!screen.classList.contains('intro')) return;
       screen.classList.remove('intro');
       screen.classList.add('ready');
-      for (var i = 0; i < TITLE_HAND.length; i++) setTimeout(ZU.audio.deal, 140 + i * 70);
+      scene.fig.setMood('smug', 1500);
     }
     logo.onAblaze = ready;
     logo.ignite(!intro);
@@ -709,7 +720,7 @@
       ready();
     }
     screen.addEventListener('pointerdown', skip);
-    /* Parallaxe: Kulisse, Schriftzug und Hand verschieben sich leicht gegen die Maus. */
+    /* Parallaxe: Kulisse, Figur und Schriftzug verschieben sich leicht gegen die Maus. */
     screen.addEventListener('pointermove', function (e) {
       var r = screen.getBoundingClientRect();
       screen.style.setProperty('--mx', (((e.clientX - r.left) / r.width - 0.5) * 2).toFixed(3));
@@ -724,58 +735,51 @@
     return function () { slot._off(); news._off(); logo.destroy(); scene.stop(); };
   };
 
-  /* Titelkulisse aus Ebenen: Raum, die Herren und Damen der sechs Casinos, davor der Tisch.
-     Jede Figur ist ein Streifen aus drei Bildern (ruhig, Blinzeln, Grinsen) und lebt für sich:
-     Sie atmet (CSS), blinzelt in unregelmäßigen Abständen und grinst gelegentlich. */
-  var TITLE_CAST = [
-    // id, Mitte x, Unterkante y, Höhe, gespiegelt, Ebene – von außen nach innen, die mittlere sitzt jeweils weiter hinten
-    ['impresario', 108, 548, 372, false, 2],
-    ['house', 262, 520, 348, false, 1],
-    ['captain', 384, 552, 348, false, 3],
-    ['baroness', 896, 552, 348, true, 3],
-    ['prince', 1018, 520, 348, true, 1],
-    ['director', 1172, 548, 372, true, 2]
-  ];
-  ZU.TITLE_ART = ['title/room.png', 'title/table.png'].concat(TITLE_CAST.map(function (c) { return 'title/cast-' + c[0] + '.png'; }));
-  function titleScene(calm) {
-    var room = h('div', 'ts-layer ts-room'), cast = h('div', 'ts-layer ts-cast'), table = h('div', 'ts-layer ts-table');
-    room.style.backgroundImage = 'url(' + ZU.asset('title/room.png') + ')';
-    table.style.backgroundImage = 'url(' + ZU.asset('title/table.png') + ')';
-    var timers = [], dead = false;
-    TITLE_CAST.forEach(function (c, index) {
-      var height = c[3], width = Math.round(height * 440 / 480);
-      var img = h('i', 'ts-img');
-      img.style.backgroundImage = 'url(' + ZU.asset('title/cast-' + c[0] + '.png') + ')';
-      var fig = h('div', 'ts-fig' + (c[4] ? ' flip' : ''), [h('div', 'ts-breath', [img])]);
-      fig.style.cssText = 'left:' + (c[1] - width / 2) + 'px;top:' + (c[2] - height) + 'px;width:' + width + 'px;height:' + height + 'px;z-index:' + c[5] + ';';
-      fig.style.setProperty('--d', (-index * 0.9) + 's');
-      cast.appendChild(fig);
-      if (calm) return;
-      function frame(n) { img.style.backgroundPosition = (n * 50) + '% 0'; }
-      // Blinzeln: kurz, alle paar Sekunden, manchmal doppelt
-      (function blink() {
-        timers[index * 2] = setTimeout(function () {
-          if (dead) return;
-          frame(1);
-          setTimeout(function () { if (!dead && !fig._smug) frame(0); }, 130);
-          if (Math.random() < 0.2) setTimeout(function () { if (dead || fig._smug) return; frame(1); setTimeout(function () { if (!dead && !fig._smug) frame(0); }, 110); }, 300);
-          blink();
-        }, 1800 + Math.random() * 4200);
-      })();
-      // Grinsen: selten und für einen Moment, nie alle zugleich
-      (function smirk() {
-        timers[index * 2 + 1] = setTimeout(function () {
-          if (dead) return;
-          fig._smug = true;
-          frame(2);
-          setTimeout(function () { fig._smug = false; if (!dead) frame(0); }, 1400 + Math.random() * 1600);
-          smirk();
-        }, 5000 + index * 1300 + Math.random() * 12000);
-      })();
-    });
+  /* Titelkulisse: ein gemaltes Bild der Gasse (title/alley.png, 1600×900 für die Kamerafahrt), darüber Leben aus CSS –
+     Laterne und Neonschild flackern, aus dem Gully steigt Dampf, es regnet. Davor steht die eigene Figur in ganzer Länge
+     (ZU.avatar.full); ein Klick auf sie führt zu „Deine Figur“. */
+  ZU.TITLE_ART = ['title/alley.png'];
+  var rainTile = null;
+  function rainUrl() {
+    if (rainTile) return rainTile;
+    var c = document.createElement('canvas'), x = c.getContext('2d');
+    c.width = 256; c.height = 256;
+    x.strokeStyle = 'rgba(190,205,235,.5)';
+    x.lineWidth = 1;
+    for (var i = 0; i < 26; i++) {
+      var px = Math.random() * 256, py = Math.random() * 256, len = 10 + Math.random() * 16;
+      x.globalAlpha = 0.25 + Math.random() * 0.5;
+      x.beginPath(); x.moveTo(px, py); x.lineTo(px - len * 0.18, py + len); x.stroke();
+    }
+    return (rainTile = 'url(' + c.toDataURL() + ')');
+  }
+  function alleyScene(game, calm) {
+    var back = h('div', 'al-back');
+    back.style.backgroundImage = 'url(' + ZU.asset('title/alley.png') + ')';
+    var fig = ZU.avatar.full(ZU.avatar.clean(game.profile.avatar, ZU.Meta.get()), { light: true, calm: calm });
+    var hit = h('div', 'al-hit');
+    hit.addEventListener('click', function () { ZU.audio.click(); game.go('avatar'); });
+    hit.addEventListener('pointerenter', function () { ZU.audio.hover(); fig.setMood('smug', 1200); });
+    ZU.tip.bind(hit, 'Deine Figur – hier ziehst du sie um.');
+    var cam = h('div', 'al-cam', [
+      back,
+      h('div', 'al-lamp'),
+      h('div', 'al-neon'),
+      h('div', 'al-steam', [h('i'), h('i'), h('i')])
+    ]);
+    var rain = h('div', 'al-rain');
+    if (!calm) rain.style.backgroundImage = rainUrl();
+    var el = h('div', 'title-art alley', [
+      cam,
+      h('div', 'al-fig', [h('div', 'al-figshadow'), fig, hit]),
+      rain,
+      h('div', 'al-dark')
+    ]);
     return {
-      el: h('div', 'title-art', [room, cast, table]),
-      stop: function () { dead = true; timers.forEach(clearTimeout); }
+      el: el,
+      fig: fig,
+      depart: function () { fig.setMood('smug'); el.classList.add('go'); },
+      stop: function () {}
     };
   }
 
@@ -811,33 +815,122 @@
     return el;
   }
 
+  /* Was in einer Schachtel steckt, als Reihe kleiner Bilder: feste Karten (je Wert eine als Beispiel),
+     die zufällige Spezialkarte, Siegel, Kniffe und Trinkets. */
+  function starterContents(starter) {
+    var row = h('div', 'st-contents'), seenRank = {};
+    // Das Blatt selbst: ein Päckchen mit der Rückseite der Schachtel und der Zahl der normalen Karten
+    var pack = h('div', 'st-pack', [ZU.cardBack(starter.id), h('i', 'st-count', '×' + (starter.size || ZU.DECK_SIZE))]);
+    ZU.tip.bind(pack, '<b>' + starterSize(starter) + '</b><p>' + (starter.cards.some(function (id) { return !ZU.CARDS[id].special; }) ? 'Die gezeigten Karten sind sicher dabei, der Rest ist zufällig.' : starter.suits ? 'Alle Karten dieser Symbole.' : 'Zufällig aus allen 32 Karten.') + ' Alle tragen diese Rückseite.</p>');
+    row.appendChild(pack);
+    starter.cards.forEach(function (id) {
+      var def = ZU.CARDS[id];
+      if (!def.special) { if (seenRank[def.rank]) return; seenRank[def.rank] = true; }
+      row.appendChild(ZU.cardStatic(def, { cls: 'mini', bind: 'none' }));
+    });
+    if (starter.special) {
+      var any = h('div', 'st-any', '?');
+      ZU.tip.bind(any, '<b>Zufällige Spezialkarte</b><p>Eine gewöhnliche Spezialkarte aus deinem Bestand, an ein Symbol gebunden.</p>');
+      row.appendChild(any);
+    }
+    var seals = {};
+    (starter.seals || []).forEach(function (id) { seals[id] = (seals[id] || 0) + 1; });
+    Object.keys(seals).forEach(function (id) {
+      var el = ZU.sealEl(id);
+      if (seals[id] > 1) el.appendChild(h('i', 'st-count', '×' + seals[id]));
+      row.appendChild(el);
+    });
+    (starter.kniffe || []).forEach(function (k) { row.appendChild(ZU.kniffEl(k.id, k.level)); });
+    starter.trinkets.forEach(function (id) { row.appendChild(ZU.trinketEl(id)); });
+    (starter.perks || []).forEach(function (id) { row.appendChild(ZU.perkEl(id)); });
+    return row;
+  }
+  /* Kurzangabe zum Blatt: Zahl der normalen Karten und, wenn eingeschränkt, die Symbole. */
+  function starterSize(starter) {
+    var size = starter.size || ZU.DECK_SIZE;
+    return size + ' Karten' + (starter.suits ? ' · nur ' + starter.suits.map(function (suit) { return ZU.SUITS[suit].name; }).join(' und ') : '');
+  }
+
+  /* Schachtelwahl: links das Regal mit allen Schachteln, rechts der Schaukasten mit der gewählten –
+     die Schachtel groß, dahinter ein Fächer ihrer Kartenrückseiten, darunter Inhalt und Startwerte. */
   screens.starter = function (game, root) {
     ZU.bg.set('select');
-    var meta = ZU.Meta.get();
-    var row = h('div', 'boxes');
-    ZU.STARTERS.forEach(function (starter, i) {
-      var open = ZU.Meta.isUnlocked(meta, 'starter', starter.id);
-      var preview = h('div', 'box-preview');
-      // Höchstens zwei Karten als Kostprobe; der Text darunter nennt den Rest.
-      starter.cards.slice(0, 2).forEach(function (id) { preview.appendChild(ZU.cardStatic(ZU.CARDS[id], { cls: 'mini', bind: 'none' })); });
-      starter.trinkets.forEach(function (id) { preview.appendChild(ZU.trinketEl(id)); });
-      (starter.perks || []).forEach(function (id) { preview.appendChild(ZU.perkEl(id)); });
-      if (!starter.cards.length) preview.insertBefore(h('div', 'box-plain', ZU.DECK_SIZE + ' × ?'), preview.firstChild);
-      var box = h('div', 'matchbox' + (open ? '' : ' locked'), [
-        h('div', 'box-top', [h('div', 'box-name', starter.name), h('div', 'box-strip')]),
-        preview,
-        h('p', null, starter.text),
-        h('div', 'box-money', [ZU.iconEl('coin', 'coin'), h('b', null, String(starter.money + ZU.Meta.runOptions(meta).startgeld)), h('span', 'unit', 'Mark')]),
-        open ? btn('Anzünden', 'ember', function () {
+    var meta = ZU.Meta.get(), options = ZU.Meta.runOptions(meta);
+    function isOpen(id) { return ZU.Meta.isUnlocked(meta, 'starter', id); }
+    var wanted = game.starterPick || game.profile.deck;
+    var pick = ZU.STARTER[wanted] && isOpen(wanted) ? wanted : ZU.STARTER[game.starterPick] ? game.starterPick : 'classic';
+    var tiles = {}, show = h('div', 'st-show'), started = false;
+
+    function renderShow(animate) {
+      var starter = ZU.STARTER[pick], open = isOpen(pick), found = open || ZU.Meta.isFound(meta, 'starter', pick);
+      var lives = Math.max(1, options.maxLives + (starter.lives || 0));
+      var fan = h('div', 'st-fan', [ZU.cardBack(pick), ZU.cardBack(pick), ZU.cardBack(pick)]);
+      var box = ZU.boxEl(pick, 'st-bigbox');
+      var matches = h('div', 'lives');
+      for (var l = 0; l < lives; l++) matches.appendChild(ZU.iconEl('match', 'match'));
+      ZU.tip.bind(matches, '<b>' + lives + ' Streichhölzer</b><p>Jede Niederlage kostet eines. Ist das letzte abgebrannt, endet der Run.</p>');
+      var text = h('p', 'st-text');
+      text.innerHTML = starter.text;
+      var action;
+      if (open) {
+        action = btn('Anzünden', 'ember big st-go', function () {
+          if (started) return; // der Schleier braucht einen Moment: kein zweiter Run durch Doppelklick
+          started = true;
           ZU.audio.match();
           var p = ZU.stagePos(box);
-          fx.burst(p.x, p.y - 120, { n: 40, speed: 380, life: 1.2 });
-          game.startRun(starter.id);
-        }) : h('div', 'box-locked', [ZU.iconEl('lock', 'lockico'), 'Im Hinterzimmer'])
-      ]);
-      box.style.setProperty('--box', starter.color);
-      box.style.animationDelay = (i * 90) + 'ms';
-      row.appendChild(box);
+          fx.burst(p.x, p.y, { n: 46, speed: 400, life: 1.2 });
+          game.starterPick = null;
+          game.startRun(pick);
+        });
+      } else {
+        var hint = ZU.Meta.hint(meta, 'starter', pick), price = ZU.Meta.cost('starter', pick);
+        action = h('div', 'st-locked', [
+          h('div', 'st-lockline', [ZU.iconEl('lock', 'lockico'), found ? 'Entdeckt · im Hinterzimmer zu haben' : 'Noch nicht entdeckt']),
+          found ? h('div', 'st-lockrow', [
+            h('div', 'br-price' + (meta.ash < price ? ' poor' : ''), [ZU.iconEl('ash', 'ashico'), h('span', null, String(price))]),
+            btn('Zum Hinterzimmer', 'small', function () { game.backroomTab = 'unlock'; game.backroomSub = 'starter'; game.backroomPick = 'starter:' + pick; game.go('backroom'); })
+          ]) : h('p', 'st-hint', hint ? 'Hinweis: ' + hint : 'Wie sie sich zeigt, weiß noch niemand.')
+        ]);
+      }
+      show.innerHTML = '';
+      show.className = 'st-show' + (open ? '' : ' locked') + (animate ? ' swap' : '');
+      show.style.setProperty('--box', starter.color);
+      [
+        h('div', 'st-stage', [h('div', 'st-glow'), fan, box]),
+        h('div', 'st-name', starter.name),
+        h('div', 'st-size', starterSize(starter)),
+        text,
+        starterContents(starter),
+        h('div', 'st-stats', [
+          h('div', 'box-money', [ZU.iconEl('coin', 'coin'), h('b', null, String(starter.money + options.startgeld)), h('span', 'unit', 'Mark')]),
+          matches
+        ]),
+        action
+      ].forEach(function (el) { show.appendChild(el); });
+      Object.keys(tiles).forEach(function (id) { tiles[id].classList.toggle('sel', id === pick); });
+    }
+
+    // Regal: vier Schachteln je Brett, in Spielreihenfolge.
+    var shelf = h('div', 'st-shelf'), board = null;
+    ZU.STARTERS.forEach(function (starter, i) {
+      var open = isOpen(starter.id), found = open || ZU.Meta.isFound(meta, 'starter', starter.id);
+      var tile = h('button', 'st-tile' + (open ? '' : found ? ' closed' : ' hidden'), [
+        ZU.boxEl(starter.id, 'st-box'),
+        open ? null : h('i', 'st-lock', [ZU.iconEl('lock', 'lockico')]),
+        found && !open ? h('i', 'newtag', 'Entdeckt') : null,
+        h('span', 'st-plate', starter.name)
+      ], { type: 'button' });
+      tile.style.setProperty('--box', starter.color);
+      tile.style.animationDelay = (i * 35) + 'ms';
+      tile.addEventListener('click', function () {
+        if (pick === starter.id) return;
+        pick = game.starterPick = starter.id;
+        ZU.audio.select(true);
+        renderShow(true);
+      });
+      tiles[starter.id] = tile;
+      if (i % 4 === 0) { board = h('div', 'st-board'); shelf.appendChild(board); }
+      board.appendChild(tile);
     });
 
     // Das Casino ist schon gewählt; hier steht nur noch, wohin es geht.
@@ -851,12 +944,26 @@
       btn('Anderes Casino', 'small', function () { game.go('casino'); })
     ]);
 
+    // Pfeiltasten wandern durchs Regal, Enter zündet an.
+    function keys(ev) {
+      if (ZU.modal.isOpen()) return;
+      var index = ZU.STARTERS.indexOf(ZU.STARTER[pick]);
+      var step = ev.code === 'ArrowLeft' ? -1 : ev.code === 'ArrowRight' ? 1 : ev.code === 'ArrowUp' ? -4 : ev.code === 'ArrowDown' ? 4 : 0;
+      if (step && ZU.STARTERS[index + step]) { ev.preventDefault(); tiles[ZU.STARTERS[index + step].id].click(); }
+      // Liegt der Fokus schon auf einem Knopf, löst Enter den selbst aus.
+      var focus = document.activeElement;
+      if (ev.code === 'Enter' && !(focus && focus.classList && focus.classList.contains('btn'))) { var go = show.querySelector('.st-go'); if (go) go.click(); }
+    }
+    window.addEventListener('keydown', keys);
+
+    renderShow(false);
     root.appendChild(h('div', 'screen starter', [
+      btn('Zurück', 'felt st-back', function () { game.go('casino'); }),
       h('h1', null, 'Wähle deine Schachtel'),
       stakeRow,
-      row,
-      btn('Zurück', 'felt back', function () { game.go('casino'); })
+      h('div', 'st-body', [shelf, show])
     ]));
+    return function () { window.removeEventListener('keydown', keys); };
   };
 
   /* ---------- Casino-Wahl: vor jedem Run ----------
@@ -960,10 +1067,8 @@
     if (kind === 'seal') return { visual: ZU.sealEl(id), name: ZU.SEALS[id].name, kind: 'Veredelung', text: ZU.SEALS[id].text };
     if (kind === 'upgrade') return { visual: ZU.upgradeEl(id), name: ZU.Meta.UPGRADES[id].name, kind: 'Upgrade', text: ZU.Meta.UPGRADES[id].text };
     if (kind === 'casino') return { visual: h('div', 'un-badge', ZU.roman(Number(id) + 1)), name: ZU.CASINOS[id].name, kind: 'Casino', text: ZU.CASINOS[id].sub + '. ' + casinoFacts(ZU.CASINOS[id]) + '.', open: true };
-    var starter = ZU.STARTERS.filter(function (s) { return s.id === id; })[0];
-    var box = h('div', 'br-box');
-    box.style.background = starter.color;
-    return { visual: box, name: starter.name, kind: 'Schachtel', text: starter.text };
+    var starter = ZU.STARTER[id];
+    return { visual: ZU.boxEl(id, 'br-box'), name: starter.name, kind: 'Schachtel', text: starter.text };
   }
   function unlockedPopup(game) {
     var profile = ZU.Profile.load(), keys = unlockedKeys(ZU.Meta.get());
@@ -1059,7 +1164,7 @@
     /* Bild eines Stücks ohne eigenen Tooltip – was es tut, steht im Schaukasten. */
     function visual(kind, id) {
       var el;
-      if (kind === 'starter') { el = h('div', 'br-box'); el.style.background = info(kind, id).color; }
+      if (kind === 'starter') el = ZU.boxEl(id, 'br-box');
       else if (kind === 'trinket') el = ZU.trinketEl(id);
       else if (kind === 'seal') el = ZU.sealEl(id);
       else if (kind === 'upgrade') el = ZU.upgradeEl(id);
