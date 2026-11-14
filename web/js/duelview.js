@@ -155,11 +155,12 @@
     this.stageDim = h('div', 'stagedim');
 
     // Feuer: Flammen über der Glutanzeige und – ab der halben Strecke zum Glutziel – am unteren Tischrand.
-    this.boardFire = ZU.fire(62, 30, 4, 'board-fire');
+    // Die Flammen über der Glutanzeige hängen an der Anzeige selbst, damit sie immer bündig auf ihrer Oberkante sitzen.
+    this.boardFire = ZU.fire(48, 30, 4, 'board-fire');
+    this.board.appendChild(this.boardFire.el);
     this.tableFire = ZU.fire(194, 44, 4);
     this.root.appendChild(h('div', 'tablefelt'));
     this.root.appendChild(h('div', 'tablefire', [this.tableFire.el]));
-    this.root.appendChild(this.boardFire.el);
     this.root.appendChild(left);
     this.root.appendChild(right);
     this.root.appendChild(this.board);
