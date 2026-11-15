@@ -2,13 +2,13 @@
 (function (ZU) {
   'use strict';
 
-  ZU.VERSION = '2.13.1';
+  ZU.VERSION = '2.14.0';
   /* Stand der Casino-Liste. Ändert sich die Reihenfolge, rechnen js/meta.js und js/run.js gespeicherte Stände um. */
   ZU.CASINO_VERSION = 2;
   ZU.CASINO_REMAP = [0, 1, 3, 5, 6, 7]; // alter Index (sechs Häuser) → neuer Index (acht Häuser) // im Hauptmenü unten rechts angezeigt
   /* Build-Kennung: wird an alle Asset-Adressen gehängt, damit Browser und CDN nach einem Update frische
      Dateien holen. Nicht von Hand ändern: web/tools/stamp_version.py setzt den Wert. */
-  ZU.BUILD = '648a440ca0';
+  ZU.BUILD = 'b5ec65fdbe';
   ZU.asset = function (path) { return 'assets/' + path + '?v=' + ZU.BUILD; };
 
   ZU.HAND_SIZE = 7;
@@ -212,7 +212,9 @@
 
   /* ---------- Veredelungen (Esmes Nebenzimmer) ----------
      Ein Siegel wertet eine normale Karte für den ganzen Run auf; ein Makel ist der kleine Haken, mit dem
-     Esme ein Paket billiger macht. "value" bestimmt den Preis, "not" nennt Makel, die das Siegel aufhöben. */
+     Esme ein Paket billiger macht. "value" bestimmt den Preis, "not" nennt Makel, die das Siegel aufhöben.
+     Eine Karte trägt mehrere Siegel (card.seals) und Makel (card.flaws) zugleich, bis zu SEAL_SLOTS Siegel, jedes
+     nur einmal – und nie ein Paar, das sich in die Quere kommt: kein Makel neben dem Siegel, das er aufhöbe. */
   ZU.SEALS = {
     glut: { name: 'Glutsiegel', value: 5, weight: 10, text: 'Bringt doppelte Glut.', not: ['matt'] },
     zuend: { name: 'Zündkopf', value: 4, weight: 10, text: 'Die Kette steigt um 1 zusätzlich.', not: ['stumpf'] },
@@ -231,6 +233,24 @@
     klette: { name: 'Klette', text: 'Du ziehst 1 Karte, wenn du sie spielst.' }
   };
   ZU.FLAW_IDS = Object.keys(ZU.FLAWS);
+  ZU.SEAL_SLOTS = 3;
+  /* Siegel bzw. Makel einer Karte als Liste (kennt auch Stände von früher mit einem einzelnen seal/flaw). */
+  ZU.sealsOf = function (mark) {
+    if (!mark) return [];
+    return (Array.isArray(mark.seals) ? mark.seals : mark.seal ? [mark.seal] : []).filter(function (id, i, all) { return ZU.SEALS[id] && all.indexOf(id) === i; });
+  };
+  ZU.flawsOf = function (mark) {
+    if (!mark) return [];
+    return (Array.isArray(mark.flaws) ? mark.flaws : mark.flaw ? [mark.flaw] : []).filter(function (id, i, all) { return ZU.FLAWS[id] && all.indexOf(id) === i; });
+  };
+  /* Passt ein Siegel (samt seinem Makel) noch auf die Karte? item: { seal, flaw }. */
+  ZU.sealFits = function (mark, item) {
+    var seals = ZU.sealsOf(mark), flaws = ZU.flawsOf(mark), spec = ZU.SEALS[item.seal];
+    if (!spec || seals.length >= ZU.SEAL_SLOTS || seals.indexOf(item.seal) >= 0) return false;
+    if (flaws.some(function (flaw) { return spec.not.indexOf(flaw) >= 0; })) return false; // ein Makel der Karte höbe das neue Siegel auf
+    if (item.flaw && seals.some(function (id) { return ZU.SEALS[id].not.indexOf(item.flaw) >= 0; })) return false; // der neue Makel höbe ein Siegel der Karte auf
+    return true;
+  };
   /* Preisregeln der Pakete: Mark je Wertpunkt, Nachlass für einen Makel, Mengenrabatt. */
   ZU.SEAL_PRICE = { point: 2, flaw: 0.6, double: 0.85, bag: 0.45 };
 

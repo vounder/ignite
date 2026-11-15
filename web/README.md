@@ -158,7 +158,10 @@ zugehörigen Elemente blenden sich selbst aus.
   Sie verkauft Pakete mit **Siegeln** für normale Karten (Glutsiegel, Zündkopf,
   Goldrand, Widerhaken, Anker, Bumerang, Irrlicht): Einzelsiegel und Doppelpack
   für Karten deiner Wahl, die Wundertüte für drei zufällige. Eine Karte trägt
-  höchstens ein Siegel; ein neues ersetzt das alte. Günstige Pakete tragen oft
+  bis zu drei Siegel zugleich (`card.seals`, `ZU.SEAL_SLOTS`), jedes nur einmal;
+  ein neues kommt zu den vorhandenen hinzu, und alle wirken zusammen. Was sich
+  in die Quere käme, lässt Esme nicht zu (`ZU.sealFits`): kein Makel neben dem
+  Siegel, das er aufhöbe. Makel sammeln sich ebenso (`card.flaws`). Günstige Pakete tragen oft
   einen kleinen **Makel** – früh im Casino häufig, gegen Ende selten. Der Preis
   folgt dem Wert der Siegel (`ZU.SEALS`, `ZU.FLAWS`, `ZU.SEAL_PRICE` in
   `js/data.js`); mindestens ein Paket ist makellos, und wer sich nichts leisten

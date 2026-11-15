@@ -584,8 +584,8 @@
       var rarity = ZU.RARITY[def.rarity];
       if (!def.special) {
         var extra = '';
-        if (mark && mark.seal && ZU.SEALS[mark.seal]) extra += '<p><b>' + ZU.SEALS[mark.seal].name + ':</b> ' + ZU.SEALS[mark.seal].text + '</p>';
-        if (mark && mark.flaw && ZU.FLAWS[mark.flaw]) extra += '<p class="dim"><b>Makel ' + ZU.FLAWS[mark.flaw].name + ':</b> ' + ZU.FLAWS[mark.flaw].text + '</p>';
+        ZU.sealsOf(mark).forEach(function (id) { extra += '<p><b>' + ZU.SEALS[id].name + ':</b> ' + ZU.SEALS[id].text + '</p>'; });
+        ZU.flawsOf(mark).forEach(function (id) { extra += '<p class="dim"><b>Makel ' + ZU.FLAWS[id].name + ':</b> ' + ZU.FLAWS[id].text + '</p>'; });
         return '<b>' + def.name + '</b><i class="rar common">Glut ' + def.base + '</i>' + (def.text ? '<p>' + def.text + '</p>' : '') + extra;
       }
       var bound = bind && bind !== 'none';

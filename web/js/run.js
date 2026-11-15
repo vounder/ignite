@@ -49,7 +49,7 @@
     if (starter.seals) {
       // Veredelte Karten der Schachtel: je Siegel eine andere zufällige Karte
       var plain = run.rng.shuffle(state.collection.slice());
-      starter.seals.forEach(function (seal) { var card = plain.pop(); if (card && ZU.SEALS[seal]) card.seal = seal; });
+      starter.seals.forEach(function (seal) { var card = plain.pop(); if (card && ZU.SEALS[seal]) card.seals = [seal]; });
     }
     starter.cards.filter(function (def) { return ZU.CARDS[def].special; }).forEach(function (def) { run._add(def, run.rng.pick(ZU.SUIT_ORDER)); });
     if (starter.special) {
@@ -202,11 +202,11 @@
       kniffe: this.kniffe().map(function (k) { return { id: k.id, level: k.level }; }),
       douse: this.douse(e),
       grow: { burned: this.s.burnCount || 0, bosses: this.s.bossesBeaten || 0, money: this.s.money, trinkets: this.s.trinkets.length, lastChain: this.s.lastChain || 0,
-        deck: this.s.collection.length, sealed: this.s.collection.filter(function (c) { return c.seal; }).length, act: this.s.act,
+        deck: this.s.collection.length, sealed: this.s.collection.filter(function (c) { return ZU.sealsOf(c).length > 0; }).length, act: this.s.act,
         wins: this.s.stats.wins, streak: this.s.streak || 0, lastLost: !!this.s.lastLost, burnt: this.s.burntCount || 0 },
       perks: this.s.perks || [],
       specialPool: this.meta().specials,
-      trinkets: this.s.trinkets, collection: this.s.collection.map(function (c) { return { id: c.id, def: c.def, bind: c.bind, seal: c.seal, flaw: c.flaw }; }),
+      trinkets: this.s.trinkets, collection: this.s.collection.map(function (c) { return { id: c.id, def: c.def, bind: c.bind, seals: ZU.sealsOf(c), flaws: ZU.flawsOf(c) }; }),
       nextId: this.s.nextId
     });
   };
@@ -601,9 +601,14 @@
     }
     esme.packs.forEach(function (pack) { pack.price = self._packPrice(pack.kind, pack.items); });
   };
-  /* Normale Karten, die sich veredeln lassen. */
-  Run.prototype.sealable = function () {
-    return this.s.collection.filter(function (c) { return !ZU.CARDS[c.def].special; });
+  /* Normale Karten, die sich veredeln lassen. Eine Karte trägt bis zu ZU.SEAL_SLOTS Siegel, jedes nur einmal, und nie
+     eines neben einem Makel, der es aufhöbe (ZU.sealFits). pack: nur Karten, auf die jedes Stück des Pakets passt. */
+  Run.prototype.sealable = function (pack) {
+    var items = pack ? pack.items : null;
+    return this.s.collection.filter(function (c) {
+      if (ZU.CARDS[c.def].special) return false;
+      return items ? items.every(function (item) { return ZU.sealFits(c, item); }) : ZU.sealsOf(c).length < ZU.SEAL_SLOTS;
+    });
   };
   /* Neu auslegen kostet – außer du könntest dir sonst gar nichts leisten: Dann mischt Esme einmal gratis. */
   Run.prototype.esmeRerollPrice = function () {
@@ -621,25 +626,36 @@
     this.save();
   };
   /* Kauft ein Paket. cardIds: die gewählten Karten (Einzelsiegel 1, Doppelpack 2); die Wundertüte wählt selbst.
-     Liefert, welche Karte welches Siegel bekommen hat. Ein neues Siegel ersetzt ein altes samt Makel. */
+     Liefert, welche Karte welches Siegel bekommen hat. Das neue Siegel kommt zu denen hinzu, die die Karte schon trägt. */
   Run.prototype.buyPack = function (index, cardIds) {
     var s = this.s, pack = s.shop.esme.packs[index], self = this;
     if (!pack || pack.sold) throw new Error('Nicht verfügbar.');
-    var pool = this.sealable(), targets;
+    var pool = this.sealable(), targets, items = pack.items;
     if (pack.kind === 'bag') {
-      targets = this.rng.shuffle(pool.slice()).slice(0, pack.items.length);
+      // Jedes Stück sucht sich eine eigene Karte, auf die es passt; findet eines keine, verfällt es.
+      var free = this.rng.shuffle(pool.slice());
+      targets = []; items = [];
+      pack.items.forEach(function (item) {
+        for (var i = 0; i < free.length; i++) {
+          if (ZU.sealFits(free[i], item)) { targets.push(free.splice(i, 1)[0]); items.push(item); return; }
+        }
+      });
     } else {
       targets = (cardIds || []).map(function (id) { return pool.filter(function (c) { return c.id === id; })[0]; });
       if (targets.length !== pack.items.length || targets.some(function (c) { return !c; }) ||
         targets.some(function (c, i) { return targets.indexOf(c) !== i; })) throw new Error('Wähle ' + pack.items.length + ' verschiedene normale Karten.');
+      if (targets.some(function (c, i) { return !ZU.sealFits(c, items[i]); })) throw new Error('Das Siegel passt nicht auf diese Karte.');
     }
     if (!targets.length) throw new Error('Keine Karte zum Veredeln.');
     this._pay(pack.price);
     pack.sold = true;
     var result = targets.map(function (card, i) {
-      var item = pack.items[i];
-      card.seal = item.seal;
-      if (item.flaw) card.flaw = item.flaw; else delete card.flaw;
+      var item = items[i];
+      card.seals = ZU.sealsOf(card).concat([item.seal]);
+      card.flaws = ZU.flawsOf(card).concat(item.flaw && ZU.flawsOf(card).indexOf(item.flaw) < 0 ? [item.flaw] : []);
+      delete card.seal;
+      delete card.flaw;
+      if (!card.flaws.length) delete card.flaws;
       return { id: card.id, def: card.def, seal: item.seal, flaw: item.flaw || null };
     });
     ZU.Meta.note({ sealed: result.length });
@@ -839,6 +855,15 @@
         state.meta.cv = ZU.CASINO_VERSION;
       }
       if (state.shop && !state.shop.specials) state.shop.specials = []; // Spielstände vor dem geteilten Laden
+      // Spielstände aus der Zeit mit einem Siegel und einem Makel je Karte: Beide werden zu Listen.
+      state.collection.forEach(function (card) {
+        if (card.seal || card.seals) card.seals = ZU.sealsOf(card);
+        if (card.flaw || card.flaws) card.flaws = ZU.flawsOf(card);
+        delete card.seal;
+        delete card.flaw;
+        if (card.seals && !card.seals.length) delete card.seals;
+        if (card.flaws && !card.flaws.length) delete card.flaws;
+      });
       // Spielstände vor den Casinos: Der Einsatz wird zur passenden Hausordnung, alles andere bleibt, wie der Run begonnen hat.
       if (state.meta && !state.meta.rules) {
         state.meta.rules = ['last-call', 'sober', 'markup', 'cover', 'house-edge'].slice(0, state.meta.stake || 0);

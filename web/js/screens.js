@@ -89,7 +89,7 @@
       }
       grid.style.zoom = zoom.toFixed(2);
       cards.forEach(function (card) {
-        var el = ZU.cardStatic(ZU.CARDS[card.def], { cls: burn ? 'clickable burnable' : '', bind: card.bind, seal: card.seal, flaw: card.flaw });
+        var el = ZU.cardStatic(ZU.CARDS[card.def], { cls: burn ? 'clickable burnable' : '', bind: card.bind, seals: ZU.sealsOf(card), flaws: ZU.flawsOf(card) });
         if (burn) el.addEventListener('click', function () {
           if (done || el._burning) return;
           el._burning = true;
@@ -119,13 +119,15 @@
   }
   ZU.deckModal = deckModal;
 
-  /* Lässt "count" normale Karten aus dem Deck wählen (Esmes Pakete). Liefert die Karten-IDs oder null. */
-  function pickCards(game, count, title, text) {
+  /* Lässt "count" normale Karten aus dem Deck wählen (Esmes Pakete). Liefert die Karten-IDs oder null.
+     pack: Karten, auf die dessen Siegel nicht (mehr) passen, liegen abgedunkelt dabei und lassen sich nicht wählen. */
+  function pickCards(game, count, title, text, pack) {
     return new Promise(function (resolve) {
       var run = game.run, done = false, entry, chosen = [];
       function finish(value) { if (done) return; done = true; ZU.modal.close(entry); resolve(value); }
       var grid = h('div', 'deckgrid');
       var cards = sortedCollection(run).filter(function (card) { return !ZU.CARDS[card.def].special; });
+      var fitting = pack ? run.sealable(pack) : cards;
       var zoom = 1;
       for (; zoom > 0.42; zoom -= 0.04) {
         var perRow = Math.max(1, Math.floor((920 + 12 * zoom) / ((104 + 12) * zoom)));
@@ -135,8 +137,11 @@
       var ok = btn(count > 1 ? 'Veredeln (0/' + count + ')' : 'Veredeln', 'ember', function () { finish(chosen.slice()); });
       ok.disabled = true;
       cards.forEach(function (card) {
-        var el = ZU.cardStatic(ZU.CARDS[card.def], { cls: 'clickable', bind: card.bind, seal: card.seal, flaw: card.flaw });
+        var el = ZU.cardStatic(ZU.CARDS[card.def], { cls: 'clickable', bind: card.bind, seals: ZU.sealsOf(card), flaws: ZU.flawsOf(card) });
+        var fits = fitting.indexOf(card) >= 0;
+        if (!fits) el.classList.add('nofit');
         el.addEventListener('click', function () {
+          if (!fits) { ZU.audio.error(); fx.punch(el, 'shake'); return; }
           var at = chosen.indexOf(card.id);
           if (at >= 0) chosen.splice(at, 1);
           else { if (chosen.length >= count) { var first = chosen.shift(); grid.querySelector('[data-card="' + first + '"]').classList.remove('picked'); } chosen.push(card.id); }
@@ -182,7 +187,7 @@
           '<p>Jeder Akt hat drei Tische: Gegner, Elite, Boss. Verlierst du, kostet das ein Streichholz und es geht am selben Tisch von vorn los. Dazwischen wartet <b>Manfreds Laden</b> mit Karten, Trinkets und Diensten.</p>' +
           '<p><b>Überspringen:</b> Den ersten Tisch und die Elite kannst du auslassen. Dann gibt es kein Duell, keine Prämie, keine Asche und keinen Laden – dafür wählst du 1 von 3 Spezialkarten (erster Tisch) oder 1 von 3 Trinkets (Elite). Der Boss muss fallen; er bringt ein Streichholz zurück.</p>' +
           '<p> Das erste <b>Casino</b> hat drei Akte; wer es ausräumt, öffnet das nächste – größer, härter, mit eigener Hausordnung und mehr Asche.</p>' +
-          '<p>Im Nebenzimmer des Ladens <b>veredelt Esme</b> normale Karten: Ein Siegel macht eine Karte für den ganzen Run stärker. Günstige Pakete haben oft einen kleinen Makel.</p>' +
+          '<p>Im Nebenzimmer des Ladens <b>veredelt Esme</b> normale Karten: Ein Siegel macht eine Karte für den ganzen Run stärker; eine Karte kann bis zu drei verschiedene tragen. Günstige Pakete haben oft einen kleinen Makel.</p>' +
           '<p><b>Trinkets</b> sind unbegrenzt, werden aber mit jedem weiteren teurer. <b>Privilegien</b> gelten den ganzen Run; Manfred bietet je Akt genau eines an.</p>' +
           '<p>Du spielst mit deinem eigenen <b>Deck</b>: Zu Beginn jedes Duells wird es gemischt, 7 Karten kommen auf die Hand, der Rest ist dein Nachziehstapel. Der Gegner zieht von seinem eigenen Stapel.</p>' +
           '<p>Eine Niederlage kostet ein <b>Streichholz</b>. Sind alle abgebrannt, endet der Run.</p>' +
@@ -1943,6 +1948,7 @@
     greet: ['Setz dich. Die Karten haben schon von dir gesprochen. Billig wird es nicht.', 'Ah, Kundschaft. Die Zukunft kostet – die Vergangenheit hast du ja schon bezahlt.', 'Ich sehe … Geld. Deins. Bald meins.', 'Hand aufs Tuch, Mark auf den Tisch.'],
     buy: ['Die Karten danken. Ich auch.', 'Ein kluger Kauf. Sagen die Sterne. Und meine Kasse.', 'So. Das hält bis zum Jüngsten Tag – oder bis du sie verbrennst.'],
     poor: ['Ohne Mark schweigen die Karten.', 'Die Zukunft gibt keinen Kredit.', 'Komm wieder, wenn dein Beutel klimpert.'],
+    full: ['Deine Karten tragen schon, was dieses Paket bringt.', 'Darauf hält kein weiteres Siegel.', 'Dafür ist auf deinen Karten kein Platz mehr.'],
     reroll: ['Neu gemischt. Das Schicksal ist heute flexibel.', 'Andere Karten, anderer Preis. Fürs Mischen.'],
     pity: ['Du hast ja gar nichts. Na schön – einmal mische ich umsonst. Erzähl es keinem.'],
     bag: ['Die Wundertüte! Ich sehe … Überraschungen.', 'Augen zu. Die Karten suchen sich selbst aus.'],
@@ -2309,7 +2315,7 @@
       result.forEach(function (r) {
         var card = s.collection.filter(function (c) { return c.id === r.id; })[0];
         list.appendChild(h('div', 'esme-got', [
-          ZU.cardStatic(ZU.CARDS[r.def], { cls: bag ? '' : 'mini2', seal: card.seal, flaw: card.flaw }),
+          ZU.cardStatic(ZU.CARDS[r.def], { cls: bag ? '' : 'mini2', seals: ZU.sealsOf(card), flaws: ZU.flawsOf(card) }),
           h('div', 'esme-gotname', ZU.SEALS[r.seal].name + (r.flaw ? ' · Makel ' + ZU.FLAWS[r.flaw].name : ''))
         ]));
       });
@@ -2350,7 +2356,10 @@
           var poorNow = s.money < pack.price;
           var buy = btn([ZU.iconEl('coin', 'coin'), h('span', null, String(pack.price))], 'price gold' + (poorNow ? ' poor' : ''), function () {
             if (s.money < pack.price) { ZU.audio.error(); fx.punch(buy, 'shake'); say('poor', 'annoyed'); return; }
-            if (run.sealable().length < pack.items.length) { ZU.audio.error(); fx.punch(buy, 'shake'); return; }
+            // Es braucht Karten, auf die die Siegel noch passen (die Wundertüte kommt mit einer einzigen aus).
+            var room = pack.kind === 'bag' ? pack.items.some(function (item) { return run.sealable({ items: [item] }).length > 0; })
+              : run.sealable(pack).length >= pack.items.length;
+            if (!room) { ZU.audio.error(); fx.punch(buy, 'shake'); say('full', 'annoyed'); return; }
             var finish = function (ids) {
               var result = run.buyPack(index, ids);
               ZU.audio.coin(4);
@@ -2365,7 +2374,7 @@
             var n = pack.items.length;
             pickCards(game, n, n > 1 ? 'Welche zwei Karten?' : 'Welche Karte?',
               (n > 1 ? 'Die erste gewählte Karte bekommt ' + ZU.SEALS[pack.items[0].seal].name + ', die zweite ' + ZU.SEALS[pack.items[1].seal].name + '. '
-                : 'Sie bekommt ' + ZU.SEALS[pack.items[0].seal].name + '. ') + 'Ein vorhandenes Siegel wird ersetzt.').then(function (ids) { if (ids) finish(ids); });
+                : 'Sie bekommt ' + ZU.SEALS[pack.items[0].seal].name + '. ') + 'Was die Karte schon trägt, bleibt: bis zu ' + ZU.SEAL_SLOTS + ' Siegel, jedes nur einmal.', pack).then(function (ids) { if (ids) finish(ids); });
           });
           tile.appendChild(buy);
         }

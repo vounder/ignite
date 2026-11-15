@@ -98,6 +98,9 @@
   Duel.prototype.rule = function (id) { return this.rules.indexOf(id) >= 0; };
   Duel.prototype.chainFloor = function () { return this.has('fuse') ? 2 : 1; };
   Duel.prototype.def = function (id) { return ZU.CARDS[this.cards[id].def]; };
+  /* Trägt die Karte dieses Siegel bzw. diesen Makel? */
+  Duel.prototype.sealed = function (id, seal) { return (this.cards[id].seals || []).indexOf(seal) >= 0; };
+  Duel.prototype.flawed = function (id, flaw) { return (this.cards[id].flaws || []).indexOf(flaw) >= 0; };
   Duel.prototype.top = function () { return this.pile[this.pile.length - 1]; };
 
   Duel.prototype._register = function (defId, owner, persistent, id, bind) {
@@ -115,8 +118,8 @@
     var owned = this.collection.map(function (c) {
       var cid = self._register(c.def, 'player', true, c.id, c.bind);
       // Veredelung der Karte: Siegel und Makel wirken nur, wenn der Spieler sie selbst ausspielt.
-      if (c.seal) self.cards[cid].seal = c.seal;
-      if (c.flaw) self.cards[cid].flaw = c.flaw;
+      self.cards[cid].seals = ZU.sealsOf(c);
+      self.cards[cid].flaws = ZU.flawsOf(c);
       return cid;
     });
     rng.shuffle(owned);
@@ -125,9 +128,9 @@
       owned = owned.filter(function (id) { return self.def(id).special; }).concat(owned.filter(function (id) { return !self.def(id).special; }));
     }
     // Anker-Karten wandern nach vorn (sichere Starthand), Nachzügler nach hinten.
-    owned = owned.filter(function (id) { return self.cards[id].seal === 'anker'; })
-      .concat(owned.filter(function (id) { return self.cards[id].seal !== 'anker' && self.cards[id].flaw !== 'spaet'; }))
-      .concat(owned.filter(function (id) { return self.cards[id].seal !== 'anker' && self.cards[id].flaw === 'spaet'; }));
+    owned = owned.filter(function (id) { return self.sealed(id, 'anker'); })
+      .concat(owned.filter(function (id) { return !self.sealed(id, 'anker') && !self.flawed(id, 'spaet'); }))
+      .concat(owned.filter(function (id) { return !self.sealed(id, 'anker') && self.flawed(id, 'spaet'); }));
     var handSize = ZU.HAND_SIZE - (this.has('schmale-hand') ? 1 : 0);
     var opening = owned.slice(0, handSize);
     var rest = owned.slice(handSize);
@@ -205,7 +208,7 @@
       ev.push({ t: 'passive', id: 'upbeat' });
       ev.push(this._statusEvent());
     }
-    var anchored = this.hand.player.filter(function (cid) { return self.cards[cid].seal === 'anker'; });
+    var anchored = this.hand.player.filter(function (cid) { return self.sealed(cid, 'anker'); });
     if (anchored.length) ev.push({ t: 'seal', seal: 'anker', cards: anchored });
     if (this.rule('marked')) {
       this.status.curse.player += 1;
@@ -279,7 +282,7 @@
       return ZU.SUIT_ORDER;
     }
     if (def.rank === 'J' && actor === 'player' && this.has('bubenstueck')) return ZU.SUIT_ORDER;
-    if (actor === 'player' && card.seal === 'irrlicht') return ZU.SUIT_ORDER;
+    if (actor === 'player' && (card.seals || []).indexOf('irrlicht') >= 0) return ZU.SUIT_ORDER;
     return [def.suit];
   };
 
@@ -595,7 +598,8 @@
     var def = this.def(id), event = { t: 'play', id: id, actor: actor, from: from === 'hand' ? actor : 'staging' };
     if (actor === 'player') {
       var face = def.rank === 'J' || def.rank === 'Q' || def.rank === 'K', low = def.rank === '7' || def.rank === '8' || def.rank === '9';
-      var mark = this.cards[id], seal = mark.seal, flaw = mark.flaw;
+      var mark = this.cards[id], seals = mark.seals || [], flaws = mark.flaws || [];
+      var sealed = function (s) { return seals.indexOf(s) >= 0; }, flawed = function (f) { return flaws.indexOf(f) >= 0; };
       // Ebenbild: Liegt genau dieselbe Karte schon oben (gleicher Wert, gleiches Symbol), wächst die Kette um die Hälfte –
       // noch bevor diese Karte zählt. Aus ×10 wird ×15.
       var twin = null;
@@ -608,7 +612,7 @@
         (this.has('zunder') ? 4 : 0) + (def.special && this.has('tintenfass') ? 15 : 0) +
         (def.suit === 'clubs' && this.has('kreuzfeuer') ? 8 : 0) + (def.rank === 'J' && this.has('bauernopfer') ? 10 : 0) +
         (def.suit && ZU.SUITS[def.suit].red && this.has('rotlicht') ? 3 : 0) + (this.chain >= 4 && this.has('feuerzeug') ? 6 : 0);
-      if (flaw === 'matt') base = Math.max(1, base - 4);
+      if (flawed('matt')) base = Math.max(1, base - 4);
       // Kettenreaktion: Jenseits von ×10 zählt jede Stufe doppelt.
       var effChain = this.chain + (this.has('kettenreaktion') ? Math.max(0, this.chain - 10) : 0);
       var points = base * effChain, doubled = false, trig = [];
@@ -642,7 +646,7 @@
       if (!this.hand.player.length && this.has('letzte-glut')) { points *= 5; doubled = true; trig.push('letzte-glut'); steps.push({ id: 'letzte-glut', f: 5, v: points }); }
       if (this.status.blaze > 0) { this.status.blaze--; points *= 2; doubled = true; steps.push({ label: 'Stichflamme', f: 2, v: points }); }
       if (this.has('teufelspakt')) { points *= 2; doubled = true; steps.push({ id: 'teufelspakt', f: 2, v: points }); }
-      if (seal === 'glut') { points *= 2; doubled = true; steps.push({ seal: 'glut', f: 2, v: points }); }
+      if (sealed('glut')) { points *= 2; doubled = true; steps.push({ seal: 'glut', f: 2, v: points }); }
       // Wachsende Trinkets: Ihre Prozente addieren sich und wachsen mit dem Run bzw. dem Duell.
       var grow = this.grow, pct = 0, grown = trig.length;
       if (this.has('brandstifter') && grow.burned) { pct += 0.10 * grow.burned; trig.push('brandstifter'); }
@@ -680,17 +684,17 @@
       if (twin) event.score.twin = twin;
       var step = this.has('afterburner') ? 2 : 1;
       if (def.special && this.has('blasebalg')) { step += 2; trig.push('blasebalg'); }
-      if (seal === 'zuend') step += 1;
+      if (sealed('zuend')) step += 1;
       if (below && def.suit && below.suit && ZU.SUITS[def.suit].red && ZU.SUITS[below.suit].red && this.has('roter-teppich')) { step += 1; trig.push('roter-teppich'); }
       if (def.suit === 'spades' && this.has('schwarzer-peter')) { step += 1; trig.push('schwarzer-peter'); }
       if (def.rank === 'K' && this.has('koenigsmacher')) { step += 2; trig.push('koenigsmacher'); }
       if (def.rank === '7' && this.has('siebenmeilen')) { step += 3; trig.push('siebenmeilen'); }
       if (below && !def.special && !below.special && Math.abs(ZU.RANKS[def.rank].order - ZU.RANKS[below.rank].order) === 1 && this.has('strasse')) { step += 2; trig.push('strasse'); }
-      if (flaw === 'stumpf') step = 0;
+      if (flawed('stumpf')) step = 0;
       this._setChain(this.chain + step);
       event.score.next = this.chain;
-      if (seal) event.seal = seal;
-      if (flaw) event.flaw = flaw;
+      if (seals.length) event.seals = seals.slice();
+      if (flaws.length) event.flaws = flaws.slice();
       if (trig.length) event.trig = trig;
       this.stats.played++;
       if (def.special) this.stats.specials++;
@@ -715,20 +719,21 @@
     }
     if (actor === 'player') {
       // Siegel und Makel melden sich in der Reihenfolge, in der sie wirken: erst die Glut, dann Kasse, dann Folgen.
-      var worn = this.cards[id];
-      if (worn.seal === 'irrlicht' || worn.seal === 'glut' || worn.seal === 'zuend') ev.push({ t: 'seal', seal: worn.seal, card: id });
-      if (worn.flaw === 'matt' || worn.flaw === 'stumpf') ev.push({ t: 'flaw', flaw: worn.flaw, card: id });
-      if (worn.seal === 'gold') { this.bank += 1; ev.push({ t: 'seal', seal: 'gold', card: id }); ev.push(this._statusEvent()); }
-      if (worn.flaw === 'zoll') { this.toll++; ev.push({ t: 'flaw', flaw: 'zoll', card: id }); }
-      if (worn.seal === 'haken') {
+      // Eine Karte kann mehrere tragen; jedes meldet sich für sich.
+      var worn = this.cards[id], wears = function (s) { return (worn.seals || []).indexOf(s) >= 0; }, marred = function (f) { return (worn.flaws || []).indexOf(f) >= 0; };
+      ['irrlicht', 'glut', 'zuend'].forEach(function (s) { if (wears(s)) ev.push({ t: 'seal', seal: s, card: id }); });
+      ['matt', 'stumpf'].forEach(function (f) { if (marred(f)) ev.push({ t: 'flaw', flaw: f, card: id }); });
+      if (wears('gold')) { this.bank += 1; ev.push({ t: 'seal', seal: 'gold', card: id }); ev.push(this._statusEvent()); }
+      if (marred('zoll')) { this.toll++; ev.push({ t: 'flaw', flaw: 'zoll', card: id }); }
+      if (wears('haken')) {
         this.queue.push({ type: 'sealnote', seal: 'haken', card: id, src: actor });
         this.queue.push({ type: 'draw', amount: 1, reflectable: true, src: actor });
       }
-      if (worn.flaw === 'klette') {
+      if (marred('klette')) {
         this.queue.push({ type: 'flawnote', flaw: 'klette', card: id, src: actor });
         this.queue.push({ type: 'selfdraw', amount: 1, src: actor });
       }
-      if (worn.seal === 'bumerang' && !this.used['boom' + id] && from === 'hand' && this.hand.player.length > 0) {
+      if (wears('bumerang') && !this.used['boom' + id] && from === 'hand' && this.hand.player.length > 0) {
         // Bumerang: Die Karte bleibt liegen, eine Zwillingskarte für dieses Duell kehrt auf die Hand zurück.
         this.used['boom' + id] = true;
         var twin = this._register(def.id, 'player', false);

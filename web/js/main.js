@@ -91,8 +91,8 @@
       (run.s.perks || []).forEach(function (id) { add('perks/' + id + '.png'); });
       run.s.collection.forEach(function (card) {
         if (ZU.CARDS[card.def].special) add('special/' + card.def + '.png');
-        if (card.seal) add('seals/' + card.seal + '.png');
-        if (card.flaw) add('seals/flaw.png');
+        ZU.sealsOf(card).forEach(function (id) { add('seals/' + id + '.png'); });
+        if (ZU.flawsOf(card).length) add('seals/flaw.png');
       });
       if (name === 'select') run.s.encounters.forEach(function (enc) { add('enemies/' + enc.enemy + '.png'); });
       if (name === 'duel') {
