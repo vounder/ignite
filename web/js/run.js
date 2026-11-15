@@ -117,17 +117,16 @@
     var step = raw < 1000 ? 10 : raw < 10000 ? 50 : raw < 100000 ? 500 : 5000;
     return Math.round(raw / step) * step;
   };
-  /* Löschmittel eines Tisches: Akt 1 bleibt für Tische frei, Bosse haben immer die Löschdecke. Fest je Gegner und Akt. */
+  /* Löschmittel eines Tisches: fest je Gegner und Akt, höchstens eines – und nur dort, wo es um etwas geht. */
   Run.prototype.douse = function (enc) {
     var act = this.s.act, n = act, id = enc.enemy;
     for (var i = 0; i < id.length; i++) n = (n * 31 + id.charCodeAt(i)) % 9973;
-    if (enc.kind === 'boss') return act >= 3 ? ['blanket', n % 2 ? 'sand' : 'water'] : ['blanket'];
-    if (enc.kind === 'elite') {
-      if (act === 1) return ['sand'];
-      var first = ['water', 'sprinkler', 'sand'][n % 3];
-      return act >= 4 ? [first, first === 'sprinkler' ? 'water' : 'sprinkler'] : [first];
-    }
-    return act === 1 ? [] : [n % 2 ? 'sand' : 'water'];
+    // Gewöhnliche Tische löschen nie, der erste Akt bleibt ganz frei. Ab Akt 2 hat die Elite ein Mittel gegen die Kette
+    // (ab Akt 3 kann es der Sprinkler sein) und der Boss ebenfalls eines; die Löschdecke liegt nur beim letzten Boss
+    // des Casinos und in der Nachglut bereit. Mehr als eines bietet kein Tisch auf.
+    if (enc.kind === 'battle' || act === 1) return [];
+    if (enc.kind === 'boss') return act >= this.acts() ? ['blanket'] : [n % 2 ? 'sand' : 'water'];
+    return [act >= 3 ? ['water', 'sprinkler', 'sand'][n % 3] : n % 2 ? 'sand' : 'water'];
   };
   /* ---------- Kniffe ---------- */
   Run.prototype.kniffSlots = function () { return this.meta().kniffSlots || 1; };

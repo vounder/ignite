@@ -500,7 +500,6 @@ body.nobg { background: radial-gradient(ellipse at 50% 85%, var(--bg-mid, #34170
 .mb-rest .ico.match.going.spent { animation: none; opacity: .75; transform: rotate(8deg) translateY(2px); transition: transform .3s ease; }
 @keyframes mb-pulse { from { filter: brightness(1); } to { filter: brightness(1.6) drop-shadow(0 0 6px #ff9f43); } }
 .mb-text { font-family: var(--px-wide); font-size: 34px; letter-spacing: 2px; color: var(--ember-hot); text-shadow: 0 3px 0 rgba(0,0,0,.6), 0 0 22px rgba(255,140,40,.5); }
-.mb-sub { font-size: 15px; color: var(--ivory-dim); }
 
 .reward-row { display: flex; gap: 28px; margin: 24px 0 22px; }
 .reward-item { width: 270px; height: 390px; display: flex; flex-direction: column; align-items: center; justify-content: space-between; gap: 10px; padding: 22px 18px 18px; border-radius: 16px; background: linear-gradient(180deg, var(--walnut-2), var(--walnut)); border: 3px solid var(--brass-dark);

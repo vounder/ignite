@@ -15,14 +15,17 @@ const glutish = id => MULT.includes(id) || /Glut|Kette/.test(ZU.TRINKETS[id].tex
 
 function playDuel(run) {
   const duel = run.newDuel();
-  duel.start();
+  // Wie oft ein Löschmittel den Spieler trifft und wie hoch die Kette steigt, zählt die Messung mit.
+  duel.doused = 0; duel.peak = 0;
+  const seen = ev => { (ev || []).forEach(e => { if (e.t === 'douse') duel.doused++; }); duel.peak = Math.max(duel.peak, duel.glut / duel.target); };
+  seen(duel.start());
   let guard = 0;
   while (duel.phase !== 'ended' && guard++ < 900) {
-    if (duel.pending) { const d = duel.pending; duel.decide(d.options.slice(0, d.kind === 'mulligan' ? 0 : d.min)); }
+    if (duel.pending) { const d = duel.pending; seen(duel.decide(d.options.slice(0, d.kind === 'mulligan' ? 0 : d.min))); }
     else if (duel.active === 'player') {
       const plan = duel.suggest();
-      if (plan) duel.play('player', plan); else if (duel.afterDraw) duel.pass('player'); else duel.draw('player');
-    } else duel.aiMove();
+      seen(plan ? duel.play('player', plan) : duel.afterDraw ? duel.pass('player') : duel.draw('player'));
+    } else seen(duel.aiMove());
   }
   return duel;
 }
@@ -46,7 +49,7 @@ function shop(run) {
   run.leaveShop();
 }
 
-const acts = {};
+const acts = {}, kinds = {};
 let victories = 0;
 for (let n = 0; n < RUNS; n++) {
   ZU.Profile._memory = null;
@@ -58,12 +61,15 @@ for (let n = 0; n < RUNS; n++) {
   const run = ZU.Run.start('classic', 5000 + n * 7919, options), rnd = new ZU.Rng(42 + n);
   let guard = 0;
   while (run.s.phase !== 'defeat' && guard++ < 200) {
-    const act = run.s.act, duel = playDuel(run), result = run.finishDuel(duel);
+    const act = run.s.act, kind = run.encounter().kind, duel = playDuel(run), result = run.finishDuel(duel);
     const a = (acts[act] = acts[act] || { n: 0, won: 0, burnt: 0, ratios: [], trinkets: 0 });
+    const k = (kinds[kind] = kinds[kind] || { n: 0, won: 0, burnt: 0, doused: 0, hit: 0, half: 0 });
     a.n++; a.trinkets += run.s.trinkets.length;
+    k.n++; k.doused += duel.doused; if (duel.doused) k.hit++; if (duel.peak >= 0.5) k.half++;
     if (!result.won) continue;
     a.won++; a.ratios.push(duel.glut / duel.target);
-    if (result.burnt) a.burnt++;
+    k.won++;
+    if (result.burnt) { a.burnt++; k.burnt++; }
     const phase = run.afterPayout();
     if (phase === 'victory') { victories++; break; }
     shop(run);
@@ -77,4 +83,11 @@ Object.keys(acts).forEach(k => {
   const q = p => a.ratios.length ? Math.round(100 * a.ratios[Math.floor(p * (a.ratios.length - 1))]) + ' %' : '–';
   console.log('  Akt %s: %d Duelle, %d %% gewonnen, davon abgefackelt %s %% | Glut/Ziel bei Siegen: Median %s, oberes Viertel %s, bestes Zehntel %s | Trinkets ø %s',
     k, a.n, Math.round(100 * a.won / a.n), (100 * a.burnt / Math.max(1, a.won)).toFixed(1), q(0.5), q(0.75), q(0.9), (a.trinkets / a.n).toFixed(1));
+});
+// Je Art des Tisches: Wie oft brennt er, und wie oft kommt ein Löschmittel dazwischen?
+['battle', 'elite', 'boss'].forEach(kind => {
+  const k = kinds[kind];
+  if (!k) return;
+  console.log('  %s: %d Duelle, %d %% gewonnen, davon abgefackelt %s %% | halbes Ziel erreicht in %d %% | Löschmittel traf in %d %% der Duelle, ø %s-mal',
+    ZU.KIND_LABEL[kind].padEnd(6), k.n, Math.round(100 * k.won / k.n), (100 * k.burnt / Math.max(1, k.won)).toFixed(1), Math.round(100 * k.half / k.n), Math.round(100 * k.hit / k.n), (k.doused / k.n).toFixed(1));
 });

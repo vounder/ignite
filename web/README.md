@@ -46,10 +46,12 @@ zugehörigen Elemente blenden sich selbst aus.
   und das Unterhemd frei; alles Weitere wird erspielt (`req` wie im Hinterzimmer, ohne Asche). Die Figur sitzt im
   Duell links unten und reagiert mit sechs Gesichtsausdrücken. Gespeichert wird sie im Browser-Profil.
 - **Löschmittel:** Die Antwort der Gegner auf Glut (`ZU.DOUSE`, vergeben in
-  `run.douse`): Löschsand (8 des Gegners: Kette −2), Löschwasser (Ass: Kette
-  halbiert), Sprinkler (jeder 4. Gegnerzug: −5 % des Ziels an Glut), Löschdecke
-  (Bosse, einmal: beim halben Ziel −25 % Glut, Kette zurück). Tische in Akt 1
-  haben keines.
+  `run.douse`, Stärke in `ZU.DOUSE_POWER`): Löschsand (8 des Gegners: Kette −1),
+  Löschwasser (Ass: Kette −25 %), Sprinkler (jeder 5. Gegnerzug: −3 % des Ziels
+  an Glut), Löschdecke (einmal: beim halben Ziel −10 % Glut, Kette halbiert).
+  Bewusst selten und milde: Gewöhnliche Tische und der ganze erste Akt haben
+  keines; ab Akt 2 haben Elite und Boss je eines (Sprinkler erst ab Akt 3), die
+  Löschdecke nur der letzte Boss des Casinos und die Nachglut.
 - **Ziehen:** setzt die Kette zurück; passt die gezogene Karte sofort, bleibt
   die halbe Kette stehen.
 - **Ebenbild:** Wer genau dieselbe Karte auf ihr Ebenbild legt (gleicher Wert

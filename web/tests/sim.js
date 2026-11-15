@@ -416,15 +416,23 @@ assert.strictEqual(ZU.Meta.clean({ stake: 2, maxStake: 3 }).maxStake, 5, 'Grandh
 assert.strictEqual(ZU.Meta.clean({ stake: 2, maxStake: 3, cv: ZU.CASINO_VERSION }).maxStake, 3, 'neue Stände bleiben unverändert');
 for (let i = 1; i < ZU.CASINOS.length; i++) assert.ok(ZU.CASINOS[i].ash > ZU.CASINOS[i - 1].ash && ZU.CASINOS[i].acts >= ZU.CASINOS[i - 1].acts, 'Häuser werden härter und lohnender');
 
-// Löschmittel: Akt 1 lässt Tische in Ruhe, Bosse haben die Löschdecke; die Mittel drücken Kette und Glut.
+// Löschmittel: Gewöhnliche Tische und der ganze erste Akt bleiben frei; ab Akt 2 haben Elite und Boss je eines,
+// die Löschdecke liegt nur beim letzten Boss des Casinos und in der Nachglut. Die Mittel bremsen Kette und Glut.
 {
   const run = ZU.Run.start('classic', 4711);
-  assert.deepStrictEqual(run.douse({ enemy: 'barkeeper', kind: 'battle' }), []);
-  assert.ok(run.douse({ enemy: 'barkeeper', kind: 'boss' }).includes('blanket'));
-  run.s.act = 2;
-  assert.strictEqual(run.douse({ enemy: 'barkeeper', kind: 'battle' }).length, 1);
+  const foe = kind => ({ enemy: 'barkeeper', kind });
+  ['battle', 'elite', 'boss'].forEach(kind => assert.deepStrictEqual(run.douse(foe(kind)), [], 'Akt 1 löscht nicht: ' + kind));
+  for (let act = 2; act <= run.acts() + 2; act++) {
+    run.s.act = act;
+    assert.deepStrictEqual(run.douse(foe('battle')), [], 'gewöhnliche Tische löschen nie');
+    assert.strictEqual(run.douse(foe('elite')).length, 1);
+    assert.ok(!run.douse(foe('elite')).includes('blanket'));
+    if (act < 3) assert.ok(!run.douse(foe('elite')).includes('sprinkler'), 'Sprinkler erst ab Akt 3');
+    assert.strictEqual(run.douse(foe('boss')).length, 1, 'nie mehr als ein Mittel');
+    assert.strictEqual(run.douse(foe('boss'))[0] === 'blanket', act >= run.acts(), 'Löschdecke nur beim letzten Boss und danach');
+  }
   const mk = (douse) => { const r = ZU.Run.start('classic', 9); const d = r.newDuel(); d.target = 1000; d.douse = douse; d.start(); return d; };
-  for (const [kind, rank, expect] of [['sand', '8', 6], ['water', 'A', 4]]) {
+  for (const [kind, rank, expect] of [['sand', '8', 7], ['water', 'A', 6]]) {
     const d = mk([kind]);
     d.chain = 8;
     const def = Object.keys(ZU.CARDS).find(k => ZU.CARDS[k].rank === rank && !ZU.CARDS[k].special);
@@ -439,8 +447,8 @@ for (let i = 1; i < ZU.CASINOS.length; i++) assert.ok(ZU.CASINOS[i].ash > ZU.CAS
   b.glut = 600; b.chain = 7; b.root = 'player';
   const ev = [];
   b._complete(ev);
-  assert.strictEqual(b.glut, 450);
-  assert.strictEqual(b.chain, b.chainFloor());
+  assert.strictEqual(b.glut, 540, 'ein Zehntel der Glut erstickt');
+  assert.strictEqual(b.chain, 4, 'die Kette halbiert sich (aufgerundet), sie fällt nicht mehr ganz zurück');
   b.glut = 900; b.root = b.active; b._complete([]);
   assert.strictEqual(b.glut, 900, 'Löschdecke nur einmal');
   // Ziehen: Passt die gezogene Karte, bleibt die halbe Kette stehen.

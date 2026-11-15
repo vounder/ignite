@@ -702,8 +702,8 @@
     if (actor === 'opp' && !def.special) {
       // Löschmittel: Die 8 und das Ass des Gegners drücken die Kette des Spielers.
       var low = this.chainFloor(), cooled = this.chain;
-      if (def.rank === '8' && this.douses('sand')) cooled = Math.max(low, this.chain - 2);
-      if (def.rank === 'A' && this.douses('water')) cooled = Math.max(low, Math.ceil(this.chain / 2));
+      if (def.rank === '8' && this.douses('sand')) cooled = Math.max(low, this.chain - ZU.DOUSE_POWER.sand);
+      if (def.rank === 'A' && this.douses('water')) cooled = Math.max(low, Math.ceil(this.chain * (1 - ZU.DOUSE_POWER.water)));
       if (cooled < this.chain) {
         if (this.has('oelfass')) ev.push({ t: 'trinket', id: 'oelfass' });
         else {
@@ -1130,8 +1130,8 @@
       this.used.blanket = true;
       if (this.has('feuerdecke')) ev.push({ t: 'trinket', id: 'feuerdecke' });
       else {
-        this.glut -= Math.round(this.glut / 4);
-        this.chain = this.chainFloor();
+        this.glut -= Math.round(this.glut * ZU.DOUSE_POWER.blanketGlut);
+        this.chain = Math.max(this.chainFloor(), Math.ceil(this.chain / 2));
         ev.push({ t: 'douse', id: 'blanket', chain: this.chain, glut: this.glut });
         this._fettbrand(ev);
       }
@@ -1206,10 +1206,10 @@
     this.turns++;
     if (actor === 'opp') {
       this.oppTurns++;
-      if (this.douses('sprinkler') && this.oppTurns % 4 === 0 && this.glut > 0) {
+      if (this.douses('sprinkler') && this.oppTurns % ZU.DOUSE_POWER.sprinklerEvery === 0 && this.glut > 0) {
         if (this.has('feuerdecke')) ev.push({ t: 'trinket', id: 'feuerdecke' });
         else {
-          this.glut = Math.max(0, this.glut - Math.round(this.target * 0.05));
+          this.glut = Math.max(0, this.glut - Math.round(this.target * ZU.DOUSE_POWER.sprinkler));
           ev.push({ t: 'douse', id: 'sprinkler', chain: this.chain, glut: this.glut });
           this._fettbrand(ev);
         }

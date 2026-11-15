@@ -169,7 +169,7 @@
           '<p><b>Kniffe:</b> Ein Kniff erlaubt, mehrere Karten in einem Zug zu legen – etwa alle 8en (Achterpasch) oder mehrere Pik (Pik-Lauf). Jeder Zug folgt genau einem Kniff; seine Stufe begrenzt die Zahl der Karten (2, 3, beliebig). Kniffe gibt es nur im Hinterzimmer: Dort schaltest du sie mit Asche frei, stufst sie auf und rüstest aus, was du in den Run mitnimmst. Was zusammenpasst, leuchtet auf, sobald du eine Karte anwählst.</p>' +
           '<p><b>Die 7:</b> Der Gegner zieht 1 Karte.</p>' +
           '<p><b>Spezialkarten</b> sind gebunden: an ein Symbol, an Rot oder Schwarz – oder gar nicht (Joker). Sie passen nur auf ihre Symbole und geben sie danach vor. Je weiter der Run, desto freier die Karten.</p>' +
-          '<p><b>Löschmittel</b> sind die Antwort der Gegner auf deine Glut: Löschsand und Löschwasser drücken die Kette, Sprinkler und Löschdecke kosten Glut. Welche gelten, steht blau am Tisch.</p>' +
+          '<p><b>Löschmittel</b> sind die Antwort der Gegner auf deine Glut: Löschsand und Löschwasser drücken die Kette, Sprinkler und Löschdecke kosten Glut. Gewöhnliche Tische und der erste Akt haben keines; danach bieten Elite und Boss höchstens eines auf. Welches gilt, steht blau am Tisch.</p>' +
           '<p><b>Hausregeln</b> gelten für einzelne Tische, etwa „Letzter Stapel“: Dann wird nicht neu gemischt.</p>' +
           '<p>Kannst oder willst du nicht legen, <b>ziehst</b> du eine Karte. Passt sie, darfst du sie sofort legen – sonst endet der Zug.</p>' +
           '<p><b>Sperrstunde:</b> Nach ' + ZU.TURN_LIMIT + ' Zügen gewinnt, wer weniger Karten hält.</p></div>' +
@@ -1775,8 +1775,8 @@
   };
 
   /* ---------- Niederlage mit Restleben: Ein Streichholz brennt ab ----------
-     Das verlorene Streichholz steht groß in der Mitte, fängt am Kopf Feuer und brennt herunter; darunter steht, wie
-     viele noch bleiben. Dahinter räumt der Tisch ab und baut sich neu auf (game.rematch). Ein Tipp kürzt die Szene ab.
+     Das verlorene Streichholz steht groß in der Mitte, fängt am Kopf Feuer und brennt herunter; darunter liegen die,
+     die noch bleiben. Dahinter räumt der Tisch ab und baut sich neu auf (game.rematch). Ein Tipp kürzt die Szene ab.
      Liefert ein Versprechen, das sich einlöst, sobald ausgeteilt werden darf. */
   ZU.matchBurn = function (left) {
     var W = 56, H = 304, X = 640, TOP = 62, sp = ZU.speed || 1;
@@ -1789,9 +1789,9 @@
     for (var i = 0; i < left; i++) rest.appendChild(ZU.iconEl('match', 'match'));
     var gone = ZU.iconEl('match', 'match going');
     rest.appendChild(gone);
-    var text = h('div', 'mb-text', left === 1 ? 'Dein letztes Streichholz' : 'Noch ' + left + ' Streichhölzer');
-    var sub = h('div', 'mb-sub', left === 1 ? 'Verlierst du es, endet der Run.' : 'Neuer Anlauf am selben Tisch.');
-    var el = h('div', 'matchburn', [h('div', 'mb-shade'), stick, h('div', 'mb-info', [rest, text, sub])]);
+    // Worte braucht es dafür keine: Die Reihe darunter zeigt, was bleibt. Nur vor dem letzten steht eine Warnung.
+    var text = h('div', 'mb-text', left === 1 ? 'Letztes Streichholz' : '');
+    var el = h('div', 'matchburn', [h('div', 'mb-shade'), stick, h('div', 'mb-info', [rest, text])]);
     stick.style.left = (X - W / 2) + 'px';
     stick.style.top = TOP + 'px';
     document.getElementById('pops').appendChild(el);
