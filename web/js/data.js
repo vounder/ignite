@@ -2,13 +2,13 @@
 (function (ZU) {
   'use strict';
 
-  ZU.VERSION = '2.13.0';
+  ZU.VERSION = '2.13.1';
   /* Stand der Casino-Liste. Ändert sich die Reihenfolge, rechnen js/meta.js und js/run.js gespeicherte Stände um. */
   ZU.CASINO_VERSION = 2;
   ZU.CASINO_REMAP = [0, 1, 3, 5, 6, 7]; // alter Index (sechs Häuser) → neuer Index (acht Häuser) // im Hauptmenü unten rechts angezeigt
   /* Build-Kennung: wird an alle Asset-Adressen gehängt, damit Browser und CDN nach einem Update frische
      Dateien holen. Nicht von Hand ändern: web/tools/stamp_version.py setzt den Wert. */
-  ZU.BUILD = '5e605d73f6';
+  ZU.BUILD = '648a440ca0';
   ZU.asset = function (path) { return 'assets/' + path + '?v=' + ZU.BUILD; };
 
   ZU.HAND_SIZE = 7;
@@ -157,11 +157,13 @@
   /* ---------- Hausregeln: gelten für einen einzelnen Tisch, tauchen mit dem Run häufiger auf ---------- */
   /* Löschmittel: womit ein Tisch gegen deine Glut arbeitet (vergibt run.js nach Art und Akt). */
   ZU.DOUSE = {
-    sand: { name: 'Löschsand', text: 'Jede 8 des Gegners senkt deine Kette um 2.' },
-    water: { name: 'Löschwasser', text: 'Jedes Ass des Gegners halbiert deine Kette.' },
-    sprinkler: { name: 'Sprinkler', text: 'Nach jedem vierten Zug des Gegners verlierst du Glut in Höhe von 5 % des Glutziels.' },
-    blanket: { name: 'Löschdecke', text: 'Einmal je Duell: Erreichst du das halbe Glutziel, erstickt ein Viertel deiner Glut und die Kette fällt zurück.' }
+    sand: { name: 'Löschsand', text: 'Jede 8 des Gegners senkt deine Kette um 1.' },
+    water: { name: 'Löschwasser', text: 'Jedes Ass des Gegners senkt deine Kette um ein Viertel.' },
+    sprinkler: { name: 'Sprinkler', text: 'Nach jedem fünften Zug des Gegners verlierst du Glut in Höhe von 3 % des Glutziels.' },
+    blanket: { name: 'Löschdecke', text: 'Einmal je Duell: Erreichst du das halbe Glutziel, erstickt ein Zehntel deiner Glut und die Kette halbiert sich.' }
   };
+  /* Wie stark die Löschmittel wirken (engine.js). Bewusst milde: Sie sollen ein brennendes Blatt bremsen, nicht verhindern. */
+  ZU.DOUSE_POWER = { sand: 1, water: 0.25, sprinklerEvery: 5, sprinkler: 0.03, blanketGlut: 0.1 };
 
   ZU.RULES = {
     'one-pass': {
