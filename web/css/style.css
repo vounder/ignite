@@ -901,9 +901,13 @@ body.nobg { background: radial-gradient(ellipse at 50% 85%, var(--bg-mid, #34170
 /* ---------- Veredelte Karten: Siegel unten links, Makel daneben ---------- */
 .card-seal { position: absolute; left: 3px; bottom: 3px; width: 30px; height: 30px; background-size: contain; background-repeat: no-repeat; image-rendering: pixelated; filter: drop-shadow(0 2px 0 rgba(0,0,0,.55)); z-index: 2; }
 .card-flaw { position: absolute; left: 31px; bottom: 4px; width: 18px; height: 18px; background-size: contain; background-repeat: no-repeat; image-rendering: pixelated; z-index: 2; }
+/* Mehrere Siegel stehen übereinander, mehrere Makel nebeneinander. */
+.card-seal.n1 { bottom: 29px; } .card-seal.n2 { bottom: 55px; }
+.card-flaw.n1 { left: 47px; } .card-flaw.n2 { left: 63px; }
 .card.sealed { box-shadow: inset 0 0 0 2px rgba(255,215,94,.55); }
 .cardstatic.picked .card.front { box-shadow: inset 0 0 0 4px #b78cff, inset 0 0 0 6px var(--ember-hot); }
 .cardstatic.picked { transform: translateY(-6px); }
+.cardstatic.nofit { filter: grayscale(.8) brightness(.5); cursor: not-allowed; }
 .trinket.seal { animation: none; border-radius: 50%; border-color: #b78cff; background: radial-gradient(circle at 35% 30%, #3a2a55, #150e1f 78%); cursor: help; }
 .trinket.seal .tk-img { inset: 5px; }
 .br-tile.hidden > .trinket.seal { filter: brightness(0) opacity(.5); }

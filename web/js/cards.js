@@ -125,18 +125,22 @@
     el = h('div', 'card front std s-' + def.suit + ' rank-' + def.rank);
     atlasCell(el, FACE_RANKS.indexOf(def.rank), FACE_SUITS.indexOf(def.suit));
     if (def.rank === '7') el.appendChild(h('div', 'fxmark', '+1'));
-    if (mark && mark.seal && ZU.SEALS[mark.seal]) {
-      var seal = h('i', 'card-seal');
-      seal.style.backgroundImage = 'url(' + ZU.asset('seals/' + mark.seal + '.png') + ')';
-      el.appendChild(seal);
+    // Siegel stehen unten links übereinander (das erste zuunterst), Makel als kleine Marken daneben.
+    var seals = ZU.sealsOf(mark), flaws = ZU.flawsOf(mark);
+    if (seals.length) {
       el.classList.add('sealed');
-      el.insertBefore(foilEl('seal s-' + mark.seal), seal); // das Siegel selbst bleibt über der Folie lesbar
+      el.appendChild(foilEl('seal s-' + seals[0])); // die Siegel selbst bleiben über der Folie lesbar
+      seals.forEach(function (id, i) {
+        var seal = h('i', 'card-seal n' + i);
+        seal.style.backgroundImage = 'url(' + ZU.asset('seals/' + id + '.png') + ')';
+        el.appendChild(seal);
+      });
     }
-    if (mark && mark.flaw && ZU.FLAWS[mark.flaw]) {
-      var flaw = h('i', 'card-flaw');
+    flaws.forEach(function (id, i) {
+      var flaw = h('i', 'card-flaw n' + i);
       flaw.style.backgroundImage = 'url(' + ZU.asset('seals/flaw.png') + ')';
       el.appendChild(flaw);
-    }
+    });
     el.appendChild(h('div', 'shine'));
     return el;
   };
@@ -403,8 +407,8 @@
     this.stiff = 190;
     this.damp = 20;
 
-    this.seal = card.seal || null;
-    this.flaw = card.flaw || null;
+    this.seals = ZU.sealsOf(card);
+    this.flaws = ZU.flawsOf(card);
     this.flipEl = h('div', 'spr-flip', [ZU.cardFace(this.def, card.bind, card), ZU.cardBack(deck)]);
     this.tiltEl = h('div', 'spr-tilt', [this.flipEl]);
     this.shadowEl = h('div', 'spr-shadow');

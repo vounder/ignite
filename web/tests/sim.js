@@ -12,7 +12,7 @@ const assert = require('assert');
 const RUNS = Number(process.argv[2] || 400);
 const tally = {};
 const perks = {};
-let twins = 0, scored = 0, skips = 0;
+let twins = 0, scored = 0, skips = 0, multi = 0;
 let duels = 0, victories = 0, maxTurns = 0, sumTurns = 0, drawFits = 0, decisions = {}, eventTypes = {};
 
 function note(enemy, won) {
@@ -138,11 +138,26 @@ function shop(run, rnd) {
       assert.ok(pack.price >= 2 && pack.items.length === { single: 1, double: 2, bag: 3 }[pack.kind]);
       pack.items.forEach(item => { assert.ok(ZU.SEALS[item.seal]); if (item.flaw) assert.ok(ZU.FLAWS[item.flaw] && !ZU.SEALS[item.seal].not.includes(item.flaw), 'Makel hebt das Siegel auf'); });
       if (pack.sold || s.money < pack.price || rnd.next() > 0.5) return;
-      const pool = run.sealable();
-      if (pool.length < pack.items.length) return;
-      const result = run.buyPack(i, pack.kind === 'bag' ? null : pool.slice(0, pack.items.length).map(c => c.id));
-      assert.strictEqual(result.length, pack.items.length);
-      result.forEach(r => { const c = s.collection.find(x => x.id === r.id); assert.ok(!ZU.CARDS[c.def].special && c.seal === r.seal); });
+      // Gewählt wird unter den Karten, auf die jedes Stück des Pakets noch passt; die Wundertüte sucht selbst.
+      const pool = run.sealable(pack);
+      const bag = pack.kind === 'bag';
+      if (bag ? !pack.items.some(item => run.sealable({ items: [item] }).length) : pool.length < pack.items.length) return;
+      const before = new Map(s.collection.map(c => [c.id, ZU.sealsOf(c).slice()]));
+      const result = run.buyPack(i, bag ? null : pool.slice(0, pack.items.length).map(c => c.id));
+      assert.ok(bag ? result.length >= 1 && result.length <= pack.items.length : result.length === pack.items.length);
+      result.forEach(r => {
+        const c = s.collection.find(x => x.id === r.id);
+        assert.ok(!ZU.CARDS[c.def].special && c.seals.includes(r.seal));
+        assert.deepStrictEqual(c.seals, before.get(c.id).concat([r.seal]), 'das neue Siegel kommt zu den alten hinzu');
+        assert.ok(c.seal === undefined && c.flaw === undefined);
+        multi = Math.max(multi, c.seals.length);
+      });
+      s.collection.forEach(c => {
+        const seals = ZU.sealsOf(c), flaws = ZU.flawsOf(c);
+        assert.ok(seals.length <= ZU.SEAL_SLOTS && new Set(seals).size === seals.length, 'höchstens drei Siegel, jedes nur einmal');
+        assert.ok(new Set(flaws).size === flaws.length);
+        seals.forEach(id => flaws.forEach(f => assert.ok(!ZU.SEALS[id].not.includes(f), 'Makel ' + f + ' hebt Siegel ' + id + ' auf')));
+      });
       assert.throws(() => run.buyPack(i, pool.slice(0, pack.items.length).map(c => c.id)), 'verkauftes Paket');
     });
     if (s.shop.esme.packs.length) assert.ok(s.shop.esme.packs.some(p => p.kind !== 'bag' ? p.items.every(x => !x.flaw) || p.sold : false) || s.shop.esme.packs.every(p => p.kind === 'bag' || p.sold), 'ein makelloses Paket liegt aus');
@@ -328,8 +343,8 @@ ZU.STARTERS.forEach(starter => {
   assert.ok(specials.length <= ZU.SPECIAL_SLOTS, starter.id + ': Spezialkarten passen ins Deck');
   starter.cards.forEach(def => assert.ok(run.s.collection.some(c => c.def === def), starter.id + ': feste Karte ' + def));
   if (starter.suits) assert.ok(normal.every(c => starter.suits.includes(ZU.CARDS[c.def].suit)), starter.id + ': nur die Symbole der Schachtel');
-  assert.deepStrictEqual(run.s.collection.filter(c => c.seal).map(c => c.seal).sort(), (starter.seals || []).slice().sort(), starter.id + ': Siegel');
-  assert.ok(run.s.collection.every(c => !c.seal || !ZU.CARDS[c.def].special), starter.id + ': Siegel nur auf normalen Karten');
+  assert.deepStrictEqual([].concat(...run.s.collection.map(c => ZU.sealsOf(c))).sort(), (starter.seals || []).slice().sort(), starter.id + ': Siegel');
+  assert.ok(run.s.collection.every(c => ZU.sealsOf(c).length <= 1 && (!ZU.sealsOf(c).length || !ZU.CARDS[c.def].special)), starter.id + ': Siegel nur auf normalen Karten, je eines');
   assert.strictEqual(run.s.lives, ZU.MAX_LIVES + (starter.lives || 0), starter.id + ': Streichhölzer');
   assert.strictEqual(run.maxLives(), run.s.lives, starter.id + ': die Schachtel ist voll');
   starter.trinkets.forEach(id => assert.ok(ZU.TRINKETS[id], starter.id + ': Trinket ' + id));
@@ -387,7 +402,7 @@ Object.values(ZU.LORE_STEPS).forEach(steps => assert.ok(steps.length === 3 && st
 {
   const run = ZU.Run.start('classic', 2024);
   const plain = run.sealable();
-  plain[0].seal = 'glut'; plain[1].seal = 'anker'; plain[2].seal = 'zuend'; plain[2].flaw = 'matt'; plain[3].flaw = 'spaet'; plain[3].seal = 'gold';
+  plain[0].seals = ['glut']; plain[1].seal = 'anker'; plain[2].seals = ['zuend']; plain[2].flaws = ['matt']; plain[3].flaw = 'spaet'; plain[3].seal = 'gold'; // teils in der alten Schreibweise
   for (let i = 0; i < 20; i++) {
     const duel = run.newDuel();
     duel.start();
@@ -821,6 +836,60 @@ assert.ok(ZU.BATTLE_POOL.concat(ZU.ELITE_POOL).every(id => !ZU.ENEMIES[id].casin
   assert.ok(/^[0-9a-z]+-[0-9a-z]+$/.test(fresh.s.rid) && fresh.s.step === 0);
 }
 
+// Mehrere Siegel auf einer Karte: Alle wirken zusammen; was sich in die Quere käme, lässt Esme nicht zu.
+{
+  const fits = (mark, seal, flaw) => ZU.sealFits(mark, { seal, flaw });
+  assert.ok(fits({}, 'glut'));
+  assert.ok(fits({ seals: ['glut'] }, 'zuend'));
+  assert.ok(!fits({ seals: ['glut'] }, 'glut'), 'dasselbe Siegel nicht zweimal');
+  assert.ok(!fits({ seals: ['glut', 'zuend', 'gold'] }, 'haken'), 'höchstens drei Siegel');
+  assert.ok(!fits({ seals: ['glut'] }, 'zuend', 'matt'), 'der neue Makel höbe das Glutsiegel auf');
+  assert.ok(!fits({ seals: ['gold'], flaws: ['spaet'] }, 'anker'), 'der Makel der Karte höbe den Anker auf');
+  assert.ok(fits({ seals: ['gold'], flaws: ['spaet'] }, 'glut', 'stumpf'), 'verschiedene Makel dürfen nebeneinander stehen');
+  assert.ok(fits({ seal: 'glut' }, 'zuend') && !fits({ seal: 'glut' }, 'glut'), 'alte Schreibweise mit einem einzelnen Siegel');
+
+  // Glutsiegel, Zündkopf und Goldrand auf derselben Karte: doppelte Glut, Kette +2, 1 Mark in die Bank.
+  const run = ZU.Run.start('classic', 2025);
+  const card = run.sealable()[0];
+  card.seals = ['glut', 'zuend', 'gold'];
+  const duel = run.newDuel();
+  duel.start();
+  const under = ZU.STANDARD_IDS.find(x => x !== card.def && ZU.CARDS[x].suit === ZU.CARDS[card.def].suit);
+  duel.pile.push(duel._register(under, 'house', false));
+  if (!duel.hand.player.includes(card.id)) { duel.stocks.player.splice(duel.stocks.player.indexOf(card.id), 1); duel.hand.player.push(card.id); }
+  duel.phase = 'action'; duel.active = 'player'; duel.pending = null;
+  const glut = duel.glut, chain = duel.chain, bank = duel.bank;
+  const ev = duel.play('player', [card.id]);
+  assert.strictEqual(duel.glut - glut, ZU.CARDS[card.def].base * chain * 2, 'Glutsiegel verdoppelt');
+  assert.strictEqual(ev.find(e => e.t === 'play').score.next, chain + 2, 'Zündkopf: Kette +1 zusätzlich');
+  assert.strictEqual(duel.bank, bank + 1, 'Goldrand: 1 Mark in die Bank');
+  assert.deepStrictEqual(ev.filter(e => e.t === 'seal').map(e => e.seal).sort(), ['glut', 'gold', 'zuend'], 'jedes Siegel meldet sich');
+
+  // Esme: Ein Einzelsiegel auf eine Karte, die schon eines trägt; dasselbe noch einmal lehnt sie ab.
+  const shopper = ZU.Run.start('classic', 2026);
+  shopper._openShop();
+  shopper.s.money = 999;
+  const target = shopper.sealable()[0];
+  shopper.s.shop.esme.packs = [{ kind: 'single', items: [{ seal: 'glut' }], price: 5, sold: false }, { kind: 'single', items: [{ seal: 'anker', flaw: 'matt' }], price: 5, sold: false },
+    { kind: 'single', items: [{ seal: 'glut' }], price: 5, sold: false }, { kind: 'single', items: [{ seal: 'gold', flaw: 'klette' }], price: 5, sold: false }];
+  shopper.buyPack(0, [target.id]);
+  assert.deepStrictEqual(target.seals, ['glut']);
+  assert.ok(!shopper.sealable(shopper.s.shop.esme.packs[1]).includes(target), 'Makel Matt neben dem Glutsiegel: Die Karte steht nicht zur Wahl');
+  assert.throws(() => shopper.buyPack(1, [target.id]), /passt nicht/);
+  assert.throws(() => shopper.buyPack(2, [target.id]), /passt nicht/, 'dasselbe Siegel noch einmal');
+  shopper.buyPack(3, [target.id]);
+  assert.deepStrictEqual([target.seals, target.flaws], [['glut', 'gold'], ['klette']], 'das zweite Siegel kommt hinzu, mit seinem Makel');
+  // Spielstände von früher (ein Siegel, ein Makel je Karte) werden beim Laden zu Listen.
+  const old = JSON.parse(JSON.stringify(shopper.s));
+  const legacy = old.collection.find(c => c.id === target.id);
+  delete legacy.seals; delete legacy.flaws; legacy.seal = 'haken'; legacy.flaw = 'zoll';
+  const shelf = { 'zuendung.web.run.v1': JSON.stringify(old) };
+  globalThis.localStorage = { getItem: key => (key in shelf ? shelf[key] : null), setItem: (key, value) => { shelf[key] = String(value); }, removeItem: key => { delete shelf[key]; } };
+  const back = ZU.Run.load().s.collection.find(c => c.id === target.id);
+  delete globalThis.localStorage;
+  assert.deepStrictEqual([back.seals, back.flaws, back.seal, back.flaw], [['haken'], ['zoll'], undefined, undefined]);
+}
+
 // Determinismus: gleicher Seed, gleiche Entscheidungen => gleicher Verlauf
 function fingerprint(seed) {
   const run = ZU.Run.start('classic', seed), rnd = new ZU.Rng(7);
@@ -833,7 +902,7 @@ console.log('Runs: %d, Duelle: %d, Siege über Akt 3: %d (%s%%), längstes Duell
   RUNS, duels, victories, (100 * victories / RUNS).toFixed(1), maxTurns);
 console.log('Entscheidungen:', decisions, 'Züge/Duell:', (sumTurns / duels).toFixed(1), 'gezogen und passend:', drawFits);
 console.log('Ebenbild: %d von %d gelegten Karten (%s je Duell)', twins, scored, (twins / duels).toFixed(2));
-console.log('Tische ausgelassen: %d', skips);
+console.log('Tische ausgelassen: %d, meiste Siegel auf einer Karte: %d', skips, multi);
 console.log('Privilegien gekauft:', perks);
 console.log('Ereignisse:', Object.keys(eventTypes).sort().map(k => k + '=' + eventTypes[k]).join(' '));
 Object.keys(tally).sort().forEach(k => console.log('  %s  %d Duelle, Spieler gewinnt %s%%', k.padEnd(28), tally[k].n, (100 * tally[k].w / tally[k].n).toFixed(0)));
