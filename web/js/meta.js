@@ -12,7 +12,7 @@
       'kreuzfeuer', 'bauernopfer', 'rotlicht', 'volle-zehn', 'erster-funke', 'volles-haus', 'heisse-ware', 'endspurt',
       'schwarzer-peter', 'schadenfreude', 'bierdeckel', 'trinkgeld', 'rabattmarke', 'nachtschicht',
       'brandbeschleuniger', 'chefsache', 'oel-ins-feuer', 'schaulustige',
-      'halbe-portion', 'gerade-linie', 'pfeilspitze', 'schraeger-vogel', 'handwaermer', 'popcorn', 'banane', 'sitzfleisch', 'wolke-sieben', 'geduldsfaden', 'elitepartner'],
+      'gerade-linie', 'pfeilspitze', 'schraeger-vogel', 'handwaermer', 'sitzfleisch', 'wolke-sieben', 'geduldsfaden'],
     special: ['stillstand', 'addieren', 'spion', 'fluch', 'hodl', 'opfer'],
     seal: ['glut', 'gold', 'anker']
   };
@@ -170,6 +170,10 @@
     'trinket:kerbholz': ['burnt', 4, 'Fackle 4 Tische ab.'],
     'trinket:vabanque': ['last', 1, 'Gewinne ein Duell mit dem letzten Streichholz.'],
     // --- dritte Serie (3.0) ---
+    'trinket:halbe-portion': ['fast', 2, 'Gewinne 2 Duelle in höchstens 16 Zügen.'],
+    'trinket:popcorn': ['duels', 8, 'Gewinne 8 Duelle.'],
+    'trinket:banane': ['losses', 4, 'Verliere 4 Duelle.'],
+    'trinket:elitepartner': ['elites', 6, 'Schlage 6 Elite-Gegner.'],
     'trinket:fehldruck': ['foe:newsboy', 1, 'Schlage Piet, den Zeitungsjungen.'],
     'trinket:schiefertafel': ['played', 250, 'Spiele 250 Karten.'],
     'trinket:schwarzfahrer': ['foe:taxi', 2, 'Schlage Droschken-Paule zweimal.'],

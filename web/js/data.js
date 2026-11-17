@@ -515,12 +515,12 @@
   trinket('elitepartner', 'Elitepartner', 0, 'An Elite-Tischen bringen deine Karten ×2,5 Glut.');
   trinket('nachteule', 'Nachteule', 1, 'Ab deinem zehnten Zug im Duell bringen deine Karten ×2 Glut.');
   // --- Kartenwerte ---
-  trinket('pfeilspitze', 'Pfeilspitze', 0, 'Pik-Karten zählen 10 Glut mehr.');
+  trinket('pfeilspitze', 'Pfeilspitze', 0, 'Pik-Karten zählen 8 Glut mehr.');
   trinket('schraeger-vogel', 'Schräger Vogel', 0, '7, 9 und Ass zählen 7 Glut mehr.');
-  trinket('geballte-faust', 'Geballte Faust', 1, 'Jede Karte zählt zusätzlich den doppelten Wert der niedrigsten Karte auf deiner Hand.');
-  trinket('blaupause', 'Blaupause', 1, 'Jede Karte zählt 2 Glut mehr je Karte in deinem Nachziehstapel.');
-  trinket('handwaermer', 'Handwärmer', 0, 'Jede Karte zählt 3 Glut mehr je Karte, die du danach noch auf der Hand hältst.');
-  trinket('stuntman', 'Stuntman', 1, 'Jede Karte zählt 20 Glut mehr. Du beginnst jedes Duell mit 2 Karten mehr.');
+  trinket('geballte-faust', 'Geballte Faust', 1, 'Jede Karte zählt zusätzlich den Wert der niedrigsten Karte, die du danach noch auf der Hand hältst.');
+  trinket('blaupause', 'Blaupause', 1, 'Jede Karte zählt 1 Glut mehr je Karte in deinem Nachziehstapel.');
+  trinket('handwaermer', 'Handwärmer', 0, 'Jede Karte zählt 2 Glut mehr je Karte, die du danach noch auf der Hand hältst.');
+  trinket('stuntman', 'Stuntman', 1, 'Jede Karte zählt 12 Glut mehr. Du beginnst jedes Duell mit 2 Karten mehr.');
   trinket('daeumling', 'Däumling', 1, 'Jede 7, die du in diesem Run spielst, lässt alle deine Karten dauerhaft 1 Glut mehr zählen.');
   trinket('wandersmann', 'Wandersmann', 2, 'Jede Karte aus deinem Deck zählt für den Rest des Runs 2 Glut mehr, jedes Mal wenn du sie spielst.');
   trinket('maskenball', 'Maskenball', 1, '7, 8 und 9 gelten als Bildkarten: Sie zählen 10 Glut und lösen alle Bildkarten-Effekte aus.');
@@ -1304,7 +1304,7 @@
     { id: 'banker', name: 'Bankier', money: 14, lives: -1, text: '16 Karten plus Schutzgeld, dazu das Kassenbuch und volle Taschen. Dafür liegt ein Streichholz weniger in der Schachtel.', cards: ['schutzgeld'], trinkets: ['ledger'], color: '#b08a2e' },
     { id: 'devil', name: 'Teufelsblatt', money: 2, lives: -1, text: '16 Karten und der Teufelspakt: Alles bringt doppelte Glut, aber du beginnst jedes Duell verflucht (×2). Ein Streichholz weniger.', cards: [], trinkets: ['teufelspakt'], color: '#a3211c' },
     { id: 'doppelkopf', name: 'Doppelkopf', money: 4, twins: true, text: '8 verschiedene Karten, jede doppelt: lauter Ebenbilder. Mit dem Spiegelkabinett verdoppelt ein Ebenbild deine Kette.', cards: [], trinkets: ['spiegelkabinett'], color: '#2a7f9a' },
-    { id: 'raven', name: 'Rabenschwarz', money: 4, text: 'Nur Pik und Kreuz: alle 16 schwarzen Karten. Mit der Pfeilspitze zählt jede Pik-Karte 10 Glut mehr.', cards: [], suits: ['spades', 'clubs'], trinkets: ['pfeilspitze'], color: '#8a8f9c' },
+    { id: 'raven', name: 'Rabenschwarz', money: 4, text: 'Nur Pik und Kreuz: alle 16 schwarzen Karten. Mit der Pfeilspitze zählt jede Pik-Karte 8 Glut mehr.', cards: [], suits: ['spades', 'clubs'], trinkets: ['pfeilspitze'], color: '#8a8f9c' },
     { id: 'lucky', name: 'Glückspilz', money: 3, text: '16 Karten plus Roulette, an ein Symbol gebunden. Glücksrad und Hasenpfote: Deine Chancen stehen doppelt so gut.', cards: ['roulette'], trinkets: ['gluecksrad', 'hasenpfote'], color: '#d8a92a' },
     { id: 'smith', name: 'Brandmeister', money: 3, text: '16 Karten plus Funkenflug und Großbrand, beide an ein Symbol gebunden. Mit der Vorglut beginnst du jedes Duell mit einem Zehntel des Glutziels.', cards: ['funkenflug', 'grossbrand'], trinkets: ['vorglut'], color: '#e06a1c' }
   ];

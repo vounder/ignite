@@ -1,6 +1,6 @@
 # Assets der Browser-Version
 
-Stand: 11.11.2026
+Stand: 18.11.2026
 
 ## Aus dem Projekt übernommen
 
@@ -269,3 +269,20 @@ vom Brustbild, damit Entwurf und Farben übereinstimmen; die Outfits wurden um H
 umgerechnet. Skripte, Prompts und Prüfbilder: `/data/ignite/art/avatar/full/` (`fb1_base.py`, `fb2_body.py`, `fb3_faces.py`,
 `fb_refs.py`, `mkparts_full.py` → `parts.tsv`, `fbatch.sh`/`fgen.sh`, `fcut.py`, `fcheck.py`).
 Ein neues Teil braucht seitdem zwei Bilder: eines für das Brustbild und eines für die ganze Figur.
+
+## Serie 3.0 (17./18.11.2026)
+
+Alles wie zuvor mit der Bildgenerierung von OpenAI über die Codex-CLI (`imagegen`) erzeugt; Skripte, Prompts, Rohbilder
+und Prüfbögen liegen unter `/data/ignite/art/wave7/` (Figuren und Gegenstände) und `/data/ignite/art/story-bg/`
+(Kulissen), die Vorgaben in `/data/ignite/story/bible.md`.
+
+- **46 Gegner** (`enemies/`, zweite Besetzung aus `js/cast2.js`): Ausdrucks-Sheets 3×2 wie bisher, Beschreibungen in
+  `wave7/chars.tsv`. Vier brauchten einen zweiten Anlauf (Kai Krypto, Schwefel-Fritz, Notarin Tinte, Mutter Immaculata).
+  „Hinz & Kunz“ sind ein Doppelporträt und deshalb kleiner im Bild.
+- **63 Trinkets, 5 Privilegien, 3 Kniffe, 3 Siegel, 10 Spezialkarten** (`trinkets/`, `perks/`, `kniffe/`, `seals/`,
+  `special/`): Bögen auf Chroma-Grün wie in den früheren Serien, Motive in `wave7/items.md`.
+- **4 Schachteln** (`decks/`: Doppelkopf, Rabenschwarz, Glückspilz, Brandmeister), je Rückseite und Schachtel.
+- **4 Hausbilder** (`casinos/`: Lunapark, Rennbahn, Nachtexpress, Ratskeller), 480×270.
+- **28 Kulissen der Geschichte** (`story/`, 1280×720, 160 Farben): je Haus `<haus>-a` (Ankunft, Innenraum) und
+  `<haus>-b` (was dort brennt), dazu `prolog-box`, `taxi`, `epilog-harbor`, `epilog-dawn` (die Gasse des Titelbilds bei
+  Sonnenaufgang). Ohne Personen – nur in `hahn-b` steht der Herr im roten Frack als Schatten in der Tür.

@@ -267,6 +267,7 @@
       h('div', 'setrow', [h('span', null, 'Tempo'), speeds]),
       h('div', 'setrow', [h('span', null, 'Röhren-Filter'), onOff('crt')]),
       h('div', 'setrow', [h('span', null, 'Hintergrund'), onOff('bg')]),
+      h('div', 'setrow', [h('span', null, 'Geschichte'), onOff('story')]),
       app.canFullscreen() ? h('div', 'setrow', [h('span', null, 'Vollbild'), btn('Umschalten', 'small', function () { app.toggleFullscreen(); })]) : null
     ];
     // Auf Handy und Tablet: ob beim Start nach dem Vollbild gefragt wird (im Browser, nicht in der installierten App).
@@ -755,9 +756,9 @@
     var buttons = h('div', 'menu-buttons');
     if (saved) buttons.appendChild(play('Weiterspielen', 'big ember', function () { depart(function () { game.continueRun(saved); }); }));
     buttons.appendChild(play('Neuer Run', 'big ' + (saved ? 'felt' : 'ember'), function () {
-      if (!saved) { depart(function () { game.go('casino'); }); return; }
+      if (!saved) { depart(function () { ZU.story.maybe('prolog').then(function () { game.go('casino'); }); }); return; }
       confirmBox('Neuen Run beginnen?', 'Der gespeicherte Run wird dabei überschrieben.', 'Neu beginnen').then(function (yes) {
-        if (yes) depart(function () { game.go('casino'); });
+        if (yes) depart(function () { ZU.story.maybe('prolog').then(function () { game.go('casino'); }); });
       });
     }));
     buttons.appendChild(h('div', 'menu-row', [
@@ -765,8 +766,11 @@
       btn('Deine Figur', 'felt', function () { game.go('avatar'); })
     ]));
     buttons.appendChild(h('div', 'menu-row', [
-      btn('Einstellungen', 'felt', function () { settingsModal(game, false); }),
+      btn('Chronik', 'felt', function () { ZU.story.archive(); }, 'Die Geschichte: gesehene Szenen noch einmal ansehen'),
       btn('So wird gezündet', 'felt', function () { helpModal(); })
+    ]));
+    buttons.appendChild(h('div', 'menu-row', [
+      btn('Einstellungen', 'felt', function () { settingsModal(game, false); })
     ]));
     Array.prototype.forEach.call(buttons.children, function (child, i) { child.style.setProperty('--i', i); });
 
@@ -2050,6 +2054,16 @@
     var run = game.run, s = run.s;
     ZU.bg.set('shop');
     ZU.audio.music('shop');
+    // Beim allerersten Besuch stellt Manfred seinen Laden vor; läuft einem mit dem neuen Akt ein Trinket zu (Gesindel), sagt er es an.
+    setTimeout(function () {
+      if (game.screen !== 'shop' || game.run !== run) return;
+      ZU.story.maybe('laden').then(function () {
+        if (game.screen !== 'shop' || !s.gift || !ZU.TRINKETS[s.gift]) return;
+        fx.banner('Zugelaufen: ' + ZU.TRINKETS[s.gift].name, 'win', 1500);
+        s.gift = null;
+        run.save();
+      });
+    }, 600);
     var bar = hud(game, { onTrinket: sell });
     var mf = manfredActor(), manfred = mf.el;
     var bubble = h('div', 'bubble shopbubble');
@@ -2278,6 +2292,7 @@
     var run = game.run, s = run.s, esme = s.shop.esme;
     ZU.bg.set('elite');
     ZU.audio.music('shop-esme');
+    setTimeout(function () { if (game.screen === 'esme' && game.run === run) ZU.story.maybe('esme'); }, 500);
     var bar = hud(game);
     var img = h('i', 'esme-img');
     img.style.backgroundImage = 'url(' + ZU.asset('esme/esme.png') + ')';

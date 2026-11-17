@@ -775,8 +775,8 @@
       if (this.has('geballte-faust') && held.length) {
         lowest = Math.min.apply(null, held.map(function (cid) { return self2.def(cid).base; }));
       }
-      var extra = { pfeilspitze: def.suit === 'spades' ? 10 : 0, 'schraeger-vogel': def.rank === '7' || def.rank === '9' || def.rank === 'A' ? 7 : 0,
-        'geballte-faust': 2 * lowest, blaupause: 2 * this.stocks.player.length, handwaermer: 3 * held.length, stuntman: 20,
+      var extra = { pfeilspitze: def.suit === 'spades' ? 8 : 0, 'schraeger-vogel': def.rank === '7' || def.rank === '9' || def.rank === 'A' ? 7 : 0,
+        'geballte-faust': lowest, blaupause: this.stocks.player.length, handwaermer: 2 * held.length, stuntman: 12,
         daeumling: (this.grow.sevens || 0) + this.stats.sevens,
         wandersmann: mark.persistent ? 2 * ((mark.plus || 0) + (this.plus[id] || 0)) : 0 };
       var extraIds = Object.keys(extra).filter(function (tid) { return extra[tid] > 0 && self2.has(tid); }), extraSum = 0;

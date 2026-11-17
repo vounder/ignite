@@ -1285,8 +1285,11 @@
   DuelView.prototype.say = function (kind) {
     var lines = this.duel.enemy.say[kind], self = this;
     if (!lines || !lines.length) return;
-    ZU.audio.voice(this.duel.enemy.id, { start: 'greet', attack: 'smug', gloat: 'gloat', hurt: 'angry', nervous: 'nervous', win: 'win', lose: 'lose' }[kind] || 'smug');
-    this.bubble.textContent = lines[Math.floor(Math.random() * lines.length)];
+    var pick = Math.floor(Math.random() * lines.length), key = 'say/' + this.duel.enemy.id + '/' + kind + '-' + (pick + 1);
+    // Vertonung: Liegt für genau diesen Spruch eine Aufnahme vor, spricht die Figur ihn; sonst ruft sie nur ihren Laut.
+    if (ZU.audio.hasLine(key, lines[pick])) ZU.audio.line(ZU.asset('voice/' + key + '.mp3'));
+    else ZU.audio.voice(this.duel.enemy.id, { start: 'greet', attack: 'smug', gloat: 'gloat', hurt: 'angry', nervous: 'nervous', win: 'win', lose: 'lose' }[kind] || 'smug');
+    this.bubble.textContent = lines[pick];
     fx.punch(this.bubble, 'on');
     this.portrait.classList.add('talk');
     clearTimeout(this._sayTimer);

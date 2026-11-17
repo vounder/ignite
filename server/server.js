@@ -27,9 +27,9 @@ const RESET_MINUTES = 60;
 const REPORTED_DAYS = 90;
 const COOKIE = 'zs';
 const MAX_BODY = 96 * 1024;
-const MAX_META = 16000; // rund 100 Freischaltungen, Zählwerke und Kartei passen bequem
+const MAX_META = 32000; // alle Freischaltungen (über 250), Zählwerke und die Kartei mit 92 Figuren passen bequem
 const MAX_RUN = 48000; // ein laufender Run mit großem Deck und vollem Laden bleibt weit darunter
-const MAX_PREFS = 8000;
+const MAX_PREFS = 32000; // Figur, Merkzettel für alles Freischaltbare und die gesehenen Szenen der Geschichte
 const MAX_SCORE = 100000000;
 
 const MIME = {

@@ -323,14 +323,14 @@
       fx: { reverbTime: 2.2, reverbSeconds: 2.8, delayFeedback: 0.34 },
       master: { wowCents: 10, wowRate: 0.55, flutterCents: 1.5, air: 1 },
       tracks: {
-        drums: { gain: -0.5 },
-        bass: { gain: -11, opts: { cutoff: 560, grit: 0.4, sustain: 0.55, snap: 0.12, release: 0.06 } },
-        pad: { gain: -14, fx: { phaser: null }, opts: { wave: 'square', cutoff: 1150, attack: 0.35, voices: 2, spread: 7 } },
-        ep: { gain: -13, opts: { decay: 0.8, bark: 1.4, tine: 0.9 } },
+        drums: { gain: 0.5 },
+        bass: { gain: -9.8, opts: { cutoff: 560, grit: 0.4, sustain: 0.55, snap: 0.12, release: 0.06 } },
+        pad: { gain: -15.5, fx: { phaser: null }, opts: { wave: 'square', cutoff: 1150, attack: 0.35, voices: 2, spread: 7 } },
+        ep: { gain: -9.3, opts: { decay: 0.8, bark: 1.4, tine: 0.9 } },
         pluck: { gain: -7, opts: { wave: 'square', square: 0.4, cutoff: 2600, q: 1.5, decay: 0.16 } },
-        vibes: { gain: -6.5, reverb: -9, fx: { tremolo: { rate: 5.4, depth: 0.05 } }, opts: { decay: 0.8, partials: [[1, 0.6, 1], [2, 1, 0.7], [5.52, 0.22, 0.25], [10.8, 0.07, 0.1]] } },
-        lead: { gain: -11, opts: { cutoff: 2100, q: 0.9, glide: 0, attack: 0.012, release: 0.07, vibRate: 6.4, vibCents: 20, vibDelay: 0.12,
-          waves: [['square', 0, 0.42], ['square', 3, 0.26, 2], ['triangle', 0, 0.2, 3]] } }
+        vibes: { gain: -5, reverb: -9, fx: { tremolo: { rate: 5.4, depth: 0.05 } }, opts: { decay: 1.1, partials: [[1, 1, 1], [2, 0.7, 0.6], [5.52, 0.18, 0.25], [10.8, 0.05, 0.1]] } },
+        lead: { gain: -10.5, opts: { cutoff: 1700, q: 0.9, glide: 0, attack: 0.012, release: 0.07, vibRate: 6.4, vibCents: 20, vibDelay: 0.12,
+          waves: [['square', 0, 0.46], ['square', 3, 0.2, 2], ['triangle', 0, 0.1, 3]] } }
       }
     },
     /* Rennbahn – flotter Galopp: "ta-da-dum" auf dem Becken, Besen, ein Bass, der in Vierteln nach vorn drängt,
@@ -341,12 +341,12 @@
       fx: { reverbTime: 2.1, reverbSeconds: 2.7, delayFeedback: 0.34, delayTone: 2800 },
       master: { wowCents: 3, air: 2 },
       tracks: {
-        drums: { gain: -0.5, opts: { levels: { h: 1.4, cl: 1.1 } } },
+        drums: { gain: -1.2, opts: { levels: { h: 1.4, cl: 1.1 } } },
         bass: { gain: -12, opts: { cutoff: 760, grit: 0.5, snap: 0.13, sustain: 0.6 } },
-        pad: { gain: -13, opts: { cutoff: 1700 } },
+        pad: { gain: -11.5, opts: { cutoff: 1700 } },
         ep: { gain: -13.5, opts: { decay: 1.2, bark: 1.5, tine: 1 } },
         vibes: { gain: -8.5 },
-        lead: { gain: -10, fx: { hp: 320 }, opts: { cutoff: 2700, q: 1.8, glide: 0.02, attack: 0.03, vibRate: 5.9, vibCents: 20, vibDelay: 0.16,
+        lead: { gain: -9.5, fx: { hp: 320 }, opts: { cutoff: 2400, q: 1.8, glide: 0.02, attack: 0.03, vibRate: 5.9, vibCents: 20, vibDelay: 0.16,
           waves: [['sawtooth', 0, 0.5], ['sawtooth', 5, 0.28], ['square', 0, 0.16]] } }
       }
     },
@@ -360,12 +360,12 @@
       tracks: {
         drums: { gain: -1.5, human: 0.001, velHuman: 0.1, opts: { levels: { h: 1.2, sh: 2.1, sn: 0.9, cl: 0.9 } } },
         bass: { gain: -12.5, opts: { cutoff: 480, grit: 0.3, sustain: 0.9, release: 0.12 } },
-        pad: { gain: -10, reverb: -7, fx: { phaser: { rate: 0.05, freq: 560, mix: 0.6 }, chorus: { rate: 0.4, depth: 0.004 } },
+        pad: { gain: -10.5, reverb: -7, fx: { phaser: { rate: 0.05, freq: 560, mix: 0.6 }, chorus: { rate: 0.4, depth: 0.004 } },
           opts: { cutoff: 1250, attack: 0.9, release: 2.2, voices: 3, spread: 12, sub: 0.15 } },
-        ep: { gain: -17, fx: { lp: 3600, autopan: { rate: 2.4, depth: 0.5 } }, opts: { decay: 2.4, bark: 0.9, tine: 0.4 } },
-        pluck: { gain: -8, delay: -6, opts: { cutoff: 2000, square: 0, decay: 0.2 } },
-        vibes: { gain: -8, reverb: -5, delay: -10, fx: { tremolo: { rate: 3, depth: 0.12 } }, opts: { decay: 2, partials: [[1, 1, 1], [2.4, 0.3, 0.55], [3.9, 0.16, 0.35], [6.3, 0.07, 0.2]] } },
-        lead: { gain: -11.5, reverb: -6, delay: -7, opts: { cutoff: 1500, q: 0.9, glide: 0.08, attack: 0.05, release: 0.14, vibCents: 28, vibRate: 5,
+        ep: { gain: -16.5, fx: { lp: 3600, autopan: { rate: 2.4, depth: 0.5 } }, opts: { decay: 2.4, bark: 0.9, tine: 0.4 } },
+        pluck: { gain: -6, delay: -6, opts: { cutoff: 2000, square: 0, decay: 0.2 } },
+        vibes: { gain: -10, reverb: -5, delay: -10, fx: { tremolo: { rate: 3, depth: 0.12 } }, opts: { decay: 2, partials: [[1, 1, 1], [2.4, 0.3, 0.55], [3.9, 0.16, 0.35], [6.3, 0.07, 0.2]] } },
+        lead: { gain: -13, reverb: -6, delay: -7, opts: { cutoff: 1500, q: 0.9, glide: 0.08, attack: 0.05, release: 0.14, vibCents: 28, vibRate: 5,
           waves: [['triangle', 0, 0.75], ['sawtooth', -6, 0.2], ['sawtooth', 6, 0.2]] } }
       }
     },
@@ -378,10 +378,10 @@
       master: { wowCents: 4, air: 0 },
       tracks: {
         drums: { gain: 0, reverb: -12, opts: { snareReverb: 0.7 } },
-        bass: { gain: -11.5, opts: { cutoff: 360, grit: 0.55, sustain: 0.9, release: 0.16, snap: 0.3, floor: 150 } },
+        bass: { gain: -13, opts: { cutoff: 480, grit: 0.75, sustain: 0.9, release: 0.16, snap: 0.3, floor: 260 } },
         pad: { gain: -12, reverb: -6, opts: { cutoff: 1050, attack: 0.7, release: 1.8 } },
         ep: { gain: -15, reverb: -9, fx: { lp: 3400 }, opts: { decay: 2.2, bark: 0.9, tine: 0.4 } },
-        vibes: { gain: -9, reverb: -5, fx: { tremolo: { rate: 3.6, depth: 0.2 } }, opts: { decay: 1.4 } },
+        vibes: { gain: -10.5, reverb: -5, fx: { tremolo: { rate: 3.6, depth: 0.2 } }, opts: { decay: 1.4 } },
         lead: { gain: -10, reverb: -6, delay: -20, opts: { cutoff: 1500, q: 0.9, glide: 0.015, attack: 0.07, release: 0.14, vibRate: 4.1, vibCents: 20, vibDelay: 0.2, vibRise: 0.15,
           waves: [['square', -9, 0.32], ['square', 9, 0.32], ['sawtooth', 0, 0.22, 0.5]] } }
       }
@@ -396,11 +396,11 @@
     fx: { reverbTime: 3.2, reverbSeconds: 3.8, delayFeedback: 0.44 },
     master: { wowCents: 4 },
     tracks: {
-      drums: { gain: -5, reverb: -12, opts: { levels: { rd: 0.5, sw: 0.7 } } },
-      bass: { gain: -13.5, opts: { cutoff: 420, grit: 0.25, sustain: 0.92, release: 0.14 } },
+      drums: { gain: 1.5, reverb: -12, opts: { levels: { rd: 0.5, sw: 0.7 } } },
+      bass: { gain: -14.5, opts: { cutoff: 420, grit: 0.25, sustain: 0.92, release: 0.14 } },
       pad: { gain: -10.5, reverb: -7, opts: { cutoff: 1300, attack: 0.9, release: 2.2 } },
-      ep: { gain: -12.5, reverb: -9, fx: { lp: 4200, autopan: { rate: 2.8, depth: 0.45 } }, opts: { decay: 2.6, bark: 0.9, tine: 0.5 } },
-      vibes: { gain: -10, reverb: -6, fx: { tremolo: { rate: 4.2, depth: 0.25 } }, opts: { decay: 1.6 } },
+      ep: { gain: -15, reverb: -9, fx: { lp: 4200, autopan: { rate: 2.8, depth: 0.45 } }, opts: { decay: 2.6, bark: 0.9, tine: 0.5 } },
+      vibes: { gain: -7, reverb: -6, fx: { tremolo: { rate: 4.2, depth: 0.25 } }, opts: { decay: 1.6 } },
       lead: { gain: -14, reverb: -7, delay: -11, opts: { cutoff: 1700, attack: 0.05, glide: 0.08, vibCents: 26, vibRate: 4.9 } }
     }
   };

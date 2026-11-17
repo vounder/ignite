@@ -1031,7 +1031,8 @@
 
   ZU.Profile = {
     defaults: function () {
-      return { runs: 0, wins: 0, best: 0, bestAct: 0, seenHelp: false, meta: {}, brSeen: [], popSeen: [], popInit: false, avatar: {}, deck: 'classic', settings: { music: 0.5, sfx: 0.7, voice: 0.7, speed: 1, crt: true, bg: true, fullscreen: 'ask', offline: false } };
+      return { runs: 0, wins: 0, best: 0, bestAct: 0, seenHelp: false, meta: {}, brSeen: [], popSeen: [], popInit: false, avatar: {}, deck: 'classic', story: {},
+        settings: { music: 0.5, sfx: 0.7, voice: 0.7, speed: 1, crt: true, bg: true, story: true, fullscreen: 'ask', offline: false } };
     },
     load: function () {
       var base = ZU.Profile.defaults(), store = storage();
