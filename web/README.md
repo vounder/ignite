@@ -439,6 +439,11 @@ etwas lauter. Beim Boss wechselt `js/audio.js` an Ort und Stelle dorthin: Die
 neue Spur steigt stumm an der Stelle ein, an der die alte gerade spielt, und
 beide blenden kurz über.
 
+Neu seit 3.0: Lunapark (Karussell mit Drehorgel und Glockenspiel), Rennbahn (Galopp, das schnellste Haus), Nachtexpress
+(gerader Zugrhythmus, Bahnhofsglocken) und Ratskeller (langsam, Tuba-Bass, dunkles Akkordeon). `story.mp3` ist das Stück
+der Szenen: das Gewand des Goldenen Hahn, langsamer und fast ohne Schlagwerk, zwei LU leiser, weil später Sprache darüber
+liegt.
+
 Genauso gehören `shop.mp3` und `shop-esme.mp3` zusammen: In Esmes Nebenzimmer
 läuft das Ladenstück weiter, nur entrückt – Harfe, gläserne Glocken, eine
 Melodiestimme wie ein Theremin, kaum Schlagwerk.

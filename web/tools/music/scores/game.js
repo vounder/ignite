@@ -346,7 +346,7 @@
         pad: { gain: -11.5, opts: { cutoff: 1700 } },
         ep: { gain: -13.5, opts: { decay: 1.2, bark: 1.5, tine: 1 } },
         vibes: { gain: -8.5 },
-        lead: { gain: -9.5, fx: { hp: 320 }, opts: { cutoff: 2400, q: 1.8, glide: 0.02, attack: 0.03, vibRate: 5.9, vibCents: 20, vibDelay: 0.16,
+        lead: { gain: -9.5, fx: { hp: 320 }, opts: { cutoff: 2400, q: 1.8, glide: 0.02, attack: 0.03, vibRate: 5.9, vibCents: 26, vibDelay: 0.13,
           waves: [['sawtooth', 0, 0.5], ['sawtooth', 5, 0.28], ['square', 0, 0.16]] } }
       }
     },
@@ -370,7 +370,7 @@
       }
     },
     /* Ratskeller – Weinkeller aus Stein unter dem Rathaus: gemütlich und schwer. Langsam, runder Bass wie eine Tuba auf eins
-       und drei, die Melodiestimme ein dunkles Akkordeon mit langsamem Tremolo, sparsame Besen, viel Raumhall. */
+       und drei, die Melodiestimme ein dunkles Akkordeon mit langsamem Vibrato, sparsame Besen, viel Raumhall. */
     ratskeller: {
       bpm: 88, swing: 0.58, key: -5, seed: 22, kit: 'cellar', bass: 'tuba', ep: 'held', arp: 'none',
       plan: [null, ['L', 'theme'], ['L', 'calm1'], ['V', 'calm2'], ['V', 'bridge'], ['L', 'bridge'], ['V', 'calm1'], ['L', 'calm2']],
@@ -382,7 +382,7 @@
         pad: { gain: -12, reverb: -6, opts: { cutoff: 1050, attack: 0.7, release: 1.8 } },
         ep: { gain: -15, reverb: -9, fx: { lp: 3400 }, opts: { decay: 2.2, bark: 0.9, tine: 0.4 } },
         vibes: { gain: -10.5, reverb: -5, fx: { tremolo: { rate: 3.6, depth: 0.2 } }, opts: { decay: 1.4 } },
-        lead: { gain: -10, reverb: -6, delay: -20, opts: { cutoff: 1500, q: 0.9, glide: 0.015, attack: 0.07, release: 0.14, vibRate: 4.1, vibCents: 20, vibDelay: 0.2, vibRise: 0.15,
+        lead: { gain: -10, reverb: -6, delay: -20, opts: { cutoff: 1500, q: 0.9, glide: 0.015, attack: 0.07, release: 0.14, vibRate: 4.1, vibCents: 25, vibDelay: 0.17, vibRise: 0.13,
           waves: [['square', -9, 0.32], ['square', 9, 0.32], ['sawtooth', 0, 0.22, 0.5]] } }
       }
     }
