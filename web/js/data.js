@@ -2,10 +2,17 @@
 (function (ZU) {
   'use strict';
 
-  ZU.VERSION = '2.14.0';
-  /* Stand der Casino-Liste. Ändert sich die Reihenfolge, rechnen js/meta.js und js/run.js gespeicherte Stände um. */
-  ZU.CASINO_VERSION = 2;
-  ZU.CASINO_REMAP = [0, 1, 3, 5, 6, 7]; // alter Index (sechs Häuser) → neuer Index (acht Häuser) // im Hauptmenü unten rechts angezeigt
+  ZU.VERSION = '3.0.0'; // im Hauptmenü unten rechts angezeigt
+  /* Stand der Casino-Liste. Ändert sich die Reihenfolge, rechnen js/meta.js und js/run.js gespeicherte Stände um:
+     CASINO_REMAPS[alter Stand] = alter Index → heutiger Index. Stand 1 kannte sechs Häuser, Stand 2 acht, Stand 3 zwölf. */
+  ZU.CASINO_VERSION = 3;
+  ZU.CASINO_REMAPS = { 1: [0, 1, 4, 8, 10, 11], 2: [0, 1, 3, 4, 6, 8, 10, 11] };
+  /* Index eines Hauses aus einem gespeicherten Stand (cv: dessen CASINO_VERSION; fehlt sie, war es Stand 1). */
+  ZU.casinoIndex = function (index, cv) {
+    if (cv === ZU.CASINO_VERSION) return index;
+    var map = ZU.CASINO_REMAPS[cv || 1];
+    return map && map[index] != null ? map[index] : index;
+  };
   /* Build-Kennung: wird an alle Asset-Adressen gehängt, damit Browser und CDN nach einem Update frische
      Dateien holen. Nicht von Hand ändern: web/tools/stamp_version.py setzt den Wert. */
   ZU.BUILD = 'b5ec65fdbe';
@@ -69,7 +76,7 @@
   function special(id, name, price, rarity, tag, text, effects) {
     cards[id] = {
       id: id, name: name, suit: null, rank: null, special: true, rarity: rarity,
-      price: price, base: 15, tag: tag, text: text, effects: effects
+      price: price, base: id === 'feuerwerk' ? 50 : 15, tag: tag, text: text, effects: effects
     };
   }
   special('stillstand', 'Stillstand', 9, 0, 'Aussetzen', 'Der Gegner setzt eine Runde aus.',
@@ -117,6 +124,26 @@
     [{ type: 'draw', amount: 3, reflectable: true }, { type: 'skip', reflectable: true }, { type: 'double' }]);
   special('reservefunke', 'Reservefunke', 26, 3, '+1 Holz', 'Gewinnst du das Duell, erhältst du ein Streichholz zurück. Wird dabei verbraucht.',
     [{ type: 'life' }]);
+  // --- dritte Serie (3.0) ---
+  special('nachschub', 'Nachschub', 9, 0, '+2 Karten', 'Du ziehst 2 Karten. Deine Kette steigt um 2.',
+    [{ type: 'selfdraw', amount: 2 }, { type: 'stoke', amount: 2 }]);
+  special('feuerwerk', 'Feuerwerk', 12, 1, '50 Glut', 'Zählt 50 statt 15 Glut.', []);
+  special('funkenflug', 'Funkenflug', 13, 1, 'Glut +10 %', 'Du erhältst sofort Glut in Höhe von 10 % des Glutziels.',
+    [{ type: 'spark', amount: 10 }]);
+  special('roulette', 'Roulette', 12, 1, 'Rot/Schwarz', 'Rot oder Schwarz: Mit gleicher Chance zieht der Gegner 4 Karten – oder du 2.',
+    [{ type: 'roulette', amount: 4 }]);
+  special('schuldschein', 'Schuldschein', 14, 1, 'Zahltag', 'Der Gegner zieht 1 Karte und 1 weitere je Streichholz, das dir fehlt.',
+    [{ type: 'debt', amount: 1, reflectable: true }]);
+  special('rauchbombe', 'Rauchbombe', 13, 1, 'Aus + Kette', 'Der Gegner setzt aus. Deine Kette übersteht das nächste Ziehen.',
+    [{ type: 'skip', reflectable: true }, { type: 'guard' }]);
+  special('schmiedefeuer', 'Schmiedefeuer', 17, 2, 'Kette ×1,5', 'Deine Kette wächst sofort um die Hälfte (aufgerundet).',
+    [{ type: 'temper' }]);
+  special('grossbrand', 'Großbrand', 18, 2, 'Glut ×2', 'Deine nächsten 6 Karten bringen doppelte Glut.',
+    [{ type: 'blaze', amount: 6 }]);
+  special('kassensturz', 'Kassensturz', 16, 2, 'Bank ×2', 'Verdoppelt deine Bank (höchstens 8 Mark dazu).',
+    [{ type: 'bankdouble', amount: 8 }]);
+  special('vollbremsung', 'Vollbremsung', 18, 2, 'Aus ×2', 'Der Gegner setzt zwei Runden aus.',
+    [{ type: 'skip', amount: 2, reflectable: true }]);
 
   /* ---------- Bindung von Spezialkarten ----------
      Eine Spezialkarte ist an ein Symbol, an eine Farbe (rot/schwarz) oder gar nicht gebunden (Joker).
@@ -183,32 +210,47 @@
     'wide-awake': { name: 'Hellwach', text: 'Gegner verschenken keinen Zug mehr.' },
     damp: { name: 'Feuchte Luft', text: 'Deine Kette steigt nie über ×8.' },
     'cover-charge': { name: 'Eintritt', text: 'Jeder Besuch in Manfreds Laden kostet 10 % deiner Mark (mindestens 2).' },
-    hype: { name: 'Hype', text: 'Gegner mischen 2 Spezialkarten mehr in ihren Stapel.' }
+    hype: { name: 'Hype', text: 'Gegner mischen 2 Spezialkarten mehr in ihren Stapel.' },
+    tombola: { name: 'Tombola', text: 'Zu Beginn jedes Duells tauscht das Los eine deiner Handkarten gegen eine vom Stapel.' },
+    handicap: { name: 'Handicap', text: 'Du beginnst jedes Duell mit einer Karte mehr.' },
+    'first-class': { name: 'Erste Klasse', text: 'Streichhölzer kosten in Manfreds Laden das Doppelte.' },
+    tax: { name: 'Vergnügungssteuer', text: 'Von jeder Auszahlung gehen 15 % an die Stadtkasse.' }
   };
   ZU.RULE_CHANCE = { 'one-pass': [0.1, 0.3, 0.5, 0.7] };
 
   /* ---------- Casinos ----------
-     Acht Häuser, die der Reihe nach freigeschaltet werden: Ein Sieg im bisher schwersten öffnet das nächste.
+     Zwölf Häuser, die der Reihe nach freigeschaltet werden: Ein Sieg im bisher schwersten öffnet das nächste.
      Jedes hat seine Zahl an Akten, eigene Räume, feste Hausregeln für alle Tische, einen Asche-Faktor
-     und eine eigene Farbwelt für den Rauch im Hintergrund (tint: dunkel, mittel, Glanzlicht). */
+     und eine eigene Farbwelt für den Rauch im Hintergrund (tint: dunkel, mittel, Glanzlicht).
+     Die Reihenfolge ist zugleich die der Geschichte (js/story.js). */
   ZU.CASINOS = [
     { id: 'hahn', tint: { a: [0.09, 0.06, 0.03], b: [0.31, 0.18, 0.07], c: [0.94, 0.68, 0.24] }, name: 'Zum Goldenen Hahn', sub: 'Eckkneipe mit Hinterzimmer', acts: 3, ash: 1,
       rooms: ['Hinterzimmer', 'Rauchsalon', 'Das Haus'], rules: [] },
     { id: 'rialto', tint: { a: [0.13, 0.03, 0.06], b: [0.46, 0.09, 0.15], c: [1.0, 0.66, 0.34] }, name: 'Tanzpalast Rialto', sub: 'Wo die halbe Stadt ihr Geld vertanzt', acts: 4, ash: 1.5,
       rooms: ['Garderobe', 'Parkett', 'Separee', 'Direktion'], rules: ['last-call', 'sober'] },
+    { id: 'lunapark', tint: { a: [0.07, 0.03, 0.12], b: [0.30, 0.10, 0.42], c: [1.0, 0.82, 0.30] }, name: 'Lunapark', sub: 'Rummelplatz, auf dem jede Bude gezinkt ist', acts: 4, ash: 1.6,
+      rooms: ['Losbude', 'Spiegelkabinett', 'Geisterbahn', 'Direktionswagen'], rules: ['last-call', 'sober', 'tombola'] },
     { id: 'laterne', tint: { a: [0.13, 0.02, 0.09], b: [0.46, 0.06, 0.30], c: [1.0, 0.62, 0.78] }, name: 'Rote Laterne', sub: 'Ein Nachtclub, in dem keiner fragt', acts: 4, ash: 1.75,
       rooms: ['Foyer', 'Champagnerbar', 'Separee', 'Chefetage'], rules: ['last-call', 'sober', 'cover-charge'] },
     { id: 'fortuna', tint: { a: [0.02, 0.09, 0.11], b: [0.05, 0.28, 0.31], c: [0.62, 0.88, 0.78] }, name: 'Dampfer Fortuna', sub: 'Schwimmt außerhalb jeder Zuständigkeit', acts: 4, ash: 2,
       rooms: ['Unterdeck', 'Salon', 'Kapitänstisch', 'Brücke'], rules: ['last-call', 'sober', 'markup', 'short-night'] },
+    { id: 'rennbahn', tint: { a: [0.03, 0.09, 0.05], b: [0.12, 0.34, 0.16], c: [0.86, 0.92, 0.70] }, name: 'Rennbahn Silberhuf', sub: 'Hier laufen die Pferde – und das Geld davon', acts: 5, ash: 2.2,
+      rooms: ['Sattelplatz', 'Wettschalter', 'Tribüne', 'Führring', 'Loge des Grafen'], rules: ['last-call', 'sober', 'markup', 'short-night', 'handicap'] },
     { id: 'block9', tint: { a: [0.03, 0.04, 0.12], b: [0.11, 0.15, 0.46], c: [0.56, 0.76, 1.0] }, name: 'Block 9', sub: 'Hinterhof, Shisha-Lounge und das lauteste Studio der Stadt', acts: 5, ash: 2.4,
       rooms: ['Hinterhof', 'Shisha-Lounge', 'Studio', 'VIP-Raum', 'Chefbüro'], rules: ['last-call', 'sober', 'markup', 'short-night', 'hype'] },
+    { id: 'express', tint: { a: [0.02, 0.04, 0.10], b: [0.08, 0.16, 0.36], c: [0.98, 0.80, 0.42] }, name: 'Nachtexpress', sub: 'Hält erst, wenn einer pleite ist', acts: 5, ash: 2.6,
+      rooms: ['Gepäckwagen', 'Speisewagen', 'Salonwagen', 'Schlafwagen', 'Lokomotive'], rules: ['last-call', 'sober', 'markup', 'short-night', 'cover', 'first-class'] },
     { id: 'imperial', tint: { a: [0.07, 0.04, 0.12], b: [0.25, 0.14, 0.36], c: [0.94, 0.84, 0.58] }, name: 'Grandhotel Imperial', sub: 'Gespielt wird nur mit Krawatte', acts: 5, ash: 2.75,
       rooms: ['Foyer', 'Hotelbar', 'Bel Etage', 'Fürstensuite', 'Penthouse'], rules: ['last-call', 'sober', 'markup', 'short-night', 'cover', 'sharp-sevens'] },
+    { id: 'ratskeller', tint: { a: [0.05, 0.07, 0.04], b: [0.20, 0.26, 0.12], c: [0.90, 0.80, 0.42] }, name: 'Ratskeller', sub: 'Oben wird regiert, unten wird verteilt', acts: 5, ash: 3.1,
+      rooms: ['Weinkeller', 'Stammtisch', 'Sitzungssaal', 'Archiv', 'Amtszimmer'], rules: ['last-call', 'sober', 'markup', 'short-night', 'cover', 'sharp-sevens', 'tax'] },
     { id: 'monopol', tint: { a: [0.04, 0.06, 0.10], b: [0.14, 0.21, 0.30], c: [0.72, 0.80, 0.90] }, name: 'Spielbank Monopol', sub: 'Die Bank gewinnt. Steht so im Namen', acts: 5, ash: 3.5,
       rooms: ['Automatensaal', 'Roulettesaal', 'Baccara-Zimmer', 'Tresorraum', 'Direktorium'], rules: ['last-call', 'sober', 'markup', 'short-night', 'cover', 'sharp-sevens', 'house-edge', 'no-credit'] },
     { id: 'inferno', tint: { a: [0.06, 0.01, 0.01], b: [0.27, 0.03, 0.02], c: [1.0, 0.34, 0.07] }, name: 'Das Inferno', sub: 'Hier hat noch keiner das Licht ausgemacht', acts: 6, ash: 5,
       rooms: ['Vorhof', 'Glutkammer', 'Aschegrube', 'Schwefelsaal', 'Thronsaal', 'Der Abgrund'], rules: ['last-call', 'wide-awake', 'markup', 'short-night', 'cover', 'sharp-sevens', 'house-edge', 'no-credit', 'marked', 'damp'] }
   ];
+  ZU.CASINO = {};
+  ZU.CASINOS.forEach(function (casino, index) { casino.index = index; ZU.CASINO[casino.id] = casino; });
 
   /* ---------- Veredelungen (Esmes Nebenzimmer) ----------
      Ein Siegel wertet eine normale Karte für den ganzen Run auf; ein Makel ist der kleine Haken, mit dem
@@ -222,7 +264,10 @@
     haken: { name: 'Widerhaken', value: 6, weight: 8, text: 'Der Gegner zieht 1 Karte.', not: ['klette'] },
     anker: { name: 'Anker', value: 3, weight: 10, text: 'Liegt immer auf der Starthand.', not: ['spaet'] },
     bumerang: { name: 'Bumerang', value: 5, weight: 8, text: 'Kehrt einmal je Duell auf die Hand zurück.', not: [] },
-    irrlicht: { name: 'Irrlicht', value: 8, weight: 3, text: 'Passt auf jede Karte.', not: [] }
+    irrlicht: { name: 'Irrlicht', value: 8, weight: 3, text: 'Passt auf jede Karte.', not: [] },
+    funke: { name: 'Funkenschlag', value: 3, weight: 10, text: 'Zählt 8 Glut mehr.', not: ['matt'] },
+    spiegel: { name: 'Spiegelsiegel', value: 5, weight: 6, text: 'Gilt als Ebenbild, sobald die Karte darunter denselben Wert hat.', not: [] },
+    maulkorb: { name: 'Maulkorb', value: 7, weight: 4, text: 'Einmal je Duell: Der Gegner setzt aus.', not: [] }
   };
   ZU.SEAL_IDS = Object.keys(ZU.SEALS);
   ZU.FLAWS = {
@@ -267,8 +312,9 @@
   ZU.ACT_GROWTH = 0.15;
   /* Glutziel je Tisch: Grundwert je Art, Faktor je Akt und Zuschlag je Casino.
      Früher ×2 je Akt und +50 % je Casino: Das lief jedem Deck davon (ab dem zweiten Casino fiel praktisch kein Ziel mehr).
+     Mit zwölf statt acht Häusern beträgt der Zuschlag 16 % je Haus – das letzte liegt damit so hoch wie zuvor (+176 %).
      Nachmessen mit web/tests/glutziel.js. */
-  ZU.GLUT_TARGET = { battle: 600, elite: 800, boss: 1100, perAct: 1.7, perCasino: 0.25 };
+  ZU.GLUT_TARGET = { battle: 600, elite: 800, boss: 1100, perAct: 1.7, perCasino: 0.16 };
   var trinkets = {};
   function trinket(id, name, rarity, text) {
     trinkets[id] = { id: id, name: name, rarity: rarity, price: ZU.TRINKET_PRICES[rarity], text: text };
@@ -435,6 +481,75 @@
   trinket('weissglut', 'Weißglut', 2, '+×0,1 Glut je Stufe deiner Kette (bei Kette ×10: ×2).');
   trinket('kerbholz', 'Kerbholz', 2, '+×0,25 Glut je Tisch, den du in diesem Run abgefackelt hast.');
   trinket('vabanque', 'Vabanque', 2, 'Alle deine Karten bringen ×3 Glut. Verlierst du ein Duell, ist dieses Trinket fort.');
+  /* ----- dritte Serie (3.0): 63 Stücke, viele nach dem Vorbild der Joker aus Balatro und der Relikte anderer Roguelites ----- */
+  // --- Glut-Mult: eigener Faktor je Stück ---
+  trinket('halbe-portion', 'Halbe Portion', 0, 'Hältst du nach dem Legen höchstens 3 Karten, bringt die Karte ×1,5 Glut.');
+  trinket('fehldruck', 'Fehldruck', 1, 'Jede Karte bringt zufällig ×1 bis ×2,5 Glut.');
+  trinket('gerade-linie', 'Gerade Linie', 0, '8en und 10en bringen ×1,5 Glut.');
+  trinket('schiefertafel', 'Schiefertafel', 1, 'Hältst du nach dem Legen keine rote Karte auf der Hand, bringt die Karte ×2 Glut.');
+  trinket('schwarzfahrer', 'Schwarzfahrer', 1, '+×0,1 Glut je Karte, die du in diesem Duell in Folge ohne Bildkarte gespielt hast. Eine Bildkarte setzt zurück.');
+  trinket('baron', 'Baron', 2, 'Je König auf deiner Hand bringen deine Karten ×1,5 Glut.');
+  trinket('mondsuechtig', 'Mondsüchtig', 1, '+×0,3 Glut je Dame auf deiner Hand.');
+  trinket('blutstein', 'Blutstein', 1, 'Herz-Karten bringen mit 1 zu 3 Chance ×3 Glut.');
+  trinket('blumentopf', 'Blumentopf', 1, 'Hast du in diesem Duell schon alle vier Symbole gespielt, bringen deine Karten ×2 Glut.');
+  trinket('hofnarr', 'Hofnarr', 3, 'Könige und Damen bringen ×3 Glut.');
+  trinket('yorick', 'Armer Yorick', 3, '+×1 Glut je 23 Karten, die du in diesem Run gespielt hast.');
+  trinket('schablone', 'Schablone', 1, 'Alle deine Karten bringen ×3 Glut – aber ×0,25 weniger je weiterem Trinket, das du trägst (mindestens ×1).');
+  trinket('meisterbrief', 'Meisterbrief', 2, 'Trägst du mindestens 6 veredelte Karten im Deck, bringen deine Karten ×3 Glut.');
+  trinket('schwaenzer', 'Schwänzer', 1, '+×0,5 Glut je Tisch, den du in diesem Run ausgelassen hast.');
+  trinket('lagerfeuer', 'Lagerfeuer', 1, '+×0,25 Glut je Karte, die du in diesem Akt verbrannt hast.');
+  trinket('drahtseilakt', 'Drahtseilakt', 1, 'Hält der Gegner höchstens 2 Karten, bringen deine Karten ×3 Glut.');
+  trinket('bonusheft', 'Bonusheft', 1, 'Jede sechste Karte, die du im Duell spielst, bringt ×4 Glut.');
+  trinket('das-trio', 'Das Trio', 2, 'Legst du 3 oder mehr Karten auf einmal, bringt jede davon ×3 Glut.');
+  trinket('selters', 'Selterswasser', 1, 'Alle deine Karten bringen ×2 Glut. Nach 5 Duellen ist die Flasche leer.');
+  trinket('popcorn', 'Popcorn', 0, 'Alle deine Karten bringen ×3 Glut. Nach jedem Duell ×0,5 weniger; bei ×1 ist die Tüte leer.');
+  trinket('banane', 'Banane', 0, 'Alle deine Karten bringen ×2 Glut. Nach jedem Duell ist sie mit 1 zu 6 Chance verfault.');
+  trinket('wetterhahn', 'Wetterhahn', 1, 'Karten mit dem Symbol der ersten Tischkarte des Duells bringen ×2 Glut.');
+  trinket('hologramm', 'Hologramm', 2, '+×0,2 Glut je Karte, die in diesem Run zu deinem Deck hinzugekommen ist.');
+  trinket('ersatzhose', 'Ersatzhose', 1, '+×0,05 Glut je Zug in diesem Run, in dem du mehrere Karten auf einmal gelegt hast.');
+  trinket('glaskugel', 'Glaskugel', 1, '+×0,15 Glut je Paket, das du in diesem Run bei Esme gekauft hast.');
+  trinket('wahnsinn', 'Wahnsinn', 2, 'Vor jedem Bosstisch verbrennt ein zufälliges anderes Trinket. Dafür bringen deine Karten dauerhaft +×1 Glut.');
+  trinket('armutsgeluebde', 'Armutsgelübde', 2, 'Alle deine Karten bringen ×3 Glut. Tischprämien fallen 50 % niedriger aus.');
+  trinket('stein-der-weisen', 'Stein der Weisen', 2, 'Alle deine Karten bringen ×2 Glut. Gegner beginnen mit einer Karte weniger.');
+  trinket('totenkopfring', 'Totenkopfring', 1, 'Mit deinem letzten Streichholz bringen deine Karten ×3 Glut.');
+  trinket('elitepartner', 'Elitepartner', 0, 'An Elite-Tischen bringen deine Karten ×2,5 Glut.');
+  trinket('nachteule', 'Nachteule', 1, 'Ab deinem zehnten Zug im Duell bringen deine Karten ×2 Glut.');
+  // --- Kartenwerte ---
+  trinket('pfeilspitze', 'Pfeilspitze', 0, 'Pik-Karten zählen 10 Glut mehr.');
+  trinket('schraeger-vogel', 'Schräger Vogel', 0, '7, 9 und Ass zählen 7 Glut mehr.');
+  trinket('geballte-faust', 'Geballte Faust', 1, 'Jede Karte zählt zusätzlich den doppelten Wert der niedrigsten Karte auf deiner Hand.');
+  trinket('blaupause', 'Blaupause', 1, 'Jede Karte zählt 2 Glut mehr je Karte in deinem Nachziehstapel.');
+  trinket('handwaermer', 'Handwärmer', 0, 'Jede Karte zählt 3 Glut mehr je Karte, die du danach noch auf der Hand hältst.');
+  trinket('stuntman', 'Stuntman', 1, 'Jede Karte zählt 20 Glut mehr. Du beginnst jedes Duell mit 2 Karten mehr.');
+  trinket('daeumling', 'Däumling', 1, 'Jede 7, die du in diesem Run spielst, lässt alle deine Karten dauerhaft 1 Glut mehr zählen.');
+  trinket('wandersmann', 'Wandersmann', 2, 'Jede Karte aus deinem Deck zählt für den Rest des Runs 2 Glut mehr, jedes Mal wenn du sie spielst.');
+  trinket('maskenball', 'Maskenball', 1, '7, 8 und 9 gelten als Bildkarten: Sie zählen 10 Glut und lösen alle Bildkarten-Effekte aus.');
+  // --- Kette und Zugfolge ---
+  trinket('spiegelkabinett', 'Spiegelkabinett', 2, 'Ein Ebenbild verdoppelt deine Kette, statt sie um die Hälfte zu heben.');
+  trinket('siebenerkrieg', 'Siebenerkrieg', 1, 'Jede 7 des Gegners erhöht deine Kette um 2.');
+  trinket('trotzkopf', 'Trotzkopf', 1, 'Jede Karte, die dich ein Effekt ziehen lässt, erhöht deine Kette um 1.');
+  trinket('sitzfleisch', 'Sitzfleisch', 0, 'Setzt du aus, steigt deine Kette um 3.');
+  trinket('torero', 'Torero', 1, 'Jedes Mal, wenn die Eigenheit eines Gegners zündet, steigt deine Kette um 2.');
+  trinket('kuckucksuhr', 'Kuckucksuhr', 2, 'Nach jeder fünften Karte, die du im Duell spielst, bist du noch einmal dran.');
+  trinket('oellampe', 'Öllampe', 1, 'In deinem ersten Zug jedes Duells bist du zweimal dran.');
+  trinket('wuerfelbecher', 'Würfelbecher', 0, 'Deine Kette startet in jedem Duell zufällig zwischen ×1 und ×6.');
+  trinket('vier-finger', 'Vier Finger', 2, 'Deine Kniffe dürfen eine Karte mehr legen, als ihre Stufe erlaubt.');
+  // --- Regeln und Schutz ---
+  trinket('verschmiert', 'Verschmierte Karte', 3, 'Herz und Karo gelten für deine Karten als ein Symbol, Pik und Kreuz ebenso.');
+  trinket('narrenfreiheit', 'Narrenfreiheit', 3, 'Die Eigenheiten von Bossen wirken nicht.');
+  trinket('hasenpfote', 'Hasenpfote', 1, 'Alle Chancen auf deinen Trinkets verdoppeln sich.');
+  trinket('herr-knochen', 'Herr Knochen', 2, 'Verlierst du ein Duell mit mindestens dem halben Glutziel, kostet es kein Streichholz. Wird dabei verbraucht.');
+  trinket('weihrauch', 'Weihrauch', 1, 'Jeder dritte Zieheffekt gegen dich verpufft.');
+  trinket('schutzengel', 'Schutzengel', 1, 'Der erste Fluch gegen dich in jedem Duell trifft stattdessen den Gegner.');
+  trinket('stammbaum', 'Stammbaum', 2, 'Die erste normale Karte, die du in jedem Duell spielst, wandert als dauerhafte Kopie in dein Deck.');
+  trinket('kuckucksei', 'Kuckucksei', 1, 'Nach 3 gewonnenen Duellen schlüpft daraus ein zufälliges seltenes Trinket.');
+  trinket('gesindel', 'Gesindel', 2, 'Zu Beginn jedes Akts läuft dir ein zufälliges gewöhnliches Trinket zu.');
+  // --- Kasse ---
+  trinket('wolke-sieben', 'Wolke Sieben', 0, 'Nach jedem Sieg: 5 % der Tischprämie je 7 in deinem Deck.');
+  trinket('rakete', 'Rakete', 1, 'Jede Tischprämie fällt je Boss, den du in diesem Run besiegt hast, 10 % höher aus.');
+  trinket('geduldsfaden', 'Geduldsfaden', 0, 'Gewinnst du, ohne freiwillig zu ziehen, fällt die Tischprämie 50 % höher aus.');
+  trinket('notgroschen', 'Notgroschen', 0, 'Mit deinem letzten Streichholz zahlen Tische die doppelte Prämie.');
+  trinket('visitenkarte', 'Visitenkarte', 0, 'Jede Bildkarte bringt mit 1 zu 2 Chance 1 Mark in die Bank (höchstens 6 je Duell).');
   ZU.TRINKETS = trinkets;
   ZU.TRINKET_IDS = Object.keys(trinkets);
 
@@ -458,7 +573,10 @@
     'lauf-diamonds': { name: 'Karo-Lauf', glyph: '♦♦', kind: 'suit', suit: 'diamonds', start: 1, price: 12, tier: 2, text: 'Mehrere Karo-Karten gehen in einem Zug raus.' },
     'lauf-clubs': { name: 'Kreuz-Lauf', glyph: '♣♣', kind: 'suit', suit: 'clubs', start: 1, price: 12, tier: 2, text: 'Mehrere Kreuz-Karten gehen in einem Zug raus.' },
     folge: { name: 'Kleine Straße', glyph: '8›9', kind: 'run', start: 1, price: 12, tier: 3, text: 'Aufeinanderfolgende Werte desselben Symbols gehen in einem Zug raus, etwa Herz 8-9-10.' },
-    pasch: { name: 'Pasch', glyph: '=·=', kind: 'rank', ranks: null, start: 1, price: 16, tier: 5, text: 'Karten mit gleichem Wert gehen in einem Zug raus – egal welcher Wert.' }
+    pasch: { name: 'Pasch', glyph: '=·=', kind: 'rank', ranks: null, start: 1, price: 16, tier: 5, text: 'Karten mit gleichem Wert gehen in einem Zug raus – egal welcher Wert.' },
+    'faden-rot': { name: 'Roter Faden', glyph: '♥♦', kind: 'color', red: true, start: 1, price: 14, tier: 4, text: 'Herz- und Karo-Karten gehen gemischt in einem Zug raus.' },
+    'faden-schwarz': { name: 'Schwarzer Faden', glyph: '♠♣', kind: 'color', red: false, start: 1, price: 14, tier: 4, text: 'Pik- und Kreuz-Karten gehen gemischt in einem Zug raus.' },
+    treppe: { name: 'Große Straße', glyph: '7›8›9', kind: 'stairs', start: 1, price: 18, tier: 7, text: 'Aufeinanderfolgende Werte gehen in einem Zug raus – egal welches Symbol, etwa Herz 8, Pik 9, Karo 10.' }
   };
   ZU.KNIFF_IDS = Object.keys(ZU.KNIFFE);
   ZU.kniffText = function (id, level) {
@@ -478,6 +596,11 @@
   perk('bell', 'Glockenrecht', 12, 'Die Neue Auslage kostet immer nur 2 Mark.');
   perk('ashbin', 'Aschekasten', 10, 'Verbrennen kostet immer nur 2 Mark.');
   perk('matchbook', 'Zündholzbrief', 20, 'Du erhältst ein zusätzliches Streichholz, auch über das Maximum hinaus.');
+  perk('annex', 'Lagerraum', 14, 'Das Kartenregal hat 5 statt 3 Plätze.');
+  perk('blackmarket', 'Schwarzmarkt', 16, 'Unter Manfreds Trinkets ist immer mindestens ein seltenes oder legendäres.');
+  perk('pass', 'Freikarte', 14, 'Ein ausgelassener Tisch zahlt trotzdem die halbe Tischprämie.');
+  perk('esme-favor', 'Esmes Gunst', 14, 'Esmes Pakete tragen keinen Makel mehr.');
+  perk('patron', 'Stammgast', 18, 'Die Obergrenze der Zinsen steigt um die Hälfte, und Zinsen gibt es auch dort, wo „Kein Kredit“ gilt.');
   ZU.PERKS = perks;
   ZU.PERK_IDS = Object.keys(perks);
 
@@ -736,7 +859,7 @@
     }
   });
   enemy('boss-house', {
-    name: 'Der Hausherr', role: 'Boss des Hauses', kind: 'boss', ai: 'house', pool: COMMON.concat(['fluch']).concat(GAMBLE), bg: '#4a1512',
+    name: 'Der Hausherr', role: 'Boss des Hauses', kind: 'boss', casino: 'hahn', ai: 'house', pool: COMMON.concat(['fluch']).concat(GAMBLE), bg: '#4a1512',
     passive: 'house', passiveText: 'Hausrecht: Du beginnst verflucht (×3). Er beginnt mit 1 Karte weniger.',
     say: {
       start: ['Mein Haus. Meine Regeln. DEIN Pech.', 'Am Ende gewinnt immer das Haus. Immer!'],
@@ -1110,17 +1233,26 @@
   });
 
   ZU.ENEMIES = enemies;
-  // Die allgemeinen Töpfe enthalten nur Figuren, die in jedem Haus sitzen können.
-  ZU.BATTLE_POOL = Object.keys(enemies).filter(function (id) { return enemies[id].kind === 'battle' && !enemies[id].casino; });
-  ZU.ELITE_POOL = Object.keys(enemies).filter(function (id) { return enemies[id].kind === 'elite' && !enemies[id].casino; });
-  /* Eigene Figuren je Casino: { battle, elite, boss } – oder nichts im ersten Haus. */
-  ZU.CASINOS.forEach(function (casino) {
-    var own = Object.keys(enemies).filter(function (id) { return enemies[id].casino === casino.id; });
-    if (!own.length) return;
-    casino.foes = {};
-    own.forEach(function (id) { casino.foes[enemies[id].kind] = id; });
-  });
-  ZU.BOSS_ACTS = [['boss-shark', 'boss-dolores'], ['boss-smoke', 'boss-consigliere'], ['boss-house', 'boss-donna']];
+  /* Bosse, die in jedem Haus sitzen können, nach Rang: [Einstieg, Mitte, oben]. Der Boss eines Hauses selbst steht
+     in dessen "foes". */
+  ZU.BOSS_ACTS = [['boss-shark', 'boss-dolores'], ['boss-smoke', 'boss-consigliere'], ['boss-donna']];
+  /* Baut die Töpfe aus ZU.ENEMIES: allgemeine Tische und Eliten (ohne "casino") und je Haus die eigenen Figuren
+     { battle: [..], elite: [..], boss } in der Reihenfolge, in der sie definiert sind. Wird nach js/cast2.js erneut gerufen. */
+  ZU.buildCast = function () {
+    var all = ZU.ENEMIES;
+    ZU.BATTLE_POOL = Object.keys(all).filter(function (id) { return all[id].kind === 'battle' && !all[id].casino; });
+    ZU.ELITE_POOL = Object.keys(all).filter(function (id) { return all[id].kind === 'elite' && !all[id].casino; });
+    ZU.CASINOS.forEach(function (casino) {
+      var own = Object.keys(all).filter(function (id) { return all[id].casino === casino.id; });
+      casino.foes = null;
+      if (!own.length) return;
+      casino.foes = { battle: [], elite: [], boss: null };
+      own.forEach(function (id) {
+        if (all[id].kind === 'boss') casino.foes.boss = id; else casino.foes[all[id].kind].push(id);
+      });
+    });
+  };
+  ZU.buildCast();
   ZU.KIND_LABEL = { battle: 'Tisch', elite: 'Elite', boss: 'Boss' };
   ZU.ACT_NAMES = ['Hinterzimmer', 'Rauchsalon', 'Das Haus'];
   ZU.SPECIAL_SLOTS = 3; // so viele Spezialkarten fasst ein Deck; Upgrades und Trinkets erweitern das
@@ -1151,6 +1283,7 @@
      cards: feste Karten (normale zählen zu den "size" Karten, Spezialkarten kommen dazu, an ein Symbol gebunden)
      special: dazu eine zufällige gewöhnliche Spezialkarte · suits: nur diese Symbole · size: Zahl normaler Karten
      seals: so viele zufällige Karten tragen schon diese Siegel · lives: Streichhölzer mehr oder weniger
+     twins: acht verschiedene Karten, jede doppelt
      color: Farbe des Etiketts für Rahmen und Schilder. */
   function ofRank(rank) { return ZU.SUIT_ORDER.map(function (suit) { return suit + '-' + rank; }); }
   ZU.STARTERS = [
@@ -1169,7 +1302,11 @@
     { id: 'noble', name: 'Blaublut', money: 4, text: '16 Karten, darunter alle Buben, Damen und Könige. Mit dem Hofstaat zählen sie 15 statt 10 Glut.', cards: ofRank('J').concat(ofRank('Q'), ofRank('K')), trinkets: ['hofstaat'], color: '#2f4f9d' },
     { id: 'jeweler', name: 'Goldschmied', money: 4, text: '16 Karten, vier davon schon veredelt: zwei Glutsiegel, ein Goldrand und ein Anker.', cards: [], seals: ['glut', 'glut', 'gold', 'anker'], trinkets: [], color: '#c0508a' },
     { id: 'banker', name: 'Bankier', money: 14, lives: -1, text: '16 Karten plus Schutzgeld, dazu das Kassenbuch und volle Taschen. Dafür liegt ein Streichholz weniger in der Schachtel.', cards: ['schutzgeld'], trinkets: ['ledger'], color: '#b08a2e' },
-    { id: 'devil', name: 'Teufelsblatt', money: 2, lives: -1, text: '16 Karten und der Teufelspakt: Alles bringt doppelte Glut, aber du beginnst jedes Duell verflucht (×2). Ein Streichholz weniger.', cards: [], trinkets: ['teufelspakt'], color: '#a3211c' }
+    { id: 'devil', name: 'Teufelsblatt', money: 2, lives: -1, text: '16 Karten und der Teufelspakt: Alles bringt doppelte Glut, aber du beginnst jedes Duell verflucht (×2). Ein Streichholz weniger.', cards: [], trinkets: ['teufelspakt'], color: '#a3211c' },
+    { id: 'doppelkopf', name: 'Doppelkopf', money: 4, twins: true, text: '8 verschiedene Karten, jede doppelt: lauter Ebenbilder. Mit dem Spiegelkabinett verdoppelt ein Ebenbild deine Kette.', cards: [], trinkets: ['spiegelkabinett'], color: '#2a7f9a' },
+    { id: 'raven', name: 'Rabenschwarz', money: 4, text: 'Nur Pik und Kreuz: alle 16 schwarzen Karten. Mit der Pfeilspitze zählt jede Pik-Karte 10 Glut mehr.', cards: [], suits: ['spades', 'clubs'], trinkets: ['pfeilspitze'], color: '#8a8f9c' },
+    { id: 'lucky', name: 'Glückspilz', money: 3, text: '16 Karten plus Roulette, an ein Symbol gebunden. Glücksrad und Hasenpfote: Deine Chancen stehen doppelt so gut.', cards: ['roulette'], trinkets: ['gluecksrad', 'hasenpfote'], color: '#d8a92a' },
+    { id: 'smith', name: 'Brandmeister', money: 3, text: '16 Karten plus Funkenflug und Großbrand, beide an ein Symbol gebunden. Mit der Vorglut beginnst du jedes Duell mit einem Zehntel des Glutziels.', cards: ['funkenflug', 'grossbrand'], trinkets: ['vorglut'], color: '#e06a1c' }
   ];
   ZU.STARTER = {};
   ZU.STARTERS.forEach(function (starter) { ZU.STARTER[starter.id] = starter; });

@@ -245,7 +245,7 @@
       // Verloren, aber der Run geht weiter: Es gibt nur diesen einen Tisch, also geht es dort gleich von vorn los –
       // ohne Umweg über die Tischwahl. Hat es ein Streichholz gekostet, brennt es vorher groß in der Mitte ab.
       if (result.spared) {
-        ZU.fx.banner('Phönixfeder!', 'win', 1500).then(function () { self.rematch(false); });
+        ZU.fx.banner(result.bones ? 'Herr Knochen nimmt es auf sich!' : 'Phönixfeder!', 'win', 1500).then(function () { self.rematch(false); });
         ZU.audio.match();
         return;
       }

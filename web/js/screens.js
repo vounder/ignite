@@ -1754,13 +1754,15 @@
         result.burnt ? h('div', 'payburnt', 'Tisch abgefackelt' + (result.doublings ? ' · Glutziel ×' + Math.pow(2, result.doublings) + ' übertroffen' : '')) : null,
         result.ash ? h('div', 'payash', [ZU.iconEl('ash', 'ashico'), h('b', null, '+' + result.ash), h('span', null, 'Asche fürs Hinterzimmer')]) : null,
         result.lostCards ? h('div', 'paynote', result.lostCards + (result.lostCards === 1 ? ' erzeugte Spezialkarte fand' : ' erzeugte Spezialkarten fanden') + ' keinen Platz mehr im Deck.') : null,
+        (result.spoiled || []).length ? h('div', 'paynote', 'Aufgebraucht: ' + result.spoiled.map(function (id) { return ZU.TRINKETS[id].name; }).join(', ') + '.') : null,
+        result.hatched ? h('div', 'paynote good', 'Aus dem Kuckucksei schlüpft: ' + ZU.TRINKETS[result.hatched].name + '.') : null,
         h('div', 'btnrow', [go])
       ], { cls: 'small payout', locked: true });
       var sum = 0, chain = wait(350);
       result.lines.forEach(function (line, i) {
         chain = chain.then(function () {
           sum += line.amount;
-          var row = h('div', 'payline', [h('span', null, line.label), h('b', null, '+' + line.amount)]);
+          var row = h('div', 'payline' + (line.amount < 0 ? ' minus' : ''), [h('span', null, line.label), h('b', null, line.amount < 0 ? '−' + (-line.amount) : '+' + line.amount)]);
           list.appendChild(row);
           ZU.audio.coin(i);
           fx.count(totalEl, sum, 220);

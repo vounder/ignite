@@ -4,7 +4,7 @@
      base  = nur die Grundausstattung liegt im Laden (Standard), all = jedes Trinket
      focus = Glut-Spieler: kauft zuerst Glut-Mult, sonst nur Trinkets mit Glut/Kette, und lässt neu auslegen
    Zum Probieren anderer Kurven: PER_ACT=1.7 PER_CASINO=0.25 node web/tests/glutziel.js … */
-['data', 'lore', 'engine', 'run', 'meta'].forEach(f => require('../js/' + f + '.js'));
+['data', 'lore', 'cast2-text', 'cast2', 'engine', 'run', 'meta'].forEach(f => require('../js/' + f + '.js'));
 const ZU = globalThis.ZU;
 const RUNS = Number(process.argv[2] || 300), STAKE = Number(process.argv[3] || 0);
 const ALL = process.argv[4] === 'all', FOCUS = process.argv[5] === 'focus';

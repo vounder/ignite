@@ -1,4 +1,4 @@
-/* Zündung – Spielmusik: ein Stück, acht Häuser, je eine ruhige Fassung und eine Boss-Stufe.
+/* Zündung – Spielmusik: ein Stück, zwölf Häuser, je eine ruhige Fassung und eine Boss-Stufe.
 
    Grundlage ist das Stück für den Goldenen Hahn (h-Moll, 100 BPM, 64 Takte). Die Melodien stammen aus dem
    bisherigen Spielstück: das Auftakt-Thema (h d e g a → fis), der Refrain (fis fis fis e d e …, in der
@@ -9,7 +9,8 @@
    Fassung ihres Hauses – darum kann das Spiel mitten im Takt von der einen in die andere blenden.
    Sie ist dichter: Melodie in allen Teilen und mit allen Tönen, volleres Schlagwerk, hellere Klänge.
 
-   Partituren heißen game-<casino> und game-<casino>-boss. */
+   Partituren heißen game-<casino> und game-<casino>-boss. Dazu kommt "story": dasselbe Stück, sehr ruhig,
+   für Szenen, in denen gesprochen wird (siehe STORY unten). */
 (function (MU) {
   'use strict';
   MU.scores = MU.scores || {};
@@ -130,8 +131,62 @@
       var rows = { k: 'x.....x.....x...', sn: '....o.......x...', sh: 'o.-.o.-.o.-.o.-.', h: '..o...o...o...o.', cl: i % 2 ? '...o.....o....o.' : '.........o......' };
       if (state === 'chorus') { rows.sn = '....x.......x...'; rows.k = i % 2 ? 'x.....x.....x.o.' : 'x.....x.....x...'; rows.sh = 'o.-oo.-oo.-oo.-o'; rows.o = i % 4 === 3 ? '..............x.' : '................'; }
       return rows;
+    },
+    /* Lunapark: Karussell – Bassdrum auf eins und drei, Becken auf den Nachschlägen, die kleine Trommel
+       antwortet auf zwei und vier und wirbelt leise in die nächste Zählzeit. */
+    carousel: function (state, i) {
+      if (state === 'calm') return { k: 'o.......-.......', h: '..-...-...-...-.', sn: i % 2 ? '....-.......-.--' : '....-.......-...' };
+      if (state === 'thin') return { h: '..-...-...-...-.', sn: i < 4 ? '............-...' : '....-.......-.--' };
+      var rows = { k: 'x.......o.......', sn: i % 2 ? '....o.--....o.--' : '....o.......o.--', h: '..o...o...o...o.', sh: '-...-...-...-...' };
+      if (state === 'chorus') {
+        rows.k = 'x.......x.......'; rows.sn = i % 2 ? '....x.--....o---' : '....x.......o.--'; rows.h = '..o.-.o...o.-.o.';
+        rows.o = i % 4 === 3 ? '..............o.' : '................';
+        if (i % 2) rows.ch = '..........o.....';
+      }
+      return rows;
+    },
+    /* Rennbahn: Galopp – "ta-da-dum" auf dem Becken, Besen auf zwei und vier, die Bassdrum springt in die Drei,
+       tiefe Trommeln klappern wie Hufe. */
+    gallop: function (state, i) {
+      if (state === 'calm') return { h: 'o.--o.--o.--o.--', k: 'x.......o.......' };
+      if (state === 'thin') return { h: 'o.--o.--o.--o.--', sn: i < 4 ? '................' : '....-.......o...', k: i < 4 ? '................' : 'o...............' };
+      var rows = { k: 'x.....o.x.......', sn: '....o.......o...', h: 'x.oox.oox.oox.oo', sh: '....-.......-...' };
+      if (i % 2) rows.cl = '..............oo';
+      if (state === 'chorus') {
+        rows.k = i % 2 ? 'x.....oox.....o.' : 'x.....oox.......'; rows.sn = '....x.......x...'; rows.sh = '..-.o.-...-.o.-.';
+        rows.cl = i % 2 ? '..oo..........oo' : '..oo............';
+      }
+      if (i % 4 === 3) rows.sn = state === 'chorus' ? '....x.......x.oo' : '....o.......o.--';
+      return rows;
+    },
+    /* Express: Nachtzug – gleichmäßige Sechzehntel vom Shaker, betont wie Räder auf den Schienenstößen
+       (leise vor, laut auf eins und drei), Bassdrum auf jedem Schlag, keine Verzierungen. */
+    train: function (state, i) {
+      if (state === 'calm') return { sh: 'o-----o-o-----o-', k: 'o.......o.......' };
+      if (state === 'thin') return { sh: 'o-----o-o-----o-', h: '..-...-...-...-.', sn: i < 4 ? '................' : '............o...' };
+      var rows = { k: 'x...o...x...o...', sn: '....o.......o...', sh: 'x-----o-x-----o-', h: '..o...o...o...o.' };
+      if (state === 'chorus') { rows.k = 'x...o.o.x...o.o.'; rows.sn = '....x.......x...'; rows.sh = 'x-o---o-x-o---o-'; rows.cl = i % 2 ? '......o.o.....o.' : '......o.o.......'; }
+      return rows;
+    },
+    /* Ratskeller: schwer und sparsam – Bassdrum mit der Tuba auf eins und drei, Besen wischen,
+       die Snare kommt leise und mit viel Raum auf zwei und vier. */
+    cellar: function (state, i) {
+      if (state === 'calm') return { k: 'x.......o.......', sh: '....-.......-...' };
+      if (state === 'thin') return { sh: '....-.......-...', k: i < 4 ? '................' : 'o...............', sn: i < 4 ? '................' : '............-...' };
+      var rows = { k: 'x.......x.......', sn: '....o.......o...', sh: 'o.-.o.-.o.-.o.-.' };
+      if (state === 'chorus') { rows.sn = i % 4 === 3 ? '....x.......x.-.' : '....x.......x...'; rows.h = '..-...-...-...-.'; rows.cl = i % 2 ? '..........o...o.' : '................'; }
+      else if (i % 4 === 3) rows.cl = '..............o.';
+      return rows;
+    },
+    /* Geschichte: fast nichts – ein Besenwisch je Schlag, im Refrain ein Hauch Shaker dazwischen. */
+    hush: function (state, i) {
+      if (state === 'last') return { sh: '-...-...........' };
+      if (state === 'calm' || state === 'thin') return { sh: '-.......-.......' };
+      if (state === 'chorus') return { sh: 'o...-.-.o...-.-.' };
+      return { sh: 'o...-...o...-...' };
     }
   };
+  var OWN_LAST = { lounge: true, hush: true }; // diese Schlagwerke haben einen eigenen Schlusstakt
   function overlay(row, extra) { // setzt Schläge aus "extra" in die Lücken von "row"
     var out = '';
     for (var n = 0; n < 16; n++) out += (row || '................').charAt(n) === '.' ? extra.charAt(n) : row.charAt(n);
@@ -259,6 +314,94 @@
         vibes: { gain: -11, opts: { decay: 1.8, partials: [[1, 1, 1], [2.4, 0.34, 0.5], [4.1, 0.18, 0.3]] }, fx: { tremolo: { rate: 3.2, depth: 0.2 } } },
         lead: { gain: -16.5, fx: { drive: 2.2 }, opts: { cutoff: 2300, vibCents: 28, glide: 0.06 } }
       }
+    },
+    /* Lunapark – Rummel bei Nacht: Karussell mit Drehorgel. Hüpfender Bass (Grundton, Quinte), Nachschläge vom E-Piano,
+       Glockenspiel vorn, die Melodiestimme pfeift wie eine Orgel mit Tremulant, leise Trommelwirbel, das Band leiert. */
+    lunapark: {
+      bpm: 108, swing: 0.55, key: 5, seed: 19, kit: 'carousel', bass: 'oompah', ep: 'pah', arp: 'some',
+      plan: [null, ['V', 'theme'], ['L', 'calm1'], ['V', 'calm2'], ['V', 'bridge'], ['L', 'bridge'], ['V', 'calm1'], ['L', 'calm2']],
+      fx: { reverbTime: 2.2, reverbSeconds: 2.8, delayFeedback: 0.34 },
+      master: { wowCents: 10, wowRate: 0.55, flutterCents: 1.5, air: 1 },
+      tracks: {
+        drums: { gain: -0.5 },
+        bass: { gain: -11, opts: { cutoff: 560, grit: 0.4, sustain: 0.55, snap: 0.12, release: 0.06 } },
+        pad: { gain: -14, fx: { phaser: null }, opts: { wave: 'square', cutoff: 1150, attack: 0.35, voices: 2, spread: 7 } },
+        ep: { gain: -13, opts: { decay: 0.8, bark: 1.4, tine: 0.9 } },
+        pluck: { gain: -7, opts: { wave: 'square', square: 0.4, cutoff: 2600, q: 1.5, decay: 0.16 } },
+        vibes: { gain: -6.5, reverb: -9, fx: { tremolo: { rate: 5.4, depth: 0.05 } }, opts: { decay: 0.8, partials: [[1, 0.6, 1], [2, 1, 0.7], [5.52, 0.22, 0.25], [10.8, 0.07, 0.1]] } },
+        lead: { gain: -11, opts: { cutoff: 2100, q: 0.9, glide: 0, attack: 0.012, release: 0.07, vibRate: 6.4, vibCents: 20, vibDelay: 0.12,
+          waves: [['square', 0, 0.42], ['square', 3, 0.26, 2], ['triangle', 0, 0.2, 3]] } }
+      }
+    },
+    /* Rennbahn – flotter Galopp: "ta-da-dum" auf dem Becken, Besen, ein Bass, der in Vierteln nach vorn drängt,
+       die Melodiestimme hell und sicher wie eine Fanfare mit Dämpfer. Das schnellste Haus. */
+    rennbahn: {
+      bpm: 116, swing: 0.56, key: -1, seed: 20, kit: 'gallop', bass: 'drive', arp: 'some',
+      plan: [null, ['L', 'theme'], ['L', 'calm1'], ['V', 'calm2'], ['V', 'bridge'], ['L', 'bridge'], ['L', 'calm1'], ['V', 'calm2']],
+      fx: { reverbTime: 2.1, reverbSeconds: 2.7, delayFeedback: 0.34, delayTone: 2800 },
+      master: { wowCents: 3, air: 2 },
+      tracks: {
+        drums: { gain: -0.5, opts: { levels: { h: 1.4, cl: 1.1 } } },
+        bass: { gain: -12, opts: { cutoff: 760, grit: 0.5, snap: 0.13, sustain: 0.6 } },
+        pad: { gain: -13, opts: { cutoff: 1700 } },
+        ep: { gain: -13.5, opts: { decay: 1.2, bark: 1.5, tine: 1 } },
+        vibes: { gain: -8.5 },
+        lead: { gain: -10, fx: { hp: 320 }, opts: { cutoff: 2700, q: 1.8, glide: 0.02, attack: 0.03, vibRate: 5.9, vibCents: 20, vibDelay: 0.16,
+          waves: [['sawtooth', 0, 0.5], ['sawtooth', 5, 0.28], ['square', 0, 0.16]] } }
+      }
+    },
+    /* Express – Luxuszug bei Nacht: gleichmäßiges Rattern (Shaker in Sechzehnteln, betont wie Räder auf den Schienenstößen),
+       lange warme Flächen, das Vibraphon wie Bahnhofsglocken, die Melodiestimme weit weg mit viel Echo. Kein Swing. */
+    express: {
+      bpm: 102, swing: 0.5, key: 4, seed: 21, kit: 'train', bass: 'rail', ep: 'held', arp: 'some',
+      plan: [null, ['V', 'theme'], ['V', 'calm1'], ['L', 'calm2'], ['V', 'bridge'], ['L', 'bridge'], ['L', 'calm1'], ['V', 'calm2']],
+      fx: { reverbTime: 3, reverbSeconds: 3.6, delayFeedback: 0.52, delayTone: 2000 },
+      master: { wowCents: 4, air: 1 },
+      tracks: {
+        drums: { gain: -1.5, human: 0.001, velHuman: 0.1, opts: { levels: { h: 1.2, sh: 2.1, sn: 0.9, cl: 0.9 } } },
+        bass: { gain: -12.5, opts: { cutoff: 480, grit: 0.3, sustain: 0.9, release: 0.12 } },
+        pad: { gain: -10, reverb: -7, fx: { phaser: { rate: 0.05, freq: 560, mix: 0.6 }, chorus: { rate: 0.4, depth: 0.004 } },
+          opts: { cutoff: 1250, attack: 0.9, release: 2.2, voices: 3, spread: 12, sub: 0.15 } },
+        ep: { gain: -17, fx: { lp: 3600, autopan: { rate: 2.4, depth: 0.5 } }, opts: { decay: 2.4, bark: 0.9, tine: 0.4 } },
+        pluck: { gain: -8, delay: -6, opts: { cutoff: 2000, square: 0, decay: 0.2 } },
+        vibes: { gain: -8, reverb: -5, delay: -10, fx: { tremolo: { rate: 3, depth: 0.12 } }, opts: { decay: 2, partials: [[1, 1, 1], [2.4, 0.3, 0.55], [3.9, 0.16, 0.35], [6.3, 0.07, 0.2]] } },
+        lead: { gain: -11.5, reverb: -6, delay: -7, opts: { cutoff: 1500, q: 0.9, glide: 0.08, attack: 0.05, release: 0.14, vibCents: 28, vibRate: 5,
+          waves: [['triangle', 0, 0.75], ['sawtooth', -6, 0.2], ['sawtooth', 6, 0.2]] } }
+      }
+    },
+    /* Ratskeller – Weinkeller aus Stein unter dem Rathaus: gemütlich und schwer. Langsam, runder Bass wie eine Tuba auf eins
+       und drei, die Melodiestimme ein dunkles Akkordeon mit langsamem Tremolo, sparsame Besen, viel Raumhall. */
+    ratskeller: {
+      bpm: 88, swing: 0.58, key: -5, seed: 22, kit: 'cellar', bass: 'tuba', ep: 'held', arp: 'none',
+      plan: [null, ['L', 'theme'], ['L', 'calm1'], ['V', 'calm2'], ['V', 'bridge'], ['L', 'bridge'], ['V', 'calm1'], ['L', 'calm2']],
+      fx: { reverbTime: 3.4, reverbSeconds: 4, delayFeedback: 0.3, delayTone: 1800 },
+      master: { wowCents: 4, air: 0 },
+      tracks: {
+        drums: { gain: 0, reverb: -12, opts: { snareReverb: 0.7 } },
+        bass: { gain: -11.5, opts: { cutoff: 360, grit: 0.55, sustain: 0.9, release: 0.16, snap: 0.3, floor: 150 } },
+        pad: { gain: -12, reverb: -6, opts: { cutoff: 1050, attack: 0.7, release: 1.8 } },
+        ep: { gain: -15, reverb: -9, fx: { lp: 3400 }, opts: { decay: 2.2, bark: 0.9, tine: 0.4 } },
+        vibes: { gain: -9, reverb: -5, fx: { tremolo: { rate: 3.6, depth: 0.2 } }, opts: { decay: 1.4 } },
+        lead: { gain: -10, reverb: -6, delay: -20, opts: { cutoff: 1500, q: 0.9, glide: 0.015, attack: 0.07, release: 0.14, vibRate: 4.1, vibCents: 20, vibDelay: 0.2, vibRise: 0.15,
+          waves: [['square', -9, 0.32], ['square', 9, 0.32], ['sawtooth', 0, 0.22, 0.5]] } }
+      }
+    }
+  };
+  /* Geschichte – für Szenen mit Dialog: das Gewand des Goldenen Hahns, aber langsam und ganz nah. Fläche und E-Piano tragen,
+     die Melodie liegt fast durchweg beim Vibraphon, die Melodiestimme kommt nur leise in der zweiten Brücke, vom Schlagwerk
+     bleibt ein Besenwisch. Leiser kodiert als die Spielmusik, weil später Sprache darüber liegt. */
+  var STORY = {
+    bpm: 82, swing: 0.55, seed: 23, kit: 'hush', bass: 'long', ep: 'held', arp: 'none', lufs: -18,
+    plan: [null, ['V', 'theme'], ['V', 'calm1'], ['V', 'calm2'], ['V', 'bridge'], ['L', 'bridge'], ['V', 'calm1'], ['V', 'calm2']],
+    fx: { reverbTime: 3.2, reverbSeconds: 3.8, delayFeedback: 0.44 },
+    master: { wowCents: 4 },
+    tracks: {
+      drums: { gain: -5, reverb: -12, opts: { levels: { rd: 0.5, sw: 0.7 } } },
+      bass: { gain: -13.5, opts: { cutoff: 420, grit: 0.25, sustain: 0.92, release: 0.14 } },
+      pad: { gain: -10.5, reverb: -7, opts: { cutoff: 1300, attack: 0.9, release: 2.2 } },
+      ep: { gain: -12.5, reverb: -9, fx: { lp: 4200, autopan: { rate: 2.8, depth: 0.45 } }, opts: { decay: 2.6, bark: 0.9, tine: 0.5 } },
+      vibes: { gain: -10, reverb: -6, fx: { tremolo: { rate: 4.2, depth: 0.25 } }, opts: { decay: 1.6 } },
+      lead: { gain: -14, reverb: -7, delay: -11, opts: { cutoff: 1700, attack: 0.05, glide: 0.08, vibCents: 26, vibRate: 4.9 } }
     }
   };
   /* Was die Boss-Stufe an den Spuren ändert (auf das Gewand des Hauses obendrauf). */
@@ -278,8 +421,8 @@
     return out;
   }
 
-  function build(id, boss) {
-    var st = merge(BASE, CASINOS[id]), seq = MU.seq, pattern = MU.pattern, kit = KITS[st.kit];
+  function build(costume, name, boss) {
+    var st = merge(BASE, costume), seq = MU.seq, pattern = MU.pattern, kit = KITS[st.kit];
     var lead = [], vibes = [], ep = [], pad = [], bass = [], pluck = [], drums = [];
     function add(list, notes) { notes.forEach(function (n) { list.push(n); }); }
     var cells = [];
@@ -296,6 +439,8 @@
         add(ep, seq(start, half ? '(' + c.ep + ')/2:1.8' : '(' + c.ep + ')/2.5:2.4 (' + c.ep + ')*0.5/1.5:1.4', { vel: 0.66 }));
       } else if (st.ep === 'stab') {
         add(ep, seq(start, half ? '_/1.5 (' + c.ep + ')/.5:.2' : '_/1.5 (' + c.ep + ')/2:.2 (' + c.ep + ')*0.7/.5:.2', { vel: 0.7 }));
+      } else if (st.ep === 'pah' && !thin) { // Nachschläge auf zwei und vier
+        add(ep, seq(start, half ? '_/1 (' + c.ep + ')/1:.3' : '_/1 (' + c.ep + ')/1:.3 _/1 (' + c.ep + ')*0.8/1:.3', { vel: 0.7 }));
       } else if (half) {
         add(ep, seq(start, '(' + c.ep + ')/2:1.6', { vel: 0.7 }));
       } else if (thin) {
@@ -310,9 +455,14 @@
       var r = MU.midi(c.bass), fifth = r + 7, oct = r + 12, sev = r + 10;
       var third = r + (/sus/.test(cell.name) ? 5 : /^(Em|Bm|Fsm)/.test(cell.name) ? 3 : 4);
       var target = MU.midi(CH[next.name].bass), lean = target === r ? fifth : (target > r ? target - 1 : target + 1);
+      var low = r - 5, near = r >= 45 ? low : fifth; // Quinte unter dem Grundton; "near" bleibt in der Lage der Grundtöne
       if (half) {
         if (st.bass === 'walk') add(bass, [{ t: start, d: 0.85, n: r, v: 0.85 }, { t: start + 1, d: 0.85, n: lean, v: 0.65 }]);
         else if (st.bass === 'eighths') [0, 0.5, 1, 1.5].forEach(function (o, n) { bass.push({ t: start + o, d: 0.3, n: r, v: n % 2 ? 0.55 : 0.8 }); });
+        else if (st.bass === 'oompah') add(bass, [{ t: start, d: 0.5, n: r, v: 0.85 }, { t: start + 1, d: 0.5, n: low, v: 0.7 }]);
+        else if (st.bass === 'tuba') add(bass, [{ t: start, d: 1.7, n: r, v: 0.85 }]);
+        else if (st.bass === 'drive') add(bass, [{ t: start, d: 0.8, n: r, v: 0.85 }, { t: start + 1, d: 0.6, n: r, v: 0.65 }, { t: start + 1.75, d: 0.2, n: r, v: 0.5 }]);
+        else if (st.bass === 'rail') add(bass, [{ t: start, d: 1.3, n: r, v: 0.85 }, { t: start + 1.5, d: 0.4, n: r, v: 0.5 }]);
         else add(bass, [{ t: start, d: 1.3, n: r, v: 0.85 }, { t: start + 1.5, d: 0.4, n: cell.part ? fifth : oct, v: 0.6 }]);
       } else if (thin) {
         add(bass, [{ t: start, d: 3.4, n: r, v: 0.75 }, { t: start + 3.5, d: 0.4, n: fifth, v: 0.5 }]);
@@ -328,6 +478,23 @@
         if (chorus && i % 2) bass.push({ t: start + 1.75, d: 0.2, n: oct, v: 0.5 });
       } else if (st.bass === 'eighths') {
         for (var e = 0; e < 8; e++) bass.push({ t: start + e * 0.5, d: 0.3, n: e === 7 && !calm ? oct : (e === 5 && chorus ? fifth : r), v: e % 2 ? 0.55 : 0.82 });
+      } else if (st.bass === 'oompah') { // Karussell: Grundton auf eins, Quinte darunter auf drei, kurz und federnd
+        add(bass, [{ t: start, d: calm ? 0.7 : 0.5, n: r, v: 0.88 }, { t: start + 2, d: calm ? 0.7 : 0.5, n: low, v: 0.72 }]);
+        if (chorus && i % 2) bass.push({ t: start + 3.5, d: 0.4, n: lean, v: 0.55 });
+      } else if (st.bass === 'tuba') { // rund und lang auf eins und drei, alle zwei Takte ein Schritt zum nächsten Akkord
+        add(bass, [{ t: start, d: 1.6, n: r, v: 0.9 }, { t: start + 2, d: calm || !(i % 2) ? 1.6 : 1.4, n: near, v: 0.75 }]);
+        if (!calm && i % 2) bass.push({ t: start + 3.5, d: 0.45, n: lean, v: 0.55 });
+      } else if (st.bass === 'drive') { // Viertel, die nach vorn drängen, mit Galopp-Vorschlägen
+        if (calm) add(bass, [{ t: start, d: 0.9, n: r, v: 0.85 }, { t: start + 2, d: 0.9, n: r, v: 0.7 }, { t: start + 3, d: 0.8, n: fifth, v: 0.6 }]);
+        else {
+          add(bass, [{ t: start, d: 0.8, n: r, v: 0.88 }, { t: start + 1, d: 0.6, n: r, v: 0.65 }, { t: start + 1.75, d: 0.2, n: r, v: 0.5 },
+            { t: start + 2, d: 0.8, n: fifth, v: 0.8 }, { t: start + 3, d: chorus ? 0.6 : 0.8, n: i % 2 ? lean : third, v: 0.68 }]);
+          if (chorus) bass.push({ t: start + 3.75, d: 0.2, n: i % 2 ? lean : third, v: 0.5 });
+        }
+      } else if (st.bass === 'rail') { // Nachtzug: lange Töne auf eins und drei, davor je ein leiser Schienenstoß
+        if (calm) add(bass, [{ t: start, d: 1.8, n: r, v: 0.82 }, { t: start + 2, d: 1.8, n: r, v: 0.66 }]);
+        else add(bass, [{ t: start, d: 1.3, n: r, v: 0.88 }, { t: start + 1.5, d: 0.4, n: r, v: 0.5 }, { t: start + 2, d: 1.3, n: r, v: 0.8 },
+          { t: start + 3.5, d: 0.4, n: i % 2 ? lean : r, v: 0.5 }]);
       } else if (st.bass === 'pulse') {
         add(bass, [{ t: start, d: 1.3, n: r, v: 0.9 }, { t: start + 1.5, d: 1.3, n: r, v: 0.75 }, { t: start + 3, d: 0.45, n: r, v: 0.8 }]);
         if (!calm) bass.push({ t: start + 3.5, d: 0.4, n: i % 2 ? sev : fifth, v: 0.6 });
@@ -366,7 +533,7 @@
         rows.o = overlay(rows.o, i % 2 ? '......o.......o.' : '..............o.');
         rows.k = overlay(rows.k, i % 2 ? '..............o.' : '................');
       }
-      if (last && st.kit === 'lounge' && !boss) rows = kit('last', i);
+      if (last && OWN_LAST[st.kit] && !boss) rows = kit('last', i);
       else if (last) { // Schlusstakt: nach der Zwei wird es dünn, zwei Congas führen zurück
         var keep = {};
         Object.keys(rows).forEach(function (name) { keep[name] = rows[name].slice(0, 8) + '........'; });
@@ -417,12 +584,13 @@
       tr.notes = name === 'drums' || !st.key ? notes[name] : notes[name].map(function (n) { return { t: n.t, d: n.d, n: n.n + st.key, v: n.v }; });
       return tr;
     });
-    return { name: 'game-' + id + (boss ? '-boss' : ''), bpm: st.bpm, bars: 64, swing: st.swing, seed: st.seed, fx: st.fx, master: st.master,
-      lufs: boss ? -15 : -16, tracks: tracks };
+    return { name: name, bpm: st.bpm, bars: 64, swing: st.swing, seed: st.seed, fx: st.fx, master: st.master,
+      lufs: st.lufs != null ? st.lufs : (boss ? -15 : -16), tracks: tracks };
   }
 
   Object.keys(CASINOS).forEach(function (id) {
-    MU.scores['game-' + id] = function () { return build(id, false); };
-    MU.scores['game-' + id + '-boss'] = function () { return build(id, true); };
+    MU.scores['game-' + id] = function () { return build(CASINOS[id], 'game-' + id, false); };
+    MU.scores['game-' + id + '-boss'] = function () { return build(CASINOS[id], 'game-' + id + '-boss', true); };
   });
+  MU.scores.story = function () { return build(STORY, 'story', false); };
 })(window.MU = window.MU || {});

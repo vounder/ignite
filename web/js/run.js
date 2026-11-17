@@ -45,6 +45,10 @@
       return fixed.indexOf(id) < 0 && (!starter.suits || starter.suits.indexOf(ZU.CARDS[id].suit) >= 0);
     }));
     fixed.forEach(function (def) { run._add(def); });
+    if (starter.twins) {
+      // Doppelkopf: halb so viele verschiedene Karten, jede zweimal
+      while (state.collection.length < size && pool.length) { var twinDef = pool.pop(); run._add(twinDef); run._add(twinDef); }
+    }
     while (state.collection.length < size && pool.length) run._add(pool.pop());
     if (starter.seals) {
       // Veredelte Karten der Schachtel: je Siegel eine andere zufällige Karte
@@ -68,6 +72,7 @@
       var commons = run._trinketPool().filter(function (id) { return ZU.TRINKETS[id].rarity === 0; });
       if (commons.length) state.trinkets.push(run.rng.pick(commons));
     }
+    state.added = 0; // Hologramm zählt erst, was nach dem Start dazukommt
     run._encounters();
     run._sync();
     return run;
@@ -78,6 +83,7 @@
     var card = { id: this.s.nextId++, def: def };
     if (ZU.CARDS[def].special) card.bind = bind || 'wild';
     this.s.collection.push(card);
+    this.s.added = (this.s.added || 0) + 1;
     return card;
   };
   Run.prototype.has = function (id) { return this.s.trinkets.indexOf(id) >= 0 || (this.s.perks || []).indexOf(id) >= 0; };
@@ -153,22 +159,28 @@
       s.seen.push(pick);
       return pick;
     }
-    // Bosse: zum Einstieg die kleinen, im letzten Akt die Herren des Hauses, dazwischen alles darunter; in der Nachglut alle.
-    var acts = this.acts(), bosses;
-    if (s.act > acts) bosses = [].concat.apply([], ZU.BOSS_ACTS);
-    else if (s.act === acts) bosses = ZU.BOSS_ACTS[2];
-    else if (s.act === 1) bosses = ZU.BOSS_ACTS[0];
-    else if (s.act === 2) bosses = ZU.BOSS_ACTS[1];
-    else bosses = ZU.BOSS_ACTS[0].concat(ZU.BOSS_ACTS[1]);
-    var lastCall = this.rule('last-call');
-    // Eigene Figuren des Casinos: Ihr Tisch eröffnet das Haus, ihre Elite wartet im zweiten Akt, ihr Boss im letzten.
+    // Bosse, die überall sitzen können: zum Einstieg die kleinen, dann die mittleren, im vorletzten Akt großer Häuser die
+    // ganz oben; dazwischen alles darunter. Der letzte Akt gehört dem Boss des Hauses, die Nachglut allen.
+    var acts = this.acts(), tiers = ZU.BOSS_ACTS, bosses;
     var foes = (!this.meta().legacy && this.casino().foes) || null, inside = s.act <= acts;
-    var battles = ZU.BATTLE_POOL.concat(foes ? [foes.battle] : []), elites = ZU.ELITE_POOL.concat(foes ? [foes.elite] : []);
+    if (s.act > acts) bosses = [].concat.apply([], tiers).concat(foes && foes.boss ? [foes.boss] : []);
+    else if (s.act === acts) bosses = tiers[2];
+    else if (s.act === 1) bosses = tiers[0];
+    else if (s.act === 2) bosses = tiers[1];
+    else if (s.act === acts - 1) bosses = tiers[2];
+    else bosses = tiers[0].concat(tiers[1]);
+    var lastCall = this.rule('last-call');
+    // Eigene Figuren des Casinos: Der erste Tisch eröffnet das Haus, die erste Elite wartet im zweiten Akt; die zweite
+    // Belegschaft folgt im dritten (Tisch) und vierten Akt (Elite). Der Boss des Hauses sitzt im letzten.
+    var ownBattles = (foes && foes.battle) || [], ownElites = (foes && foes.elite) || [];
+    var battles = ZU.BATTLE_POOL.concat(ownBattles), elites = ZU.ELITE_POOL.concat(ownElites);
     function own(id) { if (s.seen.indexOf(id) < 0) s.seen.push(id); return id; }
+    var setBattle = inside ? (s.act === 1 ? ownBattles[0] : s.act === 3 ? ownBattles[1] : null) : null;
+    var setElite = inside ? (s.act === 2 ? ownElites[0] : s.act === 4 ? ownElites[1] : null) : null;
     s.encounters = [
-      { enemy: foes && inside && s.act === 1 ? own(foes.battle) : fresh(battles), kind: 'battle' },
-      { enemy: foes && inside && s.act === 2 ? own(foes.elite) : fresh(elites), kind: 'elite' },
-      { enemy: foes && s.act === acts ? own(foes.boss) : fresh(bosses), kind: 'boss' }
+      { enemy: setBattle ? own(setBattle) : fresh(battles), kind: 'battle' },
+      { enemy: setElite ? own(setElite) : fresh(elites), kind: 'elite' },
+      { enemy: foes && foes.boss && s.act === acts ? own(foes.boss) : fresh(bosses), kind: 'boss' }
     ];
     // Hausregeln: am allerersten Tisch nie, danach mit jedem Akt häufiger.
     s.encounters.forEach(function (encounter, index) {
@@ -187,13 +199,28 @@
     var base = (kind === 'battle' ? 4 + act : kind === 'elite' ? 6 + act : 8 + 2 * act) * this.scale();
     if (this.has('regular')) base *= 1.25; // Privileg „Stammplatz"
     if (this.rule('cover')) base *= 0.75; // Hausregel „Gedeck"
+    if (this.has('armutsgeluebde')) base *= 0.5;
     return Math.max(2, Math.round(base));
   };
 
   /* ---------- Duell ---------- */
   Run.prototype.newDuel = function () {
-    var e = this.encounter();
-    this.s.phase = 'duel';
+    var e = this.encounter(), s = this.s;
+    s.phase = 'duel';
+    s.tk = s.tk || {};
+    this.madness = null;
+    if (e.kind === 'boss' && this.has('wahnsinn') && s.madAt !== s.act + ':' + s.table) {
+      // Wahnsinn: Vor dem Boss verbrennt ein anderes Trinket – einmal je Bosstisch, auch wenn er wiederholt wird.
+      var others = s.trinkets.filter(function (id) { return id !== 'wahnsinn'; });
+      s.madAt = s.act + ':' + s.table;
+      if (others.length) {
+        var victim = this.rng.pick(others);
+        s.trinkets.splice(s.trinkets.indexOf(victim), 1);
+        s.tk.wahnsinn = (s.tk.wahnsinn || 0) + 1;
+        this.madness = victim;
+      }
+    }
+    if (this.has('popcorn') && !s.tk.popcorn) s.tk.popcorn = 3;
     return new ZU.Duel({
       rng: this.rng, enemyId: e.enemy, kind: e.kind, act: this.s.act,
       rules: e.rules || [],
@@ -203,10 +230,13 @@
       douse: this.douse(e),
       grow: { burned: this.s.burnCount || 0, bosses: this.s.bossesBeaten || 0, money: this.s.money, trinkets: this.s.trinkets.length, lastChain: this.s.lastChain || 0,
         deck: this.s.collection.length, sealed: this.s.collection.filter(function (c) { return ZU.sealsOf(c).length > 0; }).length, act: this.s.act,
-        wins: this.s.stats.wins, streak: this.s.streak || 0, lastLost: !!this.s.lastLost, burnt: this.s.burntCount || 0 },
+        wins: this.s.stats.wins, streak: this.s.streak || 0, lastLost: !!this.s.lastLost, burnt: this.s.burntCount || 0,
+        lives: s.lives, missing: Math.max(0, this.maxLives() - s.lives), skipped: s.stats.skipped || 0, burnAct: s.burnAct === s.act ? s.burnActN || 0 : 0,
+        played: s.stats.played || 0, sevens: s.sevens || 0, multi: s.multi || 0, packs: s.packs || 0, added: s.added || 0,
+        popcorn: s.tk.popcorn || 0, wahnsinn: s.tk.wahnsinn || 0 },
       perks: this.s.perks || [],
       specialPool: this.meta().specials,
-      trinkets: this.s.trinkets, collection: this.s.collection.map(function (c) { return { id: c.id, def: c.def, bind: c.bind, seals: ZU.sealsOf(c), flaws: ZU.flawsOf(c) }; }),
+      trinkets: this.s.trinkets, collection: this.s.collection.map(function (c) { return { id: c.id, def: c.def, bind: c.bind, seals: ZU.sealsOf(c), flaws: ZU.flawsOf(c), plus: c.plus || 0 }; }),
       nextId: this.s.nextId
     });
   };
@@ -221,11 +251,27 @@
     s.stats.played += duel.stats.played;
     s.stats.bestChain = Math.max(s.stats.bestChain, duel.maxChain);
     s.stats.bestGlut = Math.max(s.stats.bestGlut, duel.glut);
+    s.sevens = (s.sevens || 0) + duel.stats.sevens; // Däumling
+    s.multi = (s.multi || 0) + duel.stats.pairs; // Ersatzhose
+    if (this.has('wandersmann')) {
+      s.collection.forEach(function (c) { if (duel.plus[c.id]) c.plus = (c.plus || 0) + duel.plus[c.id]; });
+    }
+    // Trinkets, die sich verbrauchen: Selterswasser (5 Duelle), Popcorn (wird weniger), Banane (verfault vielleicht)
+    var spoiled = [];
+    s.tk = s.tk || {};
+    function drop(id) { var at = s.trinkets.indexOf(id); if (at >= 0) { s.trinkets.splice(at, 1); spoiled.push(id); } }
+    if (this.has('selters')) { s.tk.selters = (s.tk.selters || 0) + 1; if (s.tk.selters >= 5) drop('selters'); }
+    if (this.has('popcorn')) { s.tk.popcorn = (s.tk.popcorn || 3) - 0.5; if (s.tk.popcorn <= 1) { drop('popcorn'); delete s.tk.popcorn; } }
+    if (this.has('banane') && this.rng.next() < (this.has('hasenpfote') ? 2 : 1) / 6) drop('banane');
 
     if (duel.winner !== 'player') {
       s.stats.losses++;
-      var saved = false, spared = false, comfort = 0;
-      if (this.has('phoenixfeder') && s.phoenix !== s.act) {
+      var saved = false, spared = false, comfort = 0, bones = false;
+      if (this.has('herr-knochen') && duel.target > 0 && duel.glut * 2 >= duel.target) {
+        // Herr Knochen: knapp verloren kostet kein Streichholz – einmal
+        s.trinkets.splice(s.trinkets.indexOf('herr-knochen'), 1);
+        spared = true; bones = true;
+      } else if (this.has('phoenixfeder') && s.phoenix !== s.act) {
         s.phoenix = s.act; // Phönixfeder: die erste Niederlage je Akt kostet nichts
         spared = true;
       } else if (s.lives === 1 && this.has('golden-match')) {
@@ -246,7 +292,7 @@
       s.phase = s.lives <= 0 ? 'defeat' : 'select';
       this._sync();
       if (s.phase === 'defeat') this._closeRun(false); else this.save();
-      return { won: false, saved: saved, spared: spared, comfort: comfort, lives: s.lives, gone: gone };
+      return { won: false, saved: saved, spared: spared, comfort: comfort, lives: s.lives, gone: gone, bones: bones, spoiled: spoiled };
     }
 
     s.stats.wins++;
@@ -266,7 +312,9 @@
     var lines = [], base = this.baseReward(e.kind), scale = this.scale();
     function share(pct) { return Math.max(1, Math.round(base * pct)); }
     lines.push({ label: ZU.KIND_LABEL[e.kind] + 'prämie', amount: base });
-    var held = duel.enemy.passive === 'purser' || duel.enemy.passive === 'house-cut' ? Math.floor(duel.bank / 2) : duel.bank; // Zahlmeister Pfennig behält die Hälfte ein
+    var traits = duel.enemy.traits || {};
+    var held = duel.enemy.passive === 'purser' || duel.enemy.passive === 'house-cut' ? Math.floor(duel.bank / 2) :
+      traits.bankCut ? Math.floor(duel.bank * (1 - traits.bankCut)) : duel.bank; // Zahlmeister Pfennig behält die Hälfte ein
     var bank = Math.round(held * scale); // die Bank ist in späteren Akten mehr wert
     if (bank > 0) lines.push({ label: 'Bank' + (held < duel.bank ? ' (halbiert)' : '') + (scale > 1 ? ' ×' + String(Math.round(scale * 100) / 100).replace('.', ',') : ''), amount: bank });
     if (duel.bonusMult > 1) lines.push({ label: 'Bonusgeld ×' + duel.bonusMult, amount: (base + bank) * (duel.bonusMult - 1) });
@@ -284,6 +332,12 @@
     if (duel.wonBy === 'curfew' && this.has('nachtschicht')) lines.push({ label: 'Nachtschicht (+50 %)', amount: share(0.5), trinket: 'nachtschicht' });
     if (this.has('trinkgeld') && s.money >= 5) lines.push({ label: 'Spendierhosen (10 % der Kasse)', amount: Math.min(base, Math.max(1, Math.round(s.money * 0.1))), trinket: 'trinkgeld' });
     if (duel.enemy.passive === 'odds') lines.push({ label: 'Wettschein', amount: share(0.3) });
+    if (traits.bonus) lines.push({ label: duel.enemy.name + ' zahlt drauf (+' + Math.round(traits.bonus * 100) + ' %)', amount: share(traits.bonus) });
+    var sevensInDeck = s.collection.filter(function (c) { return ZU.CARDS[c.def].rank === '7'; }).length;
+    if (this.has('wolke-sieben') && sevensInDeck) lines.push({ label: 'Wolke Sieben (' + sevensInDeck + ' Siebenen)', amount: share(0.05 * sevensInDeck), trinket: 'wolke-sieben' });
+    if (this.has('rakete') && s.bossesBeaten) lines.push({ label: 'Rakete (+' + (s.bossesBeaten * 10) + ' %)', amount: share(0.1 * s.bossesBeaten), trinket: 'rakete' });
+    if (this.has('geduldsfaden') && duel.volDraws === 0) lines.push({ label: 'Geduldsfaden (+50 %)', amount: share(0.5), trinket: 'geduldsfaden' });
+    if (this.has('notgroschen') && s.lives === 1) lines.push({ label: 'Notgroschen (+100 %)', amount: share(1), trinket: 'notgroschen' });
     if (this.has('lucky-chip')) lines.push({ label: 'Glückschip (+20 %)', amount: share(0.2), trinket: 'lucky-chip' });
     if (e.kind !== 'battle' && this.has('kopfgeld')) lines.push({ label: 'Kopfgeld (+40 %)', amount: share(0.4), trinket: 'kopfgeld' });
     if (duel.maxChain >= 8 && this.has('zylinder')) lines.push({ label: 'Zylinder (Kette ×' + duel.maxChain + ')', amount: share(0.4), trinket: 'zylinder' });
@@ -291,9 +345,9 @@
     if (this.has('sammleralbum') && s.trinkets.length >= 3) lines.push({ label: 'Sammleralbum (+' + (Math.floor(s.trinkets.length / 3) * 10) + ' %)', amount: share(0.1 * Math.floor(s.trinkets.length / 3)), trinket: 'sammleralbum' });
     if (e.kind === 'boss' && this.meta().bossTip) lines.push({ label: 'Trinkgeld', amount: share(this.meta().bossTip) });
     // Zinsen: 1 Mark je 5 gesparte (mit Zinseszins je 4); die Obergrenze wächst mit dem Akt.
-    var cap = Math.round(3 * scale * (this.has('ledger') ? 2 : 1) * (1 + 0.25 * (this.meta().interest || 0)));
+    var cap = Math.round(3 * scale * (this.has('ledger') ? 2 : 1) * (1 + 0.25 * (this.meta().interest || 0)) * (this.has('patron') ? 1.5 : 1));
     var step = this.has('compound') ? 4 : 5;
-    var interest = this.rule('no-credit') ? 0 : Math.min(cap, Math.floor(s.money / step));
+    var interest = this.rule('no-credit') && !this.has('patron') ? 0 : Math.min(cap, Math.floor(s.money / step));
     if (interest > 0) lines.push({ label: 'Zinsen (1 je ' + step + ' Mark, max. ' + cap + ')', amount: interest });
 
     var total = 0;
@@ -302,11 +356,27 @@
       var toll = Math.min(duel.toll, Math.max(0, total - 1)); // Makel „Zoll": nie mehr, als die Auszahlung hergibt
       if (toll > 0) { lines.push({ label: 'Zoll (' + duel.toll + ' Karten)', amount: -toll }); total -= toll; }
     }
+    if (this.rule('tax') && total > 1) {
+      var tax = Math.max(1, Math.round(total * 0.15)); // Hausregel „Vergnügungssteuer"
+      lines.push({ label: 'Vergnügungssteuer (15 %)', amount: -tax });
+      total -= tax;
+    }
     s.money += total;
     s.stats.earned += total;
     s.score += duel.glut + 100 * s.act;
     s.lastChain = duel.maxChain;
     if (e.kind === 'boss') s.bossesBeaten = (s.bossesBeaten || 0) + 1;
+    // Kuckucksei: nach drei Siegen schlüpft ein seltenes Trinket
+    var hatched = null;
+    if (this.has('kuckucksei')) {
+      s.tk.egg = (s.tk.egg || 0) + 1;
+      if (s.tk.egg >= 3) {
+        var rares = this._trinketPool().filter(function (id) { return ZU.TRINKETS[id].rarity === 2; });
+        s.trinkets.splice(s.trinkets.indexOf('kuckucksei'), 1);
+        delete s.tk.egg;
+        if (rares.length) { hatched = this.rng.pick(rares); s.trinkets.push(hatched); }
+      }
+    }
 
     var healed = false;
     if (e.kind === 'boss' && s.lives < this.maxLives()) { s.lives++; healed = true; }
@@ -328,7 +398,8 @@
     s.reward = null;
     s.phase = 'payout';
     this._sync();
-    return { won: true, lines: lines, total: total, healed: healed, glut: duel.glut, maxChain: duel.maxChain, ash: ash, lostCards: lostCards, target: target, burnt: burnt, doublings: doublings };
+    return { won: true, lines: lines, total: total, healed: healed, glut: duel.glut, maxChain: duel.maxChain, ash: ash, lostCards: lostCards, target: target, burnt: burnt, doublings: doublings,
+      spoiled: spoiled, hatched: hatched };
   };
 
   Run.prototype._weighted = function (ids, weight, count) {
@@ -378,9 +449,11 @@
     if (!this.canSkip()) throw new Error('Dieser Tisch lässt sich nicht auslassen.');
     var reward = this._rollReward(this.skipReward());
     reward.via = 'skip';
+    if (this.has('pass')) s.money += Math.max(1, Math.round(this.baseReward(this.encounter().kind) * 0.5)); // Privileg „Freikarte"
     s.reward = reward;
     this.encounter().skipped = true;
     s.stats.skipped = (s.stats.skipped || 0) + 1;
+    ZU.Meta.note({ skipped: 1 });
     s.phase = 'reward';
     this._sync();
     this.save();
@@ -491,6 +564,7 @@
       this.s.table = -1;
       this.s.act++;
       this._encounters();
+      this._newAct();
     }
     this.s.shop = { cards: [], specials: [], trinkets: [], rerolls: 0, discount: this.has('false-bottom'), healed: false, burned: false, esme: { packs: [], rerolls: 0, pity: false } };
     this._stockEsme();
@@ -499,6 +573,17 @@
     if (!this.s.perkOffer || this.s.perkOffer.act !== this.s.act) this._rollPerk();
     this._stockShop();
     this.s.phase = 'shop';
+  };
+
+  /* Ein neuer Akt beginnt. Gesindel: Ein gewöhnliches Trinket läuft zu. */
+  Run.prototype._newAct = function () {
+    var s = this.s;
+    s.gift = null;
+    if (!this.has('gesindel')) return;
+    var commons = this._trinketPool().filter(function (id) { return ZU.TRINKETS[id].rarity === 0; });
+    if (!commons.length) return;
+    s.gift = this.rng.pick(commons);
+    s.trinkets.push(s.gift);
   };
 
   /* Privileg des Akts: wird nur einmal je Akt gewürfelt und bleibt in allen Läden dieses Akts stehen. */
@@ -538,7 +623,7 @@
     var s = this.s, shop = s.shop, rng = this.rng, act = Math.min(s.act, 4), self = this;
     // Regal 1: drei normale Karten
     var pool = rng.shuffle(ZU.STANDARD_IDS.slice());
-    shop.cards = pool.slice(0, 3).map(function (def) { return { def: def, price: self._price(ZU.cardPrice(def)), sold: false }; });
+    shop.cards = pool.slice(0, this.has('annex') ? 5 : 3).map(function (def) { return { def: def, price: self._price(ZU.cardPrice(def)), sold: false }; });
     // Regal 2: bis zu zwei Spezialkarten – selten, teuer, mit der Zeit freier gebunden
     shop.specials = [];
     var chance = this.specialChance(), used = [];
@@ -554,6 +639,11 @@
     }
     var picks = this._weighted(this._trinketPool(),
       function (id) { return [50, 30, 15, 5][ZU.TRINKETS[id].rarity]; }, (this.has('showcase') ? 3 : 2) + (this.meta().trinketOffers || 0));
+    if (this.has('blackmarket') && picks.length && !picks.some(function (id) { return ZU.TRINKETS[id].rarity >= 2; })) {
+      // Schwarzmarkt: Mindestens ein seltenes oder legendäres Stück liegt aus.
+      var fine = this._weighted(this._trinketPool().filter(function (id) { return ZU.TRINKETS[id].rarity >= 2; }), function (id) { return ZU.TRINKETS[id].rarity === 2 ? 4 : 1; }, 1)[0];
+      if (fine) picks[picks.length - 1] = fine;
+    }
     shop.trinkets = picks.map(function (id) { return { id: id, price: self._price(ZU.TRINKETS[id].price), sold: false }; });
   };
 
@@ -564,7 +654,7 @@
   /* Wie oft ein Paket einen Makel trägt: früh im Casino oft (und billig), gegen Ende selten. */
   Run.prototype.flawChance = function () {
     var acts = this.acts(), t = acts > 1 ? Math.min(1, (this.s.act - 1) / (acts - 1)) : 1;
-    return 0.67 - 0.42 * t;
+    return this.has('esme-favor') ? 0 : 0.67 - 0.42 * t; // Privileg „Esmes Gunst": makellos
   };
   Run.prototype._rollSeal = function (flawed) {
     var pool = this._sealPool(), rng = this.rng;
@@ -659,6 +749,7 @@
       return { id: card.id, def: card.def, seal: item.seal, flaw: item.flaw || null };
     });
     ZU.Meta.note({ sealed: result.length });
+    s.packs = (s.packs || 0) + 1; // Glaskugel
     this._sync();
     this.save();
     return result;
@@ -682,7 +773,7 @@
     if (this.has('gratisfeuer') && this.s.shop && !this.s.shop.burned) return 0;
     return Math.max(1, Math.round((this.has('ashbin') ? 2 : 3 + this.s.burnCount) * (1 - (this.meta().burnDiscount || 0))));
   };
-  Run.prototype.healPrice = function () { return Math.max(1, Math.round(6 * this.scale() * (this.has('feuerversicherung') ? 0.6 : 1))); };
+  Run.prototype.healPrice = function () { return Math.max(1, Math.round(6 * this.scale() * (this.has('feuerversicherung') ? 0.6 : 1) * (this.rule('first-class') ? 2 : 1))); };
   Run.prototype.sellValue = function (id) { return this.has('pfandschein') ? ZU.TRINKETS[id].price : Math.floor(ZU.TRINKETS[id].price / 2); };
 
   Run.prototype._pay = function (amount) {
@@ -750,6 +841,8 @@
       if (s.collection[i].id === cardId) {
         this._pay(this.burnPrice());
         s.burnCount++;
+        if (s.burnAct !== s.act) { s.burnAct = s.act; s.burnActN = 0; } // Lagerfeuer zählt je Akt
+        s.burnActN++;
         s.shop.burned = true;
         ZU.Meta.note({ burned: 1 });
         var gone = s.collection.splice(i, 1)[0];
@@ -779,6 +872,7 @@
       s.table = 0;
       s.act++;
       this._encounters();
+      this._newAct();
     }
     s.phase = 'select';
     this._sync();
@@ -849,9 +943,9 @@
       if (!state || state.v !== 1 || !Array.isArray(state.collection) || !state.encounters) return null;
       if (state.phase === 'duel' || state.phase === 'payout') state.phase = 'select';
       if (state.phase === 'defeat') return null;
-      // Runs aus der Zeit mit sechs Casinos: Der Index des Hauses wandert an seinen neuen Platz.
+      // Runs aus der Zeit mit sechs oder acht Casinos: Der Index des Hauses wandert an seinen neuen Platz.
       if (state.meta && state.meta.cv !== ZU.CASINO_VERSION) {
-        if (ZU.CASINO_REMAP[state.meta.stake] != null) state.meta.stake = ZU.CASINO_REMAP[state.meta.stake];
+        state.meta.stake = ZU.casinoIndex(state.meta.stake || 0, state.meta.cv);
         state.meta.cv = ZU.CASINO_VERSION;
       }
       if (state.shop && !state.shop.specials) state.shop.specials = []; // Spielstände vor dem geteilten Laden

@@ -193,7 +193,15 @@
     var self = this;
     ZU.audio.shuffle();
     this.say('start');
-    return wait(350).then(function () { return self.runEvents(self.duel.start()); });
+    return wait(350).then(function () {
+      var mad = self.game && self.game.run && self.game.run.madness;
+      if (!mad || !ZU.TRINKETS[mad]) return null;
+      // Wahnsinn: Vor dem Boss ist ein Trinket verbrannt.
+      self.game.run.madness = null;
+      ZU.audio.burn();
+      fx.shake(5);
+      return fx.banner('Wahnsinn verbrennt: ' + ZU.TRINKETS[mad].name, 'lose', 1500);
+    }).then(function () { return self.runEvents(self.duel.start()); });
   };
 
   /* ---------- Sprites und Layout ---------- */
@@ -733,6 +741,23 @@
         this.ring(x, y, ['#e9d8b0', '#b98a4a', '#6b4a12'], 16);
         fx.pop(x, y - 110, 'Bumerang', 'gold small');
         return wait(200);
+      case 'funke':
+        ZU.audio.match();
+        fx.burst(x, y, { n: 20, speed: 300, life: 0.8, colors: ['#ffffff', '#fff3c4', '#ff9f3a'] });
+        fx.pop(x + 60, y - 80, 'Funkenschlag: +8', 'gold small');
+        return wait(160);
+      case 'spiegel':
+        ZU.audio.spy();
+        this.ring(x, y, ['#eaf4ff', '#9fc4e8', '#4f7fb0'], 14);
+        fx.pop(x - 70, y - 90, 'Spiegelsiegel: Ebenbild', 'small');
+        return wait(220);
+      case 'maulkorb':
+        to = this.spot('opp');
+        ZU.audio.skip();
+        fx.pop(x - 70, y - 80, 'Maulkorb!', 'good small');
+        return this.trail(x, y, to.x, to.y + 30, ['#d9c2ff', '#7a4ab8', '#2a1a40'], 220, { n: 3 }).then(function () {
+          fx.burst(to.x, to.y + 30, { n: 14, speed: 220, colors: ['#d9c2ff', '#7a4ab8'] });
+        });
       case 'irrlicht':
         ZU.audio.spy();
         fx.burst(x, y, { n: 26, speed: 120, grav: -160, life: 1.3, colors: ['#f3e9ff', '#c9a8ff', '#8a5fd0'] });
@@ -969,7 +994,7 @@
         ZU.bg.flash(0.4);
         return wait(420);
       case 'blaze':
-        fx.pop(ANCHOR.player.x, ANCHOR.player.y, 'Stichflamme: ' + ev.amount + ' Karten doppelt', 'gold');
+        fx.pop(ANCHOR.player.x, ANCHOR.player.y, (ev.amount > 3 ? 'Großbrand: ' : 'Stichflamme: ') + ev.amount + ' Karten doppelt', 'gold');
         ZU.audio.ignite();
         return wait(420);
       case 'bank':
@@ -987,6 +1012,28 @@
       case 'swap-fizzle':
         fx.pop(PILE.x, PILE.y - 100, 'Tausch verpufft', 'small');
         return wait(350);
+      case 'spark':
+        fx.pop(PILE.x, PILE.y - 100, 'Funkenflug: +' + ev.amount + ' % des Glutziels', 'gold');
+        fx.burst(PILE.x, PILE.y, { n: 40, speed: 420, grav: -260, life: 1.2, colors: ['#fff3c4', '#ffd75e', '#f08a24'] });
+        ZU.audio.ignite();
+        ZU.bg.flash(0.4);
+        return wait(450);
+      case 'roulette-win':
+      case 'roulette-lose': {
+        var won = (ev.type === 'roulette-win') === (ev.src === 'player');
+        fx.pop(PILE.x, PILE.y - 100, ev.type === 'roulette-win' ? 'Rot gewinnt!' : 'Schwarz. Pech.', won ? 'good' : 'bad');
+        ZU.audio.chip();
+        this.react(won ? 'shocked' : 'smug');
+        return wait(520);
+      }
+      case 'guard':
+        fx.pop(ANCHOR.player.x, ANCHOR.player.y, 'Rauch deckt die Kette', 'gold small');
+        fx.smoke(PILE.x, PILE.y, 18);
+        return wait(380);
+      case 'guard-used':
+        fx.pop(PILE.x, PILE.y - 100, 'Die Kette hält', 'gold small');
+        fx.smoke(PILE.x, PILE.y, 10);
+        return wait(300);
       case 'gamble-empty':
         fx.pop(PILE.x, PILE.y - 100, 'Nichts Spielbares', 'small');
         return wait(380);
