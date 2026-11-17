@@ -82,7 +82,7 @@ const WEB = path.resolve(__dirname, '..');
   assert.strictEqual(me.meta.ash, 70, 'die Asche des Siegs ist dabei');
 
   // ---------- Gerät A beginnt einen Run; Gerät B meldet sich an und hat alles: Fortschritt, Figur, Run ----------
-  await a.page.evaluate(() => { ZU.game.startRun('classic'); });
+  await a.page.evaluate(() => { ZU.story.maybe = () => Promise.resolve(false); ZU.game.startRun('classic'); });
   await a.page.waitForFunction(() => ZU.game.screen === 'select');
   await saved(a.page);
   const runA = await runSig(a.page);
@@ -142,12 +142,12 @@ const WEB = path.resolve(__dirname, '..');
 
   // ---------- Zwei verschiedene Runs: B beginnt ohne Netz einen neuen, A ebenfalls – B wird gefragt ----------
   await b.context.setOffline(true);
-  await b.page.evaluate(() => { ZU.game.startRun('classic'); });
+  await b.page.evaluate(() => { ZU.story.maybe = () => Promise.resolve(false); ZU.game.startRun('classic'); });
   await b.page.waitForFunction(() => ZU.game.screen === 'select');
   await b.page.evaluate(() => { ZU.game.toMenu(); });
   await menu(b.page);
   const runB = await runSig(b.page);
-  await a.page.evaluate(() => { ZU.game.startRun('classic'); });
+  await a.page.evaluate(() => { ZU.story.maybe = () => Promise.resolve(false); ZU.game.startRun('classic'); });
   await a.page.waitForFunction(() => ZU.game.screen === 'select');
   await saved(a.page);
   const runA2 = await runSig(a.page);

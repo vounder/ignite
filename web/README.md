@@ -276,7 +276,7 @@ dann ohne Browserleisten im Vollbild und im Querformat.
 ## Offline spielen und Updates
 
 Das Spiel läuft auch ohne Internet, sobald es einmal vollständig auf dem Gerät
-liegt (rund 55 MB), und holt neue Fassungen von selbst:
+liegt (rund 90 MB), und holt neue Fassungen von selbst:
 
 - **Installierte Web-App** (Android, iPhone über „Zum Home-Bildschirm“, Rechner):
   legt das Spiel nach dem ersten Start im Hintergrund ab.
