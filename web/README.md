@@ -27,7 +27,7 @@ zugehörigen Elemente blenden sich selbst aus.
 - **Ziehen:** Wer nicht legen kann oder will, zieht eine Karte. Passt sie, darf
   sie sofort gelegt werden; sonst endet der Zug.
 - **Glutziel:** Jeder Tisch hat ein Glutziel (Tisch 600, Elite 800, Boss 1.100;
-  ×1,7 je Akt, +25 % je Casino-Stufe). Wer es erreicht, hat den Tisch
+  ×1,7 je Akt, +16 % je Casino-Stufe). Wer es erreicht, hat den Tisch
   „abgefackelt“ und gewinnt sofort; die Auszahlung zahlt dafür +50 % der Prämie
   und weitere +50 % je Verdopplung über dem Ziel (ohne Deckel), dazu Asche.
   Werte in `ZU.GLUT_TARGET` (`js/data.js`).
@@ -61,12 +61,18 @@ zugehörigen Elemente blenden sich selbst aus.
 - **Wirtschaft in Prozent:** Prämien, Preise, Bank und Zinsdeckel wachsen je Akt
   um 15 % (`ZU.ACT_GROWTH`); Rabatte, Aufschläge und Geld-Trinkets rechnen in
   Prozent, damit sie in späten Akten noch zählen.
-- **Trinkets:** 137 Stück, die meisten greifen in die Glut ein (Kartenwerte,
+- **Trinkets:** 200 Stück, die meisten greifen in die Glut ein (Kartenwerte,
   Vervielfacher, Kette, Wachstum über den Run, Glutziel und Löschmittel) mit Synergie-Familien (Zieh-Druck und Flüche,
   Aussetzen, Kette und Glut, Mehrfachwahl, Spezialkarten, Kasse, Schutz). Es
   gibt keine Obergrenze; dafür kostet jedes weitere Trinket im Laden 12 %
-  mehr. 29 Trinkets sind von Anfang an im Spiel, der Rest wird im Hinterzimmer
+  mehr. 36 Trinkets sind von Anfang an im Spiel, der Rest wird im Hinterzimmer
   entdeckt und gekauft.
+- **Dritte Serie (3.0):** 63 Trinkets nach dem Vorbild der Joker aus Balatro und der Relikte anderer Roguelites.
+  Neu daran sind Stücke mit eigenem Zustand über den Run (`run.s.tk`, `grow` in `run.newDuel`): Popcorn wird nach jedem
+  Duell weniger, die Banane verfault vielleicht, Selterswasser reicht fünf Duelle, aus dem Kuckucksei schlüpft nach drei
+  Siegen ein seltenes Trinket, der Wahnsinn verbrennt vor jedem Boss ein anderes Trinket und wächst dafür. Dazu Stücke,
+  die Regeln ändern: Verschmierte Karte (Herz = Karo, Pik = Kreuz), Narrenfreiheit (Eigenheiten der Bosse wirken nicht),
+  Hasenpfote (alle Chancen verdoppelt, `duel._luck`), Spiegelkabinett (Ebenbild verdoppelt die Kette).
 - **Glut-Mult:** Neun Trinkets (Brandbeschleuniger, Chefsache, Öl ins Feuer, Schaulustige, Hexenfeuer, Breitseite,
   Weißglut, Kerbholz, Vabanque) sind je ein eigener Faktor auf jede Karte. Anders als die wachsenden Trinkets, deren
   Prozente sich zu einem Faktor addieren, multiplizieren sie sich miteinander – das ist der Weg zu Glutzielen, die sich
@@ -74,7 +80,8 @@ zugehörigen Elemente blenden sich selbst aus.
   `node web/tests/glutziel.js [Runs] [Casino] [base|all] [focus]`.
 - **Kniffe:** Regeln, welche normalen Karten in einem Zug zusammen gelegt werden
   dürfen (`ZU.KNIFFE`): Pasch für einzelne Werte (7er, 8er, 9/10, Bildkarten,
-  Asse), Läufe je Symbol, Kleine Straße und der freie Pasch. Ein Zug folgt genau
+  Asse), Läufe je Symbol, Kleine Straße, der freie Pasch, Roter und Schwarzer Faden (zwei Symbole einer Farbe gemischt)
+  und die Große Straße (aufeinanderfolgende Werte, egal welches Symbol). Ein Zug folgt genau
   einem Kniff; die Stufe begrenzt die Kartenzahl (2, 3, beliebig). Man trägt
   einen Kniff (Upgrade „Zweite Hand“: bis zu drei). Kniffe gibt es nur im
   Hinterzimmer: Dort schaltet man sie mit Asche frei, kauft ihre Stufen und
@@ -88,7 +95,7 @@ zugehörigen Elemente blenden sich selbst aus.
 - **Privilegien:** Upgrades, die den ganzen Run gelten und keinen Trinket-Platz
   belegen. Manfred bietet je Akt genau eines an; die Neue Auslage ändert daran
   nichts.
-- **Spezialkarten** (22 Stück, von Stillstand bis Inferno) sind begrenzt: Ein
+- **Spezialkarten** (32 Stück, von Stillstand bis Inferno) sind begrenzt: Ein
   Deck fasst drei, das Upgrade „Kartenetui“ und das gleichnamige Trinket
   erweitern das. Ist das Deck voll, ersetzt eine Boss-Karte eine alte, und der
   Laden verkauft keine weitere. Sie haben einen
@@ -101,23 +108,42 @@ zugehörigen Elemente blenden sich selbst aus.
 - **Hausregeln:** Einzelne Tische haben eine Zusatzregel, mit jedem Akt
   häufiger. Bisher gibt es „Letzter Stapel": Es wird nicht neu gemischt; ist
   der Stapel leer und muss jemand ziehen, gewinnt, wer weniger Karten hält.
+  Dazu hat jedes Casino seine feste Hausordnung (`ZU.RULES`); die vier neuen Häuser bringen je eine eigene Regel mit:
+  Tombola (Lunapark), Handicap (Rennbahn), Erste Klasse (Nachtexpress), Vergnügungssteuer (Ratskeller).
 - **Glut:** Jede gespielte Karte bringt Kartenwert × Kette. Die Kette wächst
   mit jeder Karte und fällt beim Ziehen zurück. Glut zahlt beim Sieg Mark.
-- **Gegner:** 46 Charaktere. 25 sitzen in jedem Haus – zwölf Tische, sieben
-  Eliten und sechs Bosse, vom Croupier bis zum Stadtrat und zum Pokerprofi.
-  Dazu bringt jedes Casino nach dem ersten drei eigene mit: einen Tisch
-  (eröffnet das Haus), eine Elite (zweiter Akt) und seinen Boss (letzter Akt).
-  Fast alle haben eine Eigenheit, dazu eigene Dialoge, eine Akte und animierte
-  Porträts, die auf den Spielverlauf reagieren.
-- **Casinos:** Acht Häuser, der Reihe nach zu öffnen (ein Sieg im bisher
-  schwersten öffnet das nächste): Zum Goldenen Hahn (3 Akte), Tanzpalast Rialto
-  (4), Rote Laterne (4), Dampfer Fortuna (4), Block 9 (5), Grandhotel Imperial
-  (5), Spielbank Monopol (5), Das Inferno (6). Das Milieu ist bewusst zeitlos:
-  Gangster der Dreißiger sitzen neben Rap-Crew und Streamer. Jedes Haus hat
-  eine feste Hausordnung, eine eigene Farbwelt, ein Bild und einen Asche-Faktor
-  von ×1 bis ×5 (`ZU.CASINOS` und `ZU.RULES` in `js/data.js`). Wird die Liste
-  umsortiert, rechnen `ZU.CASINO_VERSION` und `ZU.CASINO_REMAP` gespeicherte
-  Stände um.
+- **Gegner:** 92 Charaktere. 44 können in jedem Haus sitzen: 22 Tische, 13 Eliten und 9 Bosse in drei Rängen
+  (`ZU.BOSS_ACTS`: Einstieg, Mitte, oben). Dazu hat jedes Casino eigene Figuren (`casino.foes`): Sein erster Tisch
+  eröffnet das Haus, seine erste Elite wartet im zweiten Akt, die zweite Belegschaft (wo vorhanden) folgt im dritten
+  (Tisch) und vierten Akt (Elite), sein Boss sitzt im letzten – im Goldenen Hahn ist das der Hausherr. Alle haben eine
+  Eigenheit, eigene Dialoge, eine Akte und animierte Porträts, die auf den Spielverlauf reagieren.
+- **Zweite Besetzung (3.0):** Die 46 neuen Figuren stehen in `js/cast2.js`, ihre Sprüche und Akten in
+  `js/cast2-text.js`. Ihre Eigenheiten sind aus Bausteinen zusammengesetzt (`traits`, erklärt am Kopf von
+  `js/cast2.js`): Werte, die auf alles passen, Karten, die ziehen, bannen oder verfluchen lassen, frühe Sperrstunde,
+  „jeden n-ten Zug“ und so weiter. Eine neue Figur braucht: `enemy()` in `cast2.js`, Sprüche und Akte, einen Eintrag in
+  `VOICES` und `assets/enemies/<id>.png` (sechs Bilder zu 192 Pixel).
+- **Casinos:** Zwölf Häuser, der Reihe nach zu öffnen (ein Sieg im bisher schwersten öffnet das nächste): Zum Goldenen
+  Hahn (3 Akte), Tanzpalast Rialto (4), Lunapark (4), Rote Laterne (4), Dampfer Fortuna (4), Rennbahn Silberhuf (5),
+  Block 9 (5), Nachtexpress (5), Grandhotel Imperial (5), Ratskeller (5), Spielbank Monopol (5), Das Inferno (6). Das
+  Milieu ist bewusst zeitlos: Gangster der Dreißiger sitzen neben Rap-Crew und Streamer. Jedes Haus hat eine feste
+  Hausordnung, eine eigene Farbwelt, ein Bild, eigene Musik und einen Asche-Faktor von ×1 bis ×5 (`ZU.CASINOS` und
+  `ZU.RULES` in `js/data.js`). Wird die Liste umsortiert, rechnen `ZU.CASINO_VERSION` und `ZU.CASINO_REMAPS`
+  (`ZU.casinoIndex`) gespeicherte Stände um – auch die aus der Zeit mit sechs und mit acht Häusern.
+- **Geschichte „Hundert Jahre Glück“:** Die zwölf Häuser erzählen eine durchgehende Handlung (`js/story.js`,
+  abgespielt von `js/cutscene.js`): Prolog, je Haus Ankunft (vor dem ersten Run dort), Wortwechsel vor dem Boss des
+  Hauses und Ende (nach dem ersten Sieg), dazu vier kurze Zwischenspiele (erster Ladenbesuch, Esme, erstes verlorenes
+  Streichholz, erster abgefackelter Tisch) und der Epilog nach dem Inferno. Eine Szene zeigt eine gemalte Kulisse
+  (`assets/story/`), bis zu zwei Figuren mit wechselnder Stimmung, Text mit Sprechernamen, Kapiteltafeln und
+  Zeitungsschlagzeilen. Tipp oder Leertaste: weiter; „Überspringen“ oder Esc: Szene beenden. Jede Szene läuft von
+  selbst nur einmal (`profile.story`, wird mit dem Konto abgeglichen); die **Chronik** im Hauptmenü spielt Gesehenes
+  erneut. Die Einstellung „Geschichte: Aus“ lässt die Szenen weg (sie stehen dann trotzdem in der Chronik).
+- **Vertonung (vorbereitet):** Jede Zeile der Geschichte und jeder Spruch am Kartentisch hat eine feste Kennung
+  (`story/<szene>-<nr>`, `say/<figur>/<anlass>-<nr>`). `node web/tools/story_lines.js export` schreibt die Liste aller
+  Zeilen mit Sprecher, Rolle, Stimmung und Text (JSON oder CSV) – die Vorlage für die Sprachaufnahmen. Liegt eine
+  Aufnahme unter `assets/voice/<kennung>.mp3` und ist sie mit `node web/tools/story_lines.js manifest` eingetragen
+  (`js/voice-manifest.js`), spielt das Spiel sie ab: in den Szenen statt des wortlosen Rufs, am Kartentisch statt des
+  Funkgerät-Lauts. Das Verzeichnis merkt sich den Fingerabdruck des Textes; ändert sich eine Zeile, schweigt ihre
+  Aufnahme, bis sie neu gesprochen ist.
 - **Run:** Je Akt drei Tische (Gegner, Elite, Boss), dazwischen
   Manfreds Laden mit einem Regal für normale Karten, einem für (seltene,
   teure) Spezialkarten, Trinkets, dem Privileg des Akts, Verbrennen,
@@ -133,13 +159,13 @@ zugehörigen Elemente blenden sich selbst aus.
   keine Prämie, keine Asche und keinen Ladenbesuch – dafür die Wahl aus drei
   Stücken: am ersten Tisch Spezialkarten, bei der Elite Trinkets. Ein Sieg
   bringt nur noch Mark und Asche, der Boss dazu ein Streichholz zurück.
-- **Schachteln:** 16 Startdecks (`ZU.STARTERS`), jedes mit eigenem Etikett: einem Schachtelbild und einer
+- **Schachteln:** 20 Startdecks (`ZU.STARTERS`), jedes mit eigenem Etikett: einem Schachtelbild und einer
   Kartenrückseite (`assets/decks/<id>-box.png` und `-back.png`). Im Run tragen alle eigenen Karten, der
   Nachziehstapel und der Deck-Knopf die Rückseite der gewählten Schachtel; der Gegner spielt mit der
   Hausrückseite (`decks/house-back.png`). Die Schachtelwahl zeigt links ein Regal mit allen Schachteln und rechts
   den Schaukasten mit Kartenfächer, Inhalt, Startgeld und Streichhölzern. Neben festen Karten, Spezialkarten,
   Trinkets und Kniffen kann eine Schachtel nur zwei Symbole kennen (`suits`, Herzblatt), kleiner oder größer
-  sein (`size`, Handverlesen 12, Hamsterer 22), veredelte Karten mitbringen (`seals`, Goldschmied) oder ein
+  sein (`size`, Handverlesen 12, Hamsterer 22), jede Karte doppelt enthalten (`twins`, Doppelkopf), veredelte Karten mitbringen (`seals`, Goldschmied) oder ein
   Streichholz weniger haben (`lives`, Bankier und Teufelsblatt). Außer „Klassisch“ wird jede im Hinterzimmer
   entdeckt und mit Asche gekauft.
 - **Deck:** Ein Run beginnt mit den normalen Karten der Schachtel (meist 16, teils fest, sonst zufällig) und
@@ -149,14 +175,14 @@ zugehörigen Elemente blenden sich selbst aus.
   eigenen Blatt (24 Karten des Hauses plus seine Spezialkarten) und zieht nur
   von seinem Stapel. Ist ein Stapel leer, werden nur die eigenen abgelegten
   Karten neu gemischt.
-- **Casino-Wahl:** Vor jedem Run wählt man das Haus. Alle sechs sind von Anfang
+- **Casino-Wahl:** Vor jedem Run wählt man das Haus. Alle zwölf sind von Anfang
   an zu sehen, betreten lässt sich nur, was der Reihe nach geöffnet wurde.
 - **Freigeschaltet:** Das Hauptmenü zeigt in einem Fenster, was seit dem
   letzten Mal im Hinterzimmer aufgetaucht ist oder sich geöffnet hat; Einträge
   lassen sich einzeln („Gesehen“) oder zusammen („Alle gesehen“) abhaken.
 - **Veredeln:** Im Nebenzimmer von Manfreds Laden sitzt die Wahrsagerin Esme.
   Sie verkauft Pakete mit **Siegeln** für normale Karten (Glutsiegel, Zündkopf,
-  Goldrand, Widerhaken, Anker, Bumerang, Irrlicht): Einzelsiegel und Doppelpack
+  Goldrand, Widerhaken, Anker, Bumerang, Irrlicht, Funkenschlag, Spiegelsiegel, Maulkorb): Einzelsiegel und Doppelpack
   für Karten deiner Wahl, die Wundertüte für drei zufällige. Eine Karte trägt
   bis zu drei Siegel zugleich (`card.seals`, `ZU.SEAL_SLOTS`), jedes nur einmal;
   ein neues kommt zu den vorhandenen hinzu, und alle wirken zusammen. Was sich
@@ -181,7 +207,7 @@ zugehörigen Elemente blenden sich selbst aus.
 - **Meta-Progression:** Asche gibt es sofort nach jedem Sieg (1 je Tisch, 2 je
   Elite, 5 je Boss, 8 für das ausgeräumte Casino, mal Asche-Faktor). Im
   Hinterzimmer (Hauptmenü) kauft man damit Schachteln, Trinkets, Spezialkarten
-  und fünfzehn Upgrades. Anfangs gibt es eine Schachtel, 29 Trinkets und 6
+  und fünfzehn Upgrades. Anfangs gibt es eine Schachtel, 36 Trinkets und 6
   Spezialkarten. Alles Weitere ist zunächst **verborgen** („?????“) und taucht
   erst auf, wenn eine Bedingung am Tisch erfüllt ist – etwa „Spiele 10
   Siebenen“ oder „Schlage Madame Rauch“. Manche Stücke zeigen diesen Hinweis
@@ -207,6 +233,10 @@ Gerät und, wer angemeldet ist, im Konto.
 | Datei | Inhalt |
 |---|---|
 | `js/data.js` | Karten, Trinkets, Gegner, Startschachteln (reine Daten) |
+| `js/cast2.js`, `js/cast2-text.js` | zweite Besetzung: 46 Figuren mit Eigenheiten aus Bausteinen; ihre Sprüche und Akten |
+| `js/story.js` | die Geschichte: alle Szenen als Daten, Kennungen der Zeilen für die Vertonung |
+| `js/cutscene.js` | spielt die Szenen ab; Chronik |
+| `js/voice-manifest.js` | Verzeichnis der vorhandenen Sprachaufnahmen (erzeugt) |
 | `js/lore.js` | Akten: drei Texte je Figur, in der Kartei nach Zahl der Siege zu lesen |
 | `js/engine.js` | Duell-Regeln und Gegner-KI; jede Aktion liefert eine Ereignisliste |
 | `js/run.js` | Akte, Auszahlung, Belohnungen, Laden, Speichern |
@@ -246,7 +276,7 @@ dann ohne Browserleisten im Vollbild und im Querformat.
 ## Offline spielen und Updates
 
 Das Spiel läuft auch ohne Internet, sobald es einmal vollständig auf dem Gerät
-liegt (rund 55 MB), und holt neue Fassungen von selbst:
+liegt (rund 90 MB), und holt neue Fassungen von selbst:
 
 - **Installierte Web-App** (Android, iPhone über „Zum Home-Bildschirm“, Rechner):
   legt das Spiel nach dem ersten Start im Hintergrund ab.
@@ -388,6 +418,7 @@ Die Werkzeuge liegen unter `tools/`:
 - `make_icons.py` – erzeugt die App-Symbole `assets/icons/` aus dem Logo
   (braucht Pillow).
 - `stamp_version.py` – setzt die Build-Kennung (siehe unten).
+- `story_lines.js` – Liste aller Zeilen für die Vertonung und Verzeichnis der Aufnahmen (siehe „Vertonung“).
 
 - `music/` – die Musik: Partituren und der Synthesizer, der sie zu MP3 rechnet
   (siehe unten).
@@ -398,7 +429,7 @@ Menü und Shop haben je ein eigenes Stück, das Spiel eines je Casino – unter
 `assets/audio/` (MP3, 128 kbit/s; geladen wird nur, was gerade spielt). Alle
 sind nahtlose Schleifen und entstehen vollständig aus dem Repo.
 
-Die Spielmusik ist ein einziges Stück in acht Gewändern (`game-<casino>.mp3`):
+Die Spielmusik ist ein einziges Stück in zwölf Gewändern (`game-<casino>.mp3`):
 gleiche Melodien und Harmonien, aber je Haus eigene Tonart, eigenes Tempo,
 Schlagwerk und Klangfarben – Tanzkapelle im Rialto, Boom-Bap in Block 9,
 Uhrwerk in der Spielbank und so weiter (siehe `CASINOS` in
@@ -407,6 +438,11 @@ Uhrwerk in der Spielbank und so weiter (siehe `CASINOS` in
 etwas lauter. Beim Boss wechselt `js/audio.js` an Ort und Stelle dorthin: Die
 neue Spur steigt stumm an der Stelle ein, an der die alte gerade spielt, und
 beide blenden kurz über.
+
+Neu seit 3.0: Lunapark (Karussell mit Drehorgel und Glockenspiel), Rennbahn (Galopp, das schnellste Haus), Nachtexpress
+(gerader Zugrhythmus, Bahnhofsglocken) und Ratskeller (langsam, Tuba-Bass, dunkles Akkordeon). `story.mp3` ist das Stück
+der Szenen: das Gewand des Goldenen Hahn, langsamer und fast ohne Schlagwerk, zwei LU leiser, weil später Sprache darüber
+liegt.
 
 Genauso gehören `shop.mp3` und `shop-esme.mp3` zusammen: In Esmes Nebenzimmer
 läuft das Ladenstück weiter, nur entrückt – Harfe, gläserne Glocken, eine

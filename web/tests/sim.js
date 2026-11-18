@@ -3,6 +3,9 @@
    Aufruf: node web/tests/sim.js [Anzahl Runs] */
 require('../js/data.js');
 require('../js/lore.js');
+require('../js/cast2-text.js');
+require('../js/cast2.js');
+require('../js/story.js');
 require('../js/engine.js');
 require('../js/run.js');
 require('../js/meta.js');
@@ -38,7 +41,7 @@ function checkScore(e) {
   // Ebenbild: Die Kette ist um die Hälfte gewachsen, bevor die Karte gerechnet wurde.
   if (e.score.twin) {
     twins++;
-    assert.ok(e.score.twin.to > e.score.twin.from && e.score.twin.to <= Math.ceil(e.score.twin.from * ZU.TWIN_CHAIN), 'Ebenbild: Kette falsch');
+    assert.ok(e.score.twin.to > e.score.twin.from && e.score.twin.to <= Math.ceil(e.score.twin.from * (e.score.twin.f || ZU.TWIN_CHAIN)), 'Ebenbild: Kette falsch');
     assert.strictEqual(e.score.chain, e.score.twin.to, 'Ebenbild: Rechnung nutzt nicht die gewachsene Kette');
   }
   scored++;
@@ -213,6 +216,7 @@ for (let n = 0; n < RUNS; n++) {
     if (e.kind === 'boss') assert.throws(() => run.skipTable(), 'der Boss lässt sich nicht auslassen');
     if (run.canSkip() && rnd.next() < 0.18) {
       const before = { table: run.s.table, act: run.s.act, money: run.s.money, ash: run.s.ash || 0, wins: run.s.stats.wins };
+      const pass = run.has('pass') ? Math.max(1, Math.round(run.baseReward(e.kind) * 0.5)) : 0; // Privileg „Freikarte": die halbe Prämie gibt es trotzdem
       run.skipTable();
       assert.strictEqual(run.s.phase, 'reward');
       const r = run.s.reward;
@@ -224,7 +228,7 @@ for (let n = 0; n < RUNS; n++) {
       else run.chooseReward(pick);
       assert.deepStrictEqual([run.s.phase, run.s.table, run.s.act, run.s.shop], ['select', before.table + 1, before.act, null], 'ohne Laden zum nächsten Tisch desselben Akts');
       assert.deepStrictEqual([run.s.ash || 0, run.s.stats.wins], [before.ash, before.wins], 'keine Asche, kein Sieg');
-      assert.strictEqual(run.s.money, before.money + (pick == null ? r.skip : 0));
+      assert.strictEqual(run.s.money, before.money + pass + (pick == null ? r.skip : 0));
       if (pick != null && r.type === 'trinket') assert.strictEqual(run.s.trinkets.length, trinkets + 1);
       if (pick != null && r.type === 'card') assert.ok(run.s.collection.length === cards + 1 || run.s.collection.length === cards);
       skips++;
@@ -303,7 +307,7 @@ for (let n = 0; n < RUNS; n++) {
   assert.deepStrictEqual(staked.houseRules(), ZU.CASINOS[1].rules);
   assert.strictEqual(ZU.Meta.hint(ZU.Meta.get(), 'trinket', 'furnace'), 'Sammle 1.500 Glut in einem Duell.', 'nach dem ersten Casino steht der Hinweis da');
   assert.deepStrictEqual(ZU.Meta.clean({ ash: -5, stake: 9, maxStake: 99, unlocked: { 'trinket:gibtsnicht': true, 'special:tausch': true }, upgrades: { startgeld: 99, quatsch: 3 }, feats: { chain: 7, quatsch: 2 } }),
-    Object.assign(ZU.Meta.defaults(), { stake: 7, maxStake: 7, unlocked: { 'special:tausch': true }, upgrades: { startgeld: 3 }, feats: { chain: 7 } }));
+    Object.assign(ZU.Meta.defaults(), { stake: 9, maxStake: 11, unlocked: { 'special:tausch': true }, upgrades: { startgeld: 3 }, feats: { chain: 7 } }));
 
   // Asche fließt sofort nach jedem Sieg; die Nachglut bringt keine mehr.
   ZU.Profile._memory = null;
@@ -338,7 +342,7 @@ ZU.STARTERS.forEach(starter => {
   const specials = run.s.collection.filter(c => ZU.CARDS[c.def].special);
   const normal = run.s.collection.filter(c => !ZU.CARDS[c.def].special);
   assert.strictEqual(normal.length, starter.size || ZU.DECK_SIZE, starter.id + ': Zahl der normalen Karten');
-  assert.strictEqual(new Set(normal.map(c => c.def)).size, normal.length, starter.id + ': keine Karte doppelt');
+  assert.strictEqual(new Set(normal.map(c => c.def)).size, starter.twins ? normal.length / 2 : normal.length, starter.id + (starter.twins ? ': jede Karte genau zweimal' : ': keine Karte doppelt'));
   assert.strictEqual(specials.length, (starter.special ? 1 : 0) + starter.cards.filter(d => ZU.CARDS[d].special).length, starter.id + ': Spezialkarten');
   assert.ok(specials.length <= ZU.SPECIAL_SLOTS, starter.id + ': Spezialkarten passen ins Deck');
   starter.cards.forEach(def => assert.ok(run.s.collection.some(c => c.def === def), starter.id + ': feste Karte ' + def));
@@ -423,12 +427,30 @@ Object.values(ZU.LORE_STEPS).forEach(steps => assert.ok(steps.length === 3 && st
   assert.ok(early.flawChance() > 0.6 && late.flawChance() < 0.3);
 }
 
-// Acht Casinos; alte Stände (sechs Häuser) wandern an den neuen Platz ihres Hauses.
-assert.strictEqual(ZU.CASINOS.length, 8);
-assert.deepStrictEqual(ZU.CASINOS.map(c => c.id), ['hahn', 'rialto', 'laterne', 'fortuna', 'block9', 'imperial', 'monopol', 'inferno']);
-assert.strictEqual(ZU.Meta.clean({ stake: 2, maxStake: 3 }).stake, 3, 'Dampfer Fortuna bleibt gewählt');
-assert.strictEqual(ZU.Meta.clean({ stake: 2, maxStake: 3 }).maxStake, 5, 'Grandhotel Imperial bleibt das höchste offene Haus');
+// Zwölf Casinos; alte Stände (sechs oder acht Häuser) wandern an den neuen Platz ihres Hauses.
+assert.strictEqual(ZU.CASINOS.length, 12);
+assert.deepStrictEqual(ZU.CASINOS.map(c => c.id), ['hahn', 'rialto', 'lunapark', 'laterne', 'fortuna', 'rennbahn', 'block9', 'express', 'imperial', 'ratskeller', 'monopol', 'inferno']);
+assert.strictEqual(ZU.Meta.clean({ stake: 2, maxStake: 3 }).stake, 4, 'sechs Häuser: Dampfer Fortuna bleibt gewählt');
+assert.strictEqual(ZU.Meta.clean({ stake: 2, maxStake: 3 }).maxStake, 8, 'sechs Häuser: Grandhotel Imperial bleibt das höchste offene Haus');
+assert.strictEqual(ZU.Meta.clean({ stake: 2, maxStake: 5, cv: 2 }).stake, 3, 'acht Häuser: Rote Laterne bleibt gewählt');
+assert.strictEqual(ZU.Meta.clean({ stake: 2, maxStake: 5, cv: 2 }).maxStake, 8, 'acht Häuser: Grandhotel Imperial bleibt das höchste offene Haus');
+assert.strictEqual(ZU.Meta.clean({ stake: 7, maxStake: 7, cv: 2 }).maxStake, 11, 'acht Häuser: Das Inferno bleibt offen');
 assert.strictEqual(ZU.Meta.clean({ stake: 2, maxStake: 3, cv: ZU.CASINO_VERSION }).maxStake, 3, 'neue Stände bleiben unverändert');
+// Jedes Haus hat seinen Boss im letzten Akt; die zweite Belegschaft sitzt in Akt 3 (Tisch) und 4 (Elite).
+ZU.CASINOS.forEach((casino, index) => {
+  assert.ok(casino.foes && ZU.ENEMIES[casino.foes.boss] && ZU.ENEMIES[casino.foes.boss].kind === 'boss', casino.id + ': Boss des Hauses');
+  const meta = Object.assign({}, ZU.Meta.runOptions(Object.assign(ZU.Meta.defaults(), { stake: index, maxStake: index })));
+  const run = ZU.Run.start('classic', 31 + index, meta);
+  for (let act = 1; act <= casino.acts; act++) {
+    run.s.act = act; run._encounters();
+    const [battle, elite, boss] = run.s.encounters.map(e => e.enemy);
+    if (act === 1 && casino.foes.battle[0]) assert.strictEqual(battle, casino.foes.battle[0], casino.id + ': eigener Tisch eröffnet');
+    if (act === 2 && casino.foes.elite[0]) assert.strictEqual(elite, casino.foes.elite[0], casino.id + ': eigene Elite im zweiten Akt');
+    if (act === 3 && casino.foes.battle[1]) assert.strictEqual(battle, casino.foes.battle[1], casino.id + ': zweiter Tisch im dritten Akt');
+    if (act === 4 && casino.foes.elite[1]) assert.strictEqual(elite, casino.foes.elite[1], casino.id + ': zweite Elite im vierten Akt');
+    assert.strictEqual(boss === casino.foes.boss, act === casino.acts, casino.id + ': der Boss des Hauses sitzt nur im letzten Akt');
+  }
+});
 for (let i = 1; i < ZU.CASINOS.length; i++) assert.ok(ZU.CASINOS[i].ash > ZU.CASINOS[i - 1].ash && ZU.CASINOS[i].acts >= ZU.CASINOS[i - 1].acts, 'Häuser werden härter und lohnender');
 
 // Löschmittel: Gewöhnliche Tische und der ganze erste Akt bleiben frei; ab Akt 2 haben Elite und Boss je eines,
@@ -635,11 +657,11 @@ for (let i = 1; i < ZU.CASINOS.length; i++) assert.ok(ZU.CASINOS[i].ash > ZU.CAS
   const t1 = run.glutTarget('battle'), tBoss = run.glutTarget('boss');
   run.s.act = 3;
   assert.ok(tBoss > t1 && run.glutTarget("battle") >= t1 * 2.5 && run.glutTarget("battle") < t1 * 4, 'Ziele wachsen mit Art und Akt, aber nicht mehr aufs Doppelte je Akt');
-  assert.deepStrictEqual([ZU.GLUT_TARGET.perAct, ZU.GLUT_TARGET.perCasino], [1.7, 0.25]);
+  assert.deepStrictEqual([ZU.GLUT_TARGET.perAct, ZU.GLUT_TARGET.perCasino], [1.7, 0.16]);
   {
     const far = ZU.Meta.defaults(); far.maxStake = far.stake = 4;
     const high = ZU.Run.start('classic', 1, ZU.Meta.runOptions(ZU.Meta.clean(far)));
-    assert.strictEqual(high.glutTarget('battle'), 1200, 'fünftes Casino: +25 % je Haus');
+    assert.strictEqual(high.glutTarget('battle'), 980, 'fünftes Casino: +16 % je Haus');
   }
   run.s.act = 1;
   const duel = run.newDuel();
@@ -759,19 +781,14 @@ for (let i = 1; i < ZU.CASINOS.length; i++) assert.ok(ZU.CASINOS[i].ash > ZU.CAS
 // Die 7 lässt nur noch 1 Karte ziehen und niemanden aussetzen.
 assert.deepStrictEqual(ZU.CARDS['hearts-7'].effects, [{ type: 'draw', amount: 1, reflectable: true }]);
 
-// Jedes Casino nach dem ersten setzt seine eigenen Figuren: Tisch in Akt 1, Elite in Akt 2, Boss im letzten Akt.
+// Kein Haus setzt Figuren eines anderen an seine Tische (die Reihenfolge der eigenen prüft der Abschnitt „Zwölf Casinos").
 ZU.CASINOS.forEach((casino, index) => {
-  if (!index) { assert.strictEqual(casino.foes, undefined); return; }
-  ['battle', 'elite', 'boss'].forEach(kind => assert.strictEqual(ZU.ENEMIES[casino.foes[kind]].kind, kind));
   const meta = ZU.Meta.defaults();
   meta.maxStake = meta.stake = index;
-  const run = ZU.Run.start('classic', 31 + index, ZU.Meta.runOptions(ZU.Meta.clean(meta)));
-  assert.strictEqual(run.s.encounters[0].enemy, casino.foes.battle);
-  for (let act = 2; act <= casino.acts; act++) {
+  const run = ZU.Run.start('classic', 131 + index, ZU.Meta.runOptions(ZU.Meta.clean(meta)));
+  for (let act = 1; act <= casino.acts + 2; act++) {
     run.s.act = act;
     run._encounters();
-    if (act === 2) assert.strictEqual(run.s.encounters[1].enemy, casino.foes.elite);
-    assert.strictEqual(run.s.encounters[2].enemy === casino.foes.boss, act === casino.acts, 'der Boss des Hauses wartet im letzten Akt');
     run.s.encounters.forEach(e => assert.ok(!ZU.ENEMIES[e.enemy].casino || ZU.ENEMIES[e.enemy].casino === casino.id, 'fremde Hausfigur: ' + e.enemy));
   }
 });
@@ -888,6 +905,152 @@ assert.ok(ZU.BATTLE_POOL.concat(ZU.ELITE_POOL).every(id => !ZU.ENEMIES[id].casin
   const back = ZU.Run.load().s.collection.find(c => c.id === target.id);
   delete globalThis.localStorage;
   assert.deepStrictEqual([back.seals, back.flaws, back.seal, back.flaw], [['haken'], ['zoll'], undefined, undefined]);
+}
+
+// ---------- 3.0: zweite Besetzung, dritte Trinket-Serie, Geschichte ----------
+{
+  const fs = require('fs'), path = require('path');
+  const asset = p => fs.existsSync(path.join(__dirname, '..', 'assets', p));
+  // Jede Figur hat ein Bild, Sprüche für jeden Anlass und eine Stimme; neue Figuren beschreiben sich über Bausteine.
+  assert.strictEqual(Object.keys(ZU.ENEMIES).length, 92);
+  Object.keys(ZU.ENEMIES).forEach(id => {
+    const e = ZU.ENEMIES[id];
+    assert.ok(asset('enemies/' + id + '.png'), 'Porträt fehlt: ' + id);
+    ['start', 'attack', 'hurt', 'nervous', 'gloat', 'win', 'lose'].forEach(k => assert.ok(e.say[k] && e.say[k].length && e.say[k].every(t => t.length >= 1), id + ': Spruch ' + k));
+    assert.ok(ZU.VOICES[id], 'Stimme fehlt: ' + id);
+    assert.ok(e.passiveText && e.pool.every(c => ZU.CARDS[c] && ZU.CARDS[c].special), id + ': Eigenheit und Spezialkarten');
+  });
+  ZU.CASINOS.forEach(c => assert.ok(asset('casinos/' + c.id + '.png'), 'Bild des Hauses fehlt: ' + c.id));
+  ZU.SPECIAL_IDS.forEach(id => assert.ok(asset('special/' + id + '.png'), 'Bild der Spezialkarte fehlt: ' + id));
+  ZU.SEAL_IDS.forEach(id => { assert.ok(asset('seals/' + id + '.png'), 'Siegelbild fehlt: ' + id); assert.ok(ZU.Meta.BASE.seal.includes(id) || ZU.Meta.REQ['seal:' + id], 'Siegel ohne Bedingung: ' + id); });
+  ZU.SPECIAL_IDS.forEach(id => assert.ok(ZU.Meta.BASE.special.includes(id) || ZU.Meta.REQ['special:' + id], 'Spezialkarte ohne Bedingung: ' + id));
+  ZU.KNIFF_IDS.forEach(id => assert.ok(asset('kniffe/' + id + '.png'), 'Kniffbild fehlt: ' + id));
+  ZU.PERK_IDS.forEach(id => assert.ok(asset('perks/' + id + '.png'), 'Privilegbild fehlt: ' + id));
+  ZU.STARTERS.forEach(st => ['box', 'back'].forEach(w => assert.ok(asset('decks/' + st.id + '-' + w + '.png'), 'Schachtelbild fehlt: ' + st.id)));
+  Object.keys(ZU.Meta.REQ).forEach(key => {
+    const feat = ZU.Meta.REQ[key][0];
+    if (feat.indexOf('foe:') === 0) assert.ok(ZU.ENEMIES[feat.slice(4)], key + ': unbekannte Figur in der Bedingung');
+    else assert.ok(ZU.Meta.FEATS[feat] || ['duels', 'elites', 'bosses', 'ash'].includes(feat), key + ': unbekanntes Zählwerk ' + feat);
+  });
+
+  // Die Geschichte: jede Szene der Chronik existiert, wer spricht, steht auf der Bühne, jedes Bild ist da.
+  const STAGE = { manfred: ['idle', 'grin', 'annoyed', 'surprised', 'hat', 'coin', 'match', 'cards', 'side', 'wink'], esme: ['idle', 'greedy', 'annoyed', 'surprised', 'dreamy'] };
+  const listed = [].concat(...ZU.STORY_CHAPTERS.map(c => c.scenes));
+  assert.deepStrictEqual(listed.slice().sort(), Object.keys(ZU.STORY).sort(), 'Chronik und Szenen stimmen überein');
+  ZU.CASINOS.forEach(c => ['ankunft', 'boss', 'ende'].forEach(part => assert.ok(ZU.STORY[c.id + '-' + part], 'Szene fehlt: ' + c.id + '-' + part)));
+  const ids = new Set();
+  Object.keys(ZU.STORY).forEach(id => {
+    const def = ZU.STORY[id], on = {};
+    assert.ok(def.title && def.bg && asset(def.bg + '.png'), id + ': Titel und Kulisse');
+    def.steps.forEach(step => {
+      const kind = step[0];
+      if (kind === 'bg') assert.ok(asset(step[1] + '.png'), id + ': Kulisse ' + step[1]);
+      else if (kind === 'in') { assert.ok(STAGE[step[1]] || ZU.ENEMIES[step[1]], id + ': unbekannte Figur ' + step[1]); assert.ok(['l', 'r'].includes(step[2])); on[step[1]] = true; }
+      else if (kind === 'out') { assert.ok(on[step[1]], id + ': ' + step[1] + ' geht ab, ohne da zu sein'); delete on[step[1]]; }
+      else if (kind === 'fx') assert.ok(['flash', 'shake', 'embers'].includes(step[1]));
+      else if (kind === 'card' || kind === 'news') assert.ok(step[1] && step[2]);
+      else if (kind === 'n') assert.ok(step[1].length > 3 && step[1].length <= 220, id + ': Erzählzeile zu lang');
+      else {
+        assert.ok(on[kind], id + ': ' + kind + ' spricht, steht aber nicht auf der Bühne');
+        assert.ok(step[1].length >= 1 && step[1].length <= 220, id + ': Zeile zu lang (' + step[1].length + ')');
+        if (step[2]) assert.ok((STAGE[kind] || ['idle', 'smug', 'angry', 'shocked', 'defeated']).includes(step[2]), id + ': Stimmung ' + step[2] + ' kennt ' + kind + ' nicht');
+      }
+    });
+    ZU.storyLines(id).forEach(line => { assert.ok(!ids.has(line.id)); ids.add(line.id); assert.ok(line.name && line.text); });
+  });
+  assert.ok(ids.size > 240, 'die Geschichte hat ihre Zeilen');
+  assert.strictEqual(ZU.textHash('Zündung'), ZU.textHash('Zündung'));
+  assert.notStrictEqual(ZU.textHash('a'), ZU.textHash('b'));
+
+  // Bausteine der Eigenheiten
+  const mk = (enemy, trinkets, kind) => {
+    const run = ZU.Run.start('classic', 4242);
+    run.s.trinkets = trinkets || [];
+    run.s.encounters[0] = { enemy: enemy, kind: kind || ZU.ENEMIES[enemy].kind, rules: [] };
+    const d = run.newDuel();
+    return { run, d, ev: d.start() };
+  };
+  let t = mk('boss-else');
+  assert.strictEqual(t.d.turnLimit, 30, 'Eiserne Else: Sperrstunde nach 30 Zügen');
+  assert.strictEqual(t.d.hand.opp.length, ZU.OPP_HAND - 2, 'Eiserne Else: zwei Karten weniger');
+  t = mk('usher');
+  assert.strictEqual(t.d.hand.player.length, ZU.HAND_SIZE + 2, 'Ratsdiener Paul: zwei Karten extra');
+  t = mk('jockey');
+  assert.ok(t.ev.some(e => e.t === 'skipped' && e.actor === 'player'), 'Jockey: Du setzt zu Beginn aus');
+  t = mk('boss-mayor');
+  assert.strictEqual(t.d.status.curse.player, 2, 'Biedermann: verflucht ×2');
+  t = mk('boss-mayor', ['schutzengel']);
+  assert.deepStrictEqual([t.d.status.curse.player, t.d.status.curse.opp], [0, 2], 'Schutzengel lenkt den ersten Fluch um');
+  t = mk('boss-mayor', ['narrenfreiheit']);
+  assert.strictEqual(t.d.status.curse.player, 0, 'Narrenfreiheit: Eigenheiten von Bossen wirken nicht');
+  t = mk('coat-check');
+  { const q = t.d._register('hearts-Q', 'house', false), top = t.d._register('spades-9', 'house', false); t.d.pile.push(top);
+    assert.ok(t.d._fits(q, 'opp', top) && !t.d._fits(q, 'player', top), 'Trude: Damen passen auf jede Karte – nur ihre'); }
+  t = mk('boss-toto');
+  t.d.hand.player.length = 3; t.d.hand.opp.length = 4;
+  assert.strictEqual(t.d._fewer(), 'opp', 'Graf Toto: eine Karte weniger reicht nicht');
+  t.d.hand.player.length = 2;
+  assert.strictEqual(t.d._fewer(), 'player', 'Graf Toto: zwei Karten weniger reichen');
+  t = mk('chimney-sweep', ['hex-board']);
+  assert.strictEqual(t.d.status.curse.opp, 0, 'Felix Glück: Flüche wirken nicht');
+  t = mk('conductor');
+  { const d = t.d, eight = d._register('clubs-8', 'house', false); d.hand.opp.push(eight); d.pile.push(d._register('clubs-9', 'house', false));
+    d.phase = 'action'; d.active = 'opp'; d.pending = null; d.afterDraw = null; d.status.skip.player = 0;
+    d.play('opp', [eight]);
+    assert.ok(d.status.skip.player >= 0 && d.active === 'opp', 'Schaffner Knips: Seine 8 lässt dich aussetzen'); }
+
+  // Neue Trinkets: Zustand über den Run
+  { const run = ZU.Run.start('classic', 99); run.s.trinkets = ['popcorn'];
+    const mults = [];
+    for (let i = 0; i < 5 && run.has('popcorn'); i++) { const d = run.newDuel(); mults.push(d.grow.popcorn); run.finishDuel(Object.assign(d, { winner: 'opp' })); run.s.lives = 3; run.s.phase = 'select'; }
+    assert.deepStrictEqual(mults, [3, 2.5, 2, 1.5], 'Popcorn wird nach jedem Duell weniger und ist dann leer');
+    assert.ok(!run.has('popcorn')); }
+  { const run = ZU.Run.start('classic', 98); run.s.trinkets = ['wahnsinn', 'fuse', 'zunder'];
+    run.s.table = 2; const d = run.newDuel();
+    assert.strictEqual(run.s.trinkets.length, 2, 'Wahnsinn verbrennt vor dem Boss ein anderes Trinket');
+    assert.ok(run.has('wahnsinn') && d.grow.wahnsinn === 1 && run.madness);
+    run.newDuel();
+    assert.strictEqual(run.s.trinkets.length, 2, 'derselbe Bosstisch kostet nur einmal'); }
+  { const run = ZU.Run.start('classic', 97); run.s.trinkets = ['herr-knochen'];
+    const d = run.newDuel(); d.start(); d.glut = Math.ceil(d.target / 2);
+    const res = run.finishDuel(Object.assign(d, { winner: 'opp' }));
+    assert.ok(res.spared && res.bones && run.s.lives === 3 && !run.has('herr-knochen'), 'Herr Knochen fängt eine knappe Niederlage ab'); }
+  { const run = ZU.Run.start('classic', 96); run.s.trinkets = ['kuckucksei']; let hatched = null;
+    for (let i = 0; i < 3; i++) { const d = run.newDuel(); d.start(); const res = run.finishDuel(Object.assign(d, { winner: 'player' })); hatched = res.hatched; run.s.phase = 'select'; }
+    assert.ok(hatched && ZU.TRINKETS[hatched].rarity === 2 && run.has(hatched) && !run.has('kuckucksei'), 'aus dem Kuckucksei schlüpft ein seltenes Trinket'); }
+  { const run = ZU.Run.start('classic', 95); run.s.trinkets = ['gesindel']; run.s.table = 2; run._openShop();
+    assert.ok(run.s.gift && ZU.TRINKETS[run.s.gift].rarity === 0 && run.has(run.s.gift), 'Gesindel: zum neuen Akt läuft ein gewöhnliches Trinket zu'); }
+  { const t2 = mk('ember-croupier', ['verschmiert']);
+    const h = t2.d._register('hearts-9', 'player', false), dia = t2.d._register('diamonds-K', 'house', false), sp = t2.d._register('spades-K', 'house', false);
+    assert.ok(t2.d._fits(h, 'player', dia) && !t2.d._fits(h, 'player', sp), 'Verschmierte Karte: Herz passt auf Karo, nicht auf Pik'); }
+  { const t2 = mk('ember-croupier', ['spiegelkabinett']); const d = t2.d;
+    const a = d._register('hearts-9', 'player', false); d.hand.player.push(a); d.pile.push(d._register('hearts-9', 'house', false));
+    d.chain = 4; d.phase = 'action'; d.active = 'player'; d.pending = null; d.afterDraw = null; d.status.skip.player = 0;
+    const ev = d.play('player', [a]), sc = ev.find(e => e.t === 'play').score;
+    assert.deepStrictEqual([sc.twin.from, sc.twin.to], [4, 8], 'Spiegelkabinett: Ebenbild verdoppelt die Kette'); }
+  { const t2 = mk('ember-croupier', []); const d = t2.d;
+    d.kniffe = [{ id: 'faden-rot', level: 1 }, { id: 'treppe', level: 3 }];
+    const c = def => d._register(def, 'player', false);
+    assert.strictEqual(d.groupOk([c('hearts-7'), c('diamonds-K')]).kniff, 'faden-rot');
+    assert.strictEqual(d.groupOk([c('hearts-7'), c('spades-K')]).ok, false);
+    assert.strictEqual(d.groupOk([c('hearts-8'), c('spades-9'), c('clubs-10')]).kniff, 'treppe');
+    assert.strictEqual(d.groupOk([c('hearts-8'), c('spades-10')]).ok, false);
+    assert.strictEqual(d.groupOk([c('hearts-7'), c('diamonds-K'), c('hearts-A')]).ok, false, 'Stufe 1: höchstens zwei Karten');
+    d.trinkets.push('vier-finger');
+    assert.strictEqual(d.groupOk([c('hearts-7'), c('diamonds-K'), c('hearts-A')]).ok, true, 'Vier Finger: eine Karte mehr'); }
+  // Hausregeln der neuen Häuser
+  { const run = ZU.Run.start('classic', 94, Object.assign({}, ZU.Meta.runOptions(ZU.Meta.defaults()), { rules: ['handicap', 'first-class', 'tax'] }));
+    const plain = ZU.Run.start('classic', 94);
+    const d = run.newDuel(); d.start();
+    assert.strictEqual(d.hand.player.length, ZU.HAND_SIZE + 1, 'Handicap: eine Karte mehr');
+    assert.strictEqual(run.healPrice(), plain.healPrice() * 2, 'Erste Klasse: Streichhölzer kosten das Doppelte');
+    const res = run.finishDuel(Object.assign(d, { winner: 'player' }));
+    assert.ok(res.lines.some(l => /Vergnügungssteuer/.test(l.label) && l.amount < 0), 'Vergnügungssteuer geht von der Auszahlung ab'); }
+  // Neue Schachteln
+  { const run = ZU.Run.start('doppelkopf', 5);
+    const counts = {}; run.s.collection.forEach(c => { counts[c.def] = (counts[c.def] || 0) + 1; });
+    assert.ok(Object.values(counts).every(n => n === 2) && Object.keys(counts).length === 8, 'Doppelkopf: acht Karten, jede doppelt');
+    assert.strictEqual(run.s.added, 0, 'das Startdeck zählt nicht fürs Hologramm'); }
 }
 
 // Determinismus: gleicher Seed, gleiche Entscheidungen => gleicher Verlauf

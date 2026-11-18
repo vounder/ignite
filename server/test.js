@@ -168,7 +168,7 @@ async function waitFor(check, ms) {
   // --- Meta-Fortschritt ---
   assert.strictEqual((await anon('POST', '/api/meta', { meta: { ash: 5 } })).status, 401);
   assert.strictEqual((await a('POST', '/api/meta', { meta: 'nein' })).status, 400);
-  assert.strictEqual((await a('POST', '/api/meta', { meta: { blob: 'x'.repeat(17000) } })).status, 413);
+  assert.strictEqual((await a('POST', '/api/meta', { meta: { blob: 'x'.repeat(33000) } })).status, 413);
   assert.strictEqual((await a('POST', '/api/meta', { meta: { ash: 12, earned: 30, unlocked: { 'trinket:heartblood': true }, upgrades: { startgeld: 2 }, maxStake: 1 } })).status, 200);
   assert.deepStrictEqual((await a('GET', '/api/me')).data.meta, { ash: 12, earned: 30, unlocked: { 'trinket:heartblood': true }, upgrades: { startgeld: 2 }, maxStake: 1 });
 
@@ -204,7 +204,7 @@ async function waitFor(check, ms) {
   assert.strictEqual((await a('POST', '/api/sync', { rev: rev0 + 3, meta: 'nein' })).status, 400);
   assert.strictEqual((await a('POST', '/api/sync', { rev: rev0 + 3, run: [1] })).status, 400);
   assert.strictEqual((await a('POST', '/api/sync', { rev: rev0 + 3, run: { blob: 'x'.repeat(49000) } })).status, 413);
-  assert.strictEqual((await a('POST', '/api/sync', { rev: rev0 + 3, prefs: { blob: 'x'.repeat(9000) } })).status, 413);
+  assert.strictEqual((await a('POST', '/api/sync', { rev: rev0 + 3, prefs: { blob: 'x'.repeat(33000) } })).status, 413);
   r = await a('POST', '/api/run', { countRun: false, score: 1, act: 1 });
   assert.strictEqual(r.data.run, undefined, 'die Antwort auf eine Run-Meldung trägt den Run nicht mit');
   assert.strictEqual((await a('GET', '/api/me')).data.rev, rev0 + 3, 'Statistik zählt nicht als Änderung des Spielstands');

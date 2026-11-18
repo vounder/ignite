@@ -3,6 +3,8 @@
    und zeigt die Veränderung von Siegquote und Auszahlung.
    Aufruf: node web/tests/balance.js [Duelle je Messung] */
 require('../js/data.js');
+require('../js/cast2-text.js');
+require('../js/cast2.js');
 require('../js/engine.js');
 require('../js/run.js');
 require('../js/meta.js');

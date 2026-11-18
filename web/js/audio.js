@@ -216,8 +216,24 @@
       if (stay) handOver(name, previous); else start(track);
     },
     /* Lädt ein Stück schon einmal, damit der Wechsel dorthin nicht warten muss. */
-    prepare: function (name) { if (unlocked && name) load(name); }
+    prepare: function (name) { if (unlocked && name) load(name); },
+    /* Welches Stück gerade gewünscht ist (um nach einer Szene dorthin zurückzukehren). */
+    playing: function () { return wanted; },
+    /* Spielt eine aufgenommene Zeile (Vertonung) in der Lautstärke der Stimmen; eine laufende bricht ab. null: nur stoppen. */
+    line: function (url) {
+      if (lineEl) { try { lineEl.pause(); } catch (e) { /* egal */ } lineEl = null; }
+      if (!url || hidden || !unlocked || voiceVolume <= 0) return null;
+      var el = new Audio(url);
+      el.volume = Math.max(0, Math.min(1, voiceVolume));
+      var started = el.play();
+      if (started && started.catch) started.catch(function () { /* Datei fehlt oder Wiedergabe gesperrt: dann bleibt es beim Text */ });
+      lineEl = el;
+      return el;
+    },
+    /* Liegt für diese Kennung (z. B. 'say/barkeeper/start-1') eine Aufnahme zum genannten Text vor? */
+    hasLine: function (key, text) { var files = ZU.VOICE_FILES || {}; return !!files[key] && files[key] === ZU.textHash(text); }
   };
+  var lineEl = null;
 
   function load(name) {
     var track = tracks[name];

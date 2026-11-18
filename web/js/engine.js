@@ -44,6 +44,14 @@
     this.kind = opts.kind;
     this.act = opts.act;
     this.trinkets = opts.trinkets.concat(opts.perks || []); // Privilegien wirken wie Trinkets
+    if (this.kind === 'boss' && this.has('narrenfreiheit') && (this.enemy.passive || this.enemy.traits)) {
+      // Narrenfreiheit: Der Boss sitzt am Tisch, aber seine Eigenheit bleibt draußen.
+      this.enemy = Object.create(this.enemy);
+      this.enemy.passive = null;
+      this.enemy.traits = {};
+      this.enemy.muted = true;
+    }
+    this.tr = this.enemy.traits || {}; // Bausteine der Eigenheit (siehe js/cast2.js)
     this.collection = opts.collection;
     this.nextId = opts.nextId;
     this.cards = {};
@@ -63,6 +71,7 @@
     this.douse = opts.douse || [];
     this.kniffe = opts.kniffe || []; // [{ id, level }]: was der Spieler in einem Zug zusammen legen darf // Stand des Runs für wachsende Trinkets: burned, bosses, money, trinkets, lastChain
     this.chain = this.chainFloor();
+    if (this.has('wuerfelbecher')) this.chain = Math.max(this.chain, 1 + this.rng.int(6));
     if (this.has('glutspeicher')) this.chain = Math.max(this.chain, Math.ceil((this.grow.lastChain || 0) / 2));
     if (this.has('bierdeckel') && this.grow.lastLost) this.chain = Math.max(this.chain, 4);
     this.maxChain = this.chain;
@@ -82,17 +91,63 @@
     this.oppTurns = 0;
     this.mods = opts.mods || {}; // weitere Stellschrauben (Tests)
     this.specialPool = opts.specialPool || null;
-    this.turnLimit = (this.enemy.passive === 'last-round' ? 36 : ZU.TURN_LIMIT) - (this.rule('short-night') ? (this.enemy.passive === 'last-round' ? 6 : 14) : 0) +
-      (this.has('nachtlaterne') ? 10 : 0);
+    var early = this.enemy.passive === 'last-round' ? 36 : this.tr.limit || 0; // Figuren mit eigener, früher Sperrstunde
+    this.turnLimit = Math.max(22, (early || ZU.TURN_LIMIT) - (this.rule('short-night') ? (early ? 6 : 14) : 0)) + (this.has('nachtlaterne') ? 10 : 0);
     this.showdown = false;
     this.afterDraw = null; // nach dem Ziehen: { actor, ids } der Karten, die sofort gelegt werden dürfen
     this.suitRun = { suit: null, n: 0 }; // Farbenlehre: gleiche Symbole in Folge
     this.lifeGain = 0; // Reservefunke
     this.toll = 0; // Makel „Zoll": Mark, die bei der Auszahlung abgehen
     this.wonBy = null; // 'curfew', wenn Sperrstunde oder Kartenvergleich entschieden hat
+    this.pTurns = 0; // Züge des Spielers
+    this.oppPlays = 0; // gespielte Karten des Gegners
+    this.oppRun = { suit: null, n: 0 }; // gleiche Symbole in Folge beim Gegner
+    this.noFace = 0; // Schwarzfahrer: Karten in Folge ohne Bildkarte
+    this.suitsPlayed = {}; // Blumentopf
+    this.firstSuit = null; // Wetterhahn: Symbol der ersten Tischkarte
+    this.volDraws = 0; // freiwillig gezogen
+    this.chainGuard = 0; // Rauchbombe: so oft übersteht die Kette das Ziehen
+    this.plus = {}; // Wandersmann: Karten-Id -> wie oft in diesem Duell gespielt
+    this.spent = []; // Trinkets, die sich in diesem Duell verbraucht haben
     // Zählwerke für Auszahlung und Hinterzimmer (was der Spieler in diesem Duell geschafft hat)
     this.stats = { played: 0, drawn: 0, sevens: 0, eights: 0, aces: 0, specials: 0, pairs: 0, pushed: 0, skips: 0, curses: 0, reflects: 0, swaps: 0, sacrificed: 0 };
   }
+
+  /* Meldet die Eigenheit des Gegners (für die Anzeige) – und füttert den Torero. */
+  Duel.prototype._passive = function (ev, id) {
+    ev.push({ t: 'passive', id: id });
+    if (this.has('torero')) {
+      this._setChain(this.chain + 2);
+      ev.push({ t: 'trinket', id: 'torero' });
+      ev.push({ t: 'chain', chain: this.chain });
+    }
+  };
+  /* Chancen auf Trinkets; die Hasenpfote verdoppelt sie. */
+  Duel.prototype._luck = function (chance) { return this.rng.next() < chance * (this.has('hasenpfote') ? 2 : 1); };
+  /* Verflucht eine Seite. Der Schutzengel lenkt den ersten Fluch gegen den Spieler um; manche Gegner sind gefeit.
+     Liefert, wen es getroffen hat (oder null, wenn der Fluch abgeprallt ist). */
+  Duel.prototype._curse = function (tgt, amount, ev) {
+    if (tgt === 'player' && this.has('schutzengel') && !this.used.schutzengel) {
+      this.used.schutzengel = true;
+      ev.push({ t: 'trinket', id: 'schutzengel' });
+      tgt = 'opp';
+    }
+    if (tgt === 'opp' && this.tr.curseImmune) { this._passive(ev, this.enemy.passive); return null; }
+    if (tgt === 'opp' && (this.used.ignCurse || 0) < (this.tr.ignoreCurses || 0)) {
+      this.used.ignCurse = (this.used.ignCurse || 0) + 1;
+      this._passive(ev, this.enemy.passive);
+      return null;
+    }
+    this.status.curse[tgt] += amount;
+    return tgt; // wen es getroffen hat
+  };
+  /* Der Gegner wirft seine schwächste Karte ab (nie die letzte). */
+  Duel.prototype._oppDitch = function (ev) {
+    if (this.hand.opp.length < 2) return false;
+    var self = this, worst = this.hand.opp.slice().sort(function (a, b) { return self._aiValue(a) - self._aiValue(b); })[0];
+    this._discardUnder('opp', worst, 'hand', 'sacrifice', ev);
+    return true;
+  };
 
   Duel.prototype.has = function (id) { return this.trinkets.indexOf(id) >= 0; };
   Duel.prototype.rule = function (id) { return this.rules.indexOf(id) >= 0; };
@@ -120,6 +175,7 @@
       // Veredelung der Karte: Siegel und Makel wirken nur, wenn der Spieler sie selbst ausspielt.
       self.cards[cid].seals = ZU.sealsOf(c);
       self.cards[cid].flaws = ZU.flawsOf(c);
+      self.cards[cid].plus = c.plus || 0; // Wandersmann: wie oft die Karte in diesem Run schon gespielt wurde
       return cid;
     });
     rng.shuffle(owned);
@@ -131,7 +187,7 @@
     owned = owned.filter(function (id) { return self.sealed(id, 'anker'); })
       .concat(owned.filter(function (id) { return !self.sealed(id, 'anker') && !self.flawed(id, 'spaet'); }))
       .concat(owned.filter(function (id) { return !self.sealed(id, 'anker') && self.flawed(id, 'spaet'); }));
-    var handSize = ZU.HAND_SIZE - (this.has('schmale-hand') ? 1 : 0);
+    var handSize = ZU.HAND_SIZE - (this.has('schmale-hand') ? 1 : 0) + (this.rule('handicap') ? 1 : 0) + (this.has('stuntman') ? 2 : 0);
     var opening = owned.slice(0, handSize);
     var rest = owned.slice(handSize);
 
@@ -157,13 +213,16 @@
     rest.forEach(function (id) { mine.push(id); }); // schon gemischt
 
     var tableId = this._register(tableDef, 'house', false);
+    this.firstSuit = ZU.CARDS[tableDef].suit;
     this.pile.push(tableId);
     ev.push({ t: 'table', id: tableId });
 
     var oppSize = ZU.OPP_HAND + (this.kind === 'battle' ? 1 : 0) + (this.enemy.handBonus || 0) -
       (this.enemy.passive === 'head-start' || this.enemy.passive === 'baroness' || this.enemy.passive === 'house-cut' ? 2 : this.enemy.passive === 'house' ? 1 : 0);
-    oppSize = Math.max(4, oppSize + (this.mods.oppHand || 0) - (this.rule('house-edge') ? 1 : 0)) + (this.has('klebefinger') ? 1 : 0);
+    oppSize = Math.max(4, oppSize + (this.mods.oppHand || 0) - (this.rule('house-edge') ? 1 : 0) - (this.tr.fewer || 0) - (this.has('stein-der-weisen') ? 1 : 0)) +
+      (this.has('klebefinger') ? 1 : 0) + (this.tr.more || 0);
     if (this.enemy.passive === 'jewels' || this.enemy.passive === 'director' || this.enemy.passive === 'entourage') counts.hand = 3;
+    if (this.tr.handSpecials) counts.hand = Math.max(counts.hand, this.tr.handSpecials);
     var oppOpening = [];
     for (var h = 0; h < counts.hand && oppOpening.length < oppSize; h++) {
       oppOpening.push(this._register(rng.pick(this.enemy.pool), 'enemy', false, null, ZU.rollBind(rng, this.act)));
@@ -195,23 +254,42 @@
 
     var opening = { house: 3, prince: 3, venom: 2, baroness: 2, 'evil-eye': 1 }[this.enemy.passive];
     if (opening) {
-      this.status.curse.player += opening;
-      ev.push({ t: 'passive', id: this.enemy.passive });
+      this._passive(ev, this.enemy.passive);
+      this._curse('player', opening, ev);
       ev.push(this._statusEvent());
     }
+    // Eigenheiten aus Bausteinen (js/cast2.js): was schon vor dem ersten Zug wirkt
+    var tr = this.tr;
+    if (tr.startCurse || tr.startDraw || tr.startSkip || tr.seize) this._passive(ev, this.enemy.passive);
+    if (tr.startCurse) { this._curse('player', tr.startCurse, ev); ev.push(this._statusEvent()); }
+    if (tr.seize && mine.length && this.hand.player.length) {
+      // Beschlagnahmt: die wertvollste Handkarte wandert unter den Stapel, eine neue kommt nach.
+      var worth = function (cid) { var d = self.def(cid); return d.special ? 40 + d.price : d.base + (d.rank === '7' ? 20 : 0); };
+      var best = this.hand.player.slice().sort(function (a, b) { return worth(b) - worth(a); })[0];
+      this._discardUnder('player', best, 'hand', 'mulligan', ev);
+      this._drawInto('player', 1, 'mulligan', ev, false);
+    }
+    if (tr.startDraw) this._drawInto('player', tr.startDraw, 'deal', ev, false);
+    if (tr.startSkip) { this.status.skip.player = 1; ev.push(this._statusEvent()); }
+    if (this.rule('tombola') && mine.length && this.hand.player.length) {
+      // Tombola: Das Los tauscht eine Handkarte gegen eine vom Stapel.
+      ev.push({ t: 'rule', id: 'tombola' });
+      this._discardUnder('player', this.rng.pick(this.hand.player), 'hand', 'mulligan', ev);
+      this._drawInto('player', 1, 'mulligan', ev, false);
+    }
     if (this.enemy.passive === 'donna' || this.enemy.passive === 'list' || this.enemy.passive === 'entourage') {
-      ev.push({ t: 'passive', id: this.enemy.passive });
+      this._passive(ev, this.enemy.passive);
       this._drawInto('player', this.enemy.passive === 'donna' ? 2 : 1, 'deal', ev, false);
     }
     if (this.enemy.passive === 'upbeat') {
       this.status.skip.player = 1;
-      ev.push({ t: 'passive', id: 'upbeat' });
+      this._passive(ev, 'upbeat');
       ev.push(this._statusEvent());
     }
     var anchored = this.hand.player.filter(function (cid) { return self.sealed(cid, 'anker'); });
     if (anchored.length) ev.push({ t: 'seal', seal: 'anker', cards: anchored });
     if (this.rule('marked')) {
-      this.status.curse.player += 1;
+      this._curse('player', 1, ev);
       ev.push({ t: 'rule', id: 'marked' });
       ev.push(this._statusEvent());
     }
@@ -221,6 +299,8 @@
       ev.push(this._statusEvent());
     }
     if (this.has('klebefinger')) ev.push({ t: 'trinket', id: 'klebefinger' });
+    if (this.has('stein-der-weisen')) ev.push({ t: 'trinket', id: 'stein-der-weisen' });
+    if (this.has('wuerfelbecher')) { ev.push({ t: 'trinket', id: 'wuerfelbecher' }); ev.push({ t: 'chain', chain: this.chain }); }
     if (this.has('sparschwein')) {
       ev.push({ t: 'trinket', id: 'sparschwein' });
       ev.push(this._statusEvent());
@@ -231,7 +311,7 @@
       ev.push(this._statusEvent());
     }
     if (this.has('hex-board')) {
-      this.status.curse.opp += 2;
+      this._curse('opp', 2, ev);
       ev.push({ t: 'trinket', id: 'hex-board' });
       ev.push(this._statusEvent());
     }
@@ -273,7 +353,7 @@
     if (def.special) {
       if (actor === 'player') {
         if (this.has('master-key')) return ZU.SUIT_ORDER;
-        if (ZU.SUITS[card.bind] && this.has('skeleton-key')) return ZU.bindSuits(ZU.SUITS[card.bind].red ? 'red' : 'black');
+        if (ZU.SUITS[card.bind] && (this.has('skeleton-key') || this.has('verschmiert'))) return ZU.bindSuits(ZU.SUITS[card.bind].red ? 'red' : 'black');
       }
       if (actor === 'opp' && this.enemy.passive === 'keys') return ZU.SUIT_ORDER;
       return ZU.bindSuits(card.bind);
@@ -283,6 +363,9 @@
     }
     if (def.rank === 'J' && actor === 'player' && this.has('bubenstueck')) return ZU.SUIT_ORDER;
     if (actor === 'player' && (card.seals || []).indexOf('irrlicht') >= 0) return ZU.SUIT_ORDER;
+    if (actor === 'opp' && this.tr.wild && this.tr.wild.indexOf(def.rank) >= 0) return ZU.SUIT_ORDER;
+    // Verschmierte Karte: Herz und Karo sind eins, Pik und Kreuz ebenso.
+    if (actor === 'player' && this.has('verschmiert')) return ZU.bindSuits(ZU.SUITS[def.suit].red ? 'red' : 'black');
     return [def.suit];
   };
 
@@ -362,19 +445,21 @@
     if (!this.kniffe.length) return { ok: false, reason: 'Mehrere Karten auf einmal gehen nur mit einem Kniff.' };
     var sameRank = defs.every(function (d) { return d.rank === defs[0].rank; });
     var sameSuit = defs.every(function (d) { return d.suit === defs[0].suit; });
+    var extra = this.has('vier-finger') ? 1 : 0; // Vier Finger: eine Karte mehr, als die Stufe erlaubt
     for (var i = 0; i < this.kniffe.length; i++) {
       var k = this.kniffe[i], spec = ZU.KNIFFE[k.id], fits = false;
       if (spec.kind === 'rank') fits = sameRank && (!spec.ranks || spec.ranks.indexOf(defs[0].rank) >= 0);
       else if (spec.kind === 'suit') fits = sameSuit && defs[0].suit === spec.suit;
-      else if (spec.kind === 'run' && sameSuit) {
+      else if (spec.kind === 'color') fits = defs.every(function (d) { return ZU.SUITS[d.suit].red === spec.red; });
+      else if ((spec.kind === 'run' && sameSuit) || spec.kind === 'stairs') {
         var orders = defs.map(function (d) { return ZU.RANKS[d.rank].order; }).sort(function (x, y) { return x - y; });
         fits = orders.every(function (o, n) { return n === 0 || o === orders[n - 1] + 1; });
       }
       if (!fits) continue;
-      if (ids.length <= ZU.KNIFF_LIMIT[k.level]) return { ok: true, kniff: k.id };
+      if (ids.length <= ZU.KNIFF_LIMIT[k.level] + extra) return { ok: true, kniff: k.id };
       tooMany = k;
     }
-    if (tooMany) return { ok: false, reason: '„' + ZU.KNIFFE[tooMany.id].name + '“ erlaubt auf Stufe ' + tooMany.level + ' höchstens ' + ZU.KNIFF_LIMIT[tooMany.level] + ' Karten.' };
+    if (tooMany) return { ok: false, reason: '„' + ZU.KNIFFE[tooMany.id].name + '“ erlaubt auf Stufe ' + tooMany.level + ' höchstens ' + (ZU.KNIFF_LIMIT[tooMany.level] + extra) + ' Karten.' };
     return { ok: false, reason: 'Dafür hast du keinen Kniff.' };
   };
 
@@ -398,6 +483,24 @@
     check.order.forEach(function (id) { self._putOnTable(actor, id, 'hand', ev); });
     this.salvo = 0;
     var single = check.order.length === 1 && this.def(check.order[0]).special;
+    var tr = this.tr;
+    if (actor === 'player') {
+      if (this.pTurns === 1 && this.has('oellampe') && !this.used.oellampe) {
+        this.used.oellampe = true;
+        this.retain = true;
+        ev.push({ t: 'trinket', id: 'oellampe' });
+      }
+      if (this.kuckuck) { this.kuckuck = false; this.retain = true; ev.push({ t: 'trinket', id: 'kuckucksuhr' }); }
+      if (this.has('stammbaum') && !this.used.stammbaum) {
+        var firstPlain = check.order.filter(function (id) { return !self.def(id).special; })[0];
+        if (firstPlain != null) {
+          this.used.stammbaum = true;
+          this.created.push({ def: this.cards[firstPlain].def, bind: null });
+          ev.push({ t: 'trinket', id: 'stammbaum' });
+          ev.push({ t: 'created', defs: [this.cards[firstPlain].def], binds: [null], via: 'stammbaum', source: firstPlain });
+        }
+      }
+    }
     if (actor === 'player' && check.order.length >= 2) {
       this.stats.pairs++;
       ev.push({ t: 'kniff', id: check.kniff, count: check.order.length });
@@ -419,11 +522,28 @@
     if (single && actor === 'opp' && this.enemy.passive === 'encore' && !this.used.encore) {
       this.used.encore = true;
       this.retain = true;
-      ev.push({ t: 'passive', id: 'encore' });
+      this._passive(ev, 'encore');
     }
-    if (single && actor === 'player' && this.enemy.passive === 'void-special' && !this.used['void-special']) {
+    if (single && actor === 'opp' && tr.firstSpecialFree && !this.used.encore) {
+      this.used.encore = true;
+      this.retain = true;
+      this._passive(ev, this.enemy.passive);
+    }
+    if (actor === 'opp') {
+      var ranks = check.order.map(function (id) { return self.def(id).rank; });
+      if (tr.rankAgain && ranks.some(function (r) { return tr.rankAgain.indexOf(r) >= 0; })) {
+        this.retain = true;
+        this._passive(ev, this.enemy.passive);
+      }
+      if (tr.every && tr.every.do === 'again' && this.oppTurns % tr.every.n === 0 && this.againTurn !== this.oppTurns) {
+        this.againTurn = this.oppTurns; // nur einmal je Zug, sonst hörte sie nie auf
+        this.retain = true;
+        this._passive(ev, this.enemy.passive);
+      }
+    }
+    if (single && actor === 'player' && (this.enemy.passive === 'void-special' || tr.voidSpecial) && !this.used['void-special']) {
       this.used['void-special'] = true;
-      ev.push({ t: 'passive', id: 'void-special' });
+      this._passive(ev, this.enemy.passive);
       ev.push({ t: 'effect', type: 'fizzle', src: actor, tgt: actor });
     } else {
       this._queueEffects(actor, check.order, false);
@@ -439,6 +559,30 @@
       this.queue.push({ type: 'passive', id: 'finale', src: actor });
       this.queue.push({ type: 'draw', amount: 2, reflectable: true, src: actor });
     }
+    if (actor === 'opp') {
+      var forced = 0;
+      if (tr.lastCard && !this.used.lastCard && this.hand.opp.length === 1) { this.used.lastCard = true; forced += tr.lastCard; }
+      if (tr.firstPlayDraw && !this.used.firstPlay) { this.used.firstPlay = true; forced += tr.firstPlayDraw; }
+      if (tr.everyPlay) {
+        for (var c = 0; c < check.order.length; c++) if (++this.oppPlays % tr.everyPlay.n === 0) forced += tr.everyPlay.draw;
+      }
+      if (tr.suitRun) {
+        check.order.forEach(function (id) {
+          var suit = self.def(id).suit;
+          self.oppRun = suit && self.oppRun.suit === suit ? { suit: suit, n: self.oppRun.n + 1 } : { suit: suit, n: suit ? 1 : 0 };
+          if (self.oppRun.n >= tr.suitRun.n) { self.oppRun.n = 0; forced += tr.suitRun.draw; }
+        });
+      }
+      if (single && tr.onOppSpecial) forced += tr.onOppSpecial;
+      if (forced && this.hand.opp.length) {
+        this.queue.push({ type: 'passive', id: this.enemy.passive, src: actor });
+        this.queue.push({ type: 'draw', amount: forced, reflectable: false, src: actor });
+      }
+    }
+    if (single && actor === 'player' && tr.onPlayerSpecial) {
+      this.queue.push({ type: 'passive', id: this.enemy.passive, src: actor });
+      this.queue.push({ type: 'selfdraw', amount: tr.onPlayerSpecial, src: actor });
+    }
     if (actor === 'player' && check.order.length >= 2 && this.has('pair-king')) {
       this.queue.push({ type: 'note', trinket: 'pair-king', src: actor });
       this.queue.push({ type: 'draw', amount: 1, reflectable: true, src: actor });
@@ -451,8 +595,17 @@
   Duel.prototype.draw = function (actor) {
     this._requireAction(actor);
     if (this.afterDraw) throw new Error('Erst die gezogene Karte legen oder passen.');
-    var ev = [], self = this, before = this.hand[actor].length;
-    var drawn = this._drawInto(actor, 1, 'draw', ev, true);
+    var ev = [], self = this, before = this.hand[actor].length, take = 1;
+    if (actor === 'player') {
+      this.volDraws++;
+      if (this.tr.firstDraw && !this.used.firstDraw) {
+        // z. B. Nieten: Das erste freiwillige Ziehen bringt mehr Karten.
+        this.used.firstDraw = true;
+        take = this.tr.firstDraw;
+        this._passive(ev, this.enemy.passive);
+      }
+    }
+    var drawn = this._drawInto(actor, take, 'draw', ev, true);
     this.noProgress = drawn === 0 ? this.noProgress + 1 : 0;
     var fresh = drawn > 0 && !this.showdown
       ? this.hand[actor].slice(before).filter(function (id) { return self.playable(actor, id); })
@@ -466,7 +619,10 @@
         // Ziehen löscht die Kette; passt die gezogene Karte sofort, bleibt die Hälfte stehen.
         var floor = this.chainFloor(), half = Math.max(floor, Math.ceil(this.chain / 2));
         var next = this.has('slow-burner') ? (fresh.length ? this.chain : half) : fresh.length ? half : floor;
-        if (next < this.chain && this.has('zweite-luft') && !this.used['zweite-luft']) {
+        if (next < this.chain && this.chainGuard > 0) {
+          this.chainGuard--; // Rauchbombe: Die Kette übersteht dieses Ziehen
+          ev.push({ t: 'effect', type: 'guard-used', src: 'player', tgt: 'player' });
+        } else if (next < this.chain && this.has('zweite-luft') && !this.used['zweite-luft']) {
           this.used['zweite-luft'] = true;
           ev.push({ t: 'trinket', id: 'zweite-luft' });
         } else if (next !== this.chain) {
@@ -474,6 +630,11 @@
           ev.push({ t: 'chain', chain: this.chain, reset: true });
         }
       }
+    }
+    if (actor === 'player' && this.tr.onPlayerDraw === 'discard' && this.hand.opp.length > 1) {
+      // Dauerrede: Wer zieht, schenkt dem Gegner eine Karte weniger.
+      this._passive(ev, this.enemy.passive);
+      this._oppDitch(ev);
     }
     if (fresh.length) {
       {
@@ -597,18 +758,30 @@
     var below = this.pile.length > 1 ? this.def(this.pile[this.pile.length - 2]) : null; // was vorher oben lag
     var def = this.def(id), event = { t: 'play', id: id, actor: actor, from: from === 'hand' ? actor : 'staging' };
     if (actor === 'player') {
-      var face = def.rank === 'J' || def.rank === 'Q' || def.rank === 'K', low = def.rank === '7' || def.rank === '8' || def.rank === '9';
-      var mark = this.cards[id], seals = mark.seals || [], flaws = mark.flaws || [];
+      var low = def.rank === '7' || def.rank === '8' || def.rank === '9';
+      var masked = low && this.has('maskenball'); // Maskenball: 7, 8 und 9 gelten als Bildkarten
+      var face = def.rank === 'J' || def.rank === 'Q' || def.rank === 'K' || masked;
+      var mark = this.cards[id], seals = mark.seals || [], flaws = mark.flaws || [], self2 = this;
       var sealed = function (s) { return seals.indexOf(s) >= 0; }, flawed = function (f) { return flaws.indexOf(f) >= 0; };
       // Ebenbild: Liegt genau dieselbe Karte schon oben (gleicher Wert, gleiches Symbol), wächst die Kette um die Hälfte –
       // noch bevor diese Karte zählt. Aus ×10 wird ×15.
       var twin = null;
-      if (below && below === def) {
-        var before = this.chain;
-        this._setChain(Math.ceil(before * ZU.TWIN_CHAIN));
-        if (this.chain > before) twin = { from: before, to: this.chain };
+      if (below && (below === def || (sealed('spiegel') && !below.special && below.rank === def.rank))) {
+        var before = this.chain, lift = this.has('spiegelkabinett') ? 2 : ZU.TWIN_CHAIN; // Spiegelkabinett: Ebenbild verdoppelt
+        this._setChain(Math.ceil(before * lift));
+        if (this.chain > before) twin = { from: before, to: this.chain, f: lift };
       }
-      var base = def.base + (low && this.has('kleinvieh') ? 6 : 0) + (face && this.has('hofstaat') ? 5 : 0) +
+      var held = this.hand.player, lowest = 0;
+      if (this.has('geballte-faust') && held.length) {
+        lowest = Math.min.apply(null, held.map(function (cid) { return self2.def(cid).base; }));
+      }
+      var extra = { pfeilspitze: def.suit === 'spades' ? 8 : 0, 'schraeger-vogel': def.rank === '7' || def.rank === '9' || def.rank === 'A' ? 7 : 0,
+        'geballte-faust': lowest, blaupause: this.stocks.player.length, handwaermer: 2 * held.length, stuntman: 12,
+        daeumling: (this.grow.sevens || 0) + this.stats.sevens,
+        wandersmann: mark.persistent ? 2 * ((mark.plus || 0) + (this.plus[id] || 0)) : 0 };
+      var extraIds = Object.keys(extra).filter(function (tid) { return extra[tid] > 0 && self2.has(tid); }), extraSum = 0;
+      extraIds.forEach(function (tid) { extraSum += extra[tid]; });
+      var base = (masked ? 10 : def.base) + extraSum + (sealed('funke') ? 8 : 0) + (low && this.has('kleinvieh') ? 6 : 0) + (face && this.has('hofstaat') ? 5 : 0) +
         (this.has('zunder') ? 4 : 0) + (def.special && this.has('tintenfass') ? 15 : 0) +
         (def.suit === 'clubs' && this.has('kreuzfeuer') ? 8 : 0) + (def.rank === 'J' && this.has('bauernopfer') ? 10 : 0) +
         (def.suit && ZU.SUITS[def.suit].red && this.has('rotlicht') ? 3 : 0) + (this.chain >= 4 && this.has('feuerzeug') ? 6 : 0);
@@ -620,7 +793,9 @@
       var steps = [], self = this, adds = ['kleinvieh', 'hofstaat', 'zunder', 'tintenfass', 'kreuzfeuer', 'bauernopfer', 'rotlicht', 'feuerzeug'].filter(function (tid) {
         return self.has(tid) && (tid === 'kleinvieh' ? low : tid === 'hofstaat' ? face : tid === 'tintenfass' ? def.special : tid === 'kreuzfeuer' ? def.suit === 'clubs' :
           tid === 'bauernopfer' ? def.rank === 'J' : tid === 'rotlicht' ? !!(def.suit && ZU.SUITS[def.suit].red) : tid === 'feuerzeug' ? self.chain >= 4 : true);
-      });
+      }).concat(extraIds);
+      extraIds.forEach(function (tid) { trig.push(tid); });
+      if (masked) trig.push('maskenball');
       if (effChain > this.chain) trig.push('kettenreaktion'); // trig: Trinkets, die bei dieser Karte gezündet haben (für die Anzeige)
       if (def.suit === 'clubs' && this.has('kreuzfeuer')) trig.push('kreuzfeuer');
       if (def.rank === 'J' && this.has('bauernopfer')) trig.push('bauernopfer');
@@ -633,7 +808,7 @@
       if (below && below.suit && def.suit && below.suit !== def.suit && this.has('farbwechsel')) { points *= 2; doubled = true; trig.push('farbwechsel'); steps.push({ id: 'farbwechsel', f: 2, v: points }); }
       if (def.special && this.has('heisse-ware')) { points *= 2; doubled = true; trig.push('heisse-ware'); steps.push({ id: 'heisse-ware', f: 2, v: points }); }
       if (this.hand.player.length <= 1 && this.has('endspurt')) { points *= 3; doubled = true; trig.push('endspurt'); steps.push({ id: 'endspurt', f: 3, v: points }); }
-      if (this.has('gluecksrad') && this.rng.next() < 0.15) { points *= 3; doubled = true; trig.push('gluecksrad'); steps.push({ id: 'gluecksrad', f: 3, v: points }); }
+      if (this.has('gluecksrad') && this._luck(0.15)) { points *= 3; doubled = true; trig.push('gluecksrad'); steps.push({ id: 'gluecksrad', f: 3, v: points }); }
       if (low && this.has('kleinvieh')) trig.push('kleinvieh');
       if (face && this.has('hofstaat')) trig.push('hofstaat');
       if (def.special && this.has('tintenfass')) trig.push('tintenfass');
@@ -679,6 +854,41 @@
       if (this.has('weissglut')) mult('weissglut', 1 + 0.1 * this.chain);
       if (this.has('kerbholz') && grow.burnt) mult('kerbholz', 1 + 0.25 * grow.burnt);
       if (this.has('vabanque')) mult('vabanque', 3);
+      // --- dritte Serie ---
+      var grow3 = this.grow, hand3 = this.hand.player, count3 = function (rank) { return hand3.filter(function (cid) { return self2.def(cid).rank === rank; }).length; };
+      if (face) this.noFace = 0; else this.noFace++;
+      if (def.suit) this.suitsPlayed[def.suit] = true;
+      if (this.has('halbe-portion') && hand3.length <= 3) mult('halbe-portion', 1.5);
+      if (this.has('fehldruck')) mult('fehldruck', 1 + 0.25 * this.rng.int(7));
+      if (this.has('gerade-linie') && (def.rank === '8' || def.rank === '10')) mult('gerade-linie', 1.5);
+      if (this.has('schiefertafel') && !hand3.some(function (cid) { var d = self2.def(cid); return d.suit && ZU.SUITS[d.suit].red; })) mult('schiefertafel', 2);
+      if (this.has('schwarzfahrer')) mult('schwarzfahrer', 1 + 0.1 * this.noFace);
+      if (this.has('baron')) mult('baron', Math.pow(1.5, count3('K')));
+      if (this.has('mondsuechtig')) mult('mondsuechtig', 1 + 0.3 * count3('Q'));
+      if (this.has('blutstein') && def.suit === 'hearts' && this._luck(1 / 3)) mult('blutstein', 3);
+      if (this.has('blumentopf') && Object.keys(this.suitsPlayed).length >= 4) mult('blumentopf', 2);
+      if (this.has('hofnarr') && (def.rank === 'K' || def.rank === 'Q')) mult('hofnarr', 3);
+      if (this.has('yorick')) mult('yorick', 1 + Math.floor(((grow3.played || 0) + this.stats.played) / 23));
+      if (this.has('schablone')) mult('schablone', Math.max(1, 3 - 0.25 * Math.max(0, (grow3.trinkets || 1) - 1)));
+      if (this.has('meisterbrief') && (grow3.sealed || 0) >= 6) mult('meisterbrief', 3);
+      if (this.has('schwaenzer')) mult('schwaenzer', 1 + 0.5 * (grow3.skipped || 0));
+      if (this.has('lagerfeuer')) mult('lagerfeuer', 1 + 0.25 * (grow3.burnAct || 0));
+      if (this.has('drahtseilakt') && this.hand.opp.length <= 2) mult('drahtseilakt', 3);
+      if (this.has('bonusheft') && this.stats.played % 6 === 5) mult('bonusheft', 4);
+      if (this.has('das-trio') && this.salvo >= 3) mult('das-trio', 3);
+      if (this.has('selters')) mult('selters', 2);
+      if (this.has('popcorn')) mult('popcorn', grow3.popcorn || 3);
+      if (this.has('banane')) mult('banane', 2);
+      if (this.has('wetterhahn') && def.suit && def.suit === this.firstSuit) mult('wetterhahn', 2);
+      if (this.has('hologramm')) mult('hologramm', 1 + 0.2 * (grow3.added || 0));
+      if (this.has('ersatzhose')) mult('ersatzhose', 1 + 0.05 * ((grow3.multi || 0) + this.stats.pairs + (this.salvo > 1 ? 1 : 0)));
+      if (this.has('glaskugel')) mult('glaskugel', 1 + 0.15 * (grow3.packs || 0));
+      if (this.has('wahnsinn')) mult('wahnsinn', 1 + (grow3.wahnsinn || 0));
+      if (this.has('armutsgeluebde')) mult('armutsgeluebde', 3);
+      if (this.has('stein-der-weisen')) mult('stein-der-weisen', 2);
+      if (this.has('totenkopfring') && grow3.lives === 1) mult('totenkopfring', 3);
+      if (this.has('elitepartner') && this.kind === 'elite') mult('elitepartner', 2.5);
+      if (this.has('nachteule') && this.pTurns >= 10) mult('nachteule', 2);
       this.glut += points;
       event.score = { base: base, chain: this.chain, eff: effChain, points: points, glut: this.glut, doubled: doubled, steps: steps, adds: adds };
       if (twin) event.score.twin = twin;
@@ -697,12 +907,19 @@
       if (flaws.length) event.flaws = flaws.slice();
       if (trig.length) event.trig = trig;
       this.stats.played++;
+      if (mark.persistent) this.plus[id] = (this.plus[id] || 0) + 1;
+      if (this.has('kuckucksuhr') && this.stats.played % 5 === 0) this.kuckuck = true; // zündet am Ende dieses Zuges (play)
       if (def.special) this.stats.specials++;
       else if (def.rank === '7') this.stats.sevens++;
       else if (def.rank === '8') this.stats.eights++;
       else if (def.rank === 'A') this.stats.aces++;
     }
     ev.push(event);
+    if (actor === 'opp' && def.rank === '7' && this.has('siebenerkrieg')) {
+      this._setChain(this.chain + 2);
+      ev.push({ t: 'trinket', id: 'siebenerkrieg' });
+      ev.push({ t: 'chain', chain: this.chain });
+    }
     if (actor === 'opp' && !def.special) {
       // Löschmittel: Die 8 und das Ass des Gegners drücken die Kette des Spielers.
       var low = this.chainFloor(), cooled = this.chain;
@@ -721,13 +938,26 @@
       // Siegel und Makel melden sich in der Reihenfolge, in der sie wirken: erst die Glut, dann Kasse, dann Folgen.
       // Eine Karte kann mehrere tragen; jedes meldet sich für sich.
       var worn = this.cards[id], wears = function (s) { return (worn.seals || []).indexOf(s) >= 0; }, marred = function (f) { return (worn.flaws || []).indexOf(f) >= 0; };
-      ['irrlicht', 'glut', 'zuend'].forEach(function (s) { if (wears(s)) ev.push({ t: 'seal', seal: s, card: id }); });
+      ['irrlicht', 'spiegel', 'funke', 'glut', 'zuend'].forEach(function (s) {
+        if (wears(s) && (s !== 'spiegel' || (event.score && event.score.twin))) ev.push({ t: 'seal', seal: s, card: id });
+      });
       ['matt', 'stumpf'].forEach(function (f) { if (marred(f)) ev.push({ t: 'flaw', flaw: f, card: id }); });
       if (wears('gold')) { this.bank += 1; ev.push({ t: 'seal', seal: 'gold', card: id }); ev.push(this._statusEvent()); }
       if (marred('zoll')) { this.toll++; ev.push({ t: 'flaw', flaw: 'zoll', card: id }); }
       if (wears('haken')) {
         this.queue.push({ type: 'sealnote', seal: 'haken', card: id, src: actor });
         this.queue.push({ type: 'draw', amount: 1, reflectable: true, src: actor });
+      }
+      if (wears('maulkorb') && !this.used.maulkorb) {
+        this.used.maulkorb = true; // einmal je Duell
+        this.queue.push({ type: 'sealnote', seal: 'maulkorb', card: id, src: actor });
+        this.queue.push({ type: 'skip', reflectable: true, src: actor });
+      }
+      if (face && this.has('visitenkarte') && (this.used.visit || 0) < 6 && this._luck(0.5)) {
+        this.used.visit = (this.used.visit || 0) + 1;
+        this.bank += 1;
+        ev.push({ t: 'trinket', id: 'visitenkarte' });
+        ev.push(this._statusEvent());
       }
       if (marred('klette')) {
         this.queue.push({ type: 'flawnote', flaw: 'klette', card: id, src: actor });
@@ -775,14 +1005,23 @@
 
   /* ---------- Effekte ---------- */
   Duel.prototype._queueEffects = function (actor, ids, front) {
-    var self = this, draw = 0, skip = false, rest = [];
+    var self = this, draw = 0, skip = 0, rest = [], tr = this.tr;
     ids.forEach(function (id) {
       var def = self.def(id);
+      if (actor === 'opp' && !def.special) {
+        // Eigenheiten aus Bausteinen: Karten bestimmter Werte ziehen, bannen oder verfluchen.
+        var hit = false;
+        if (tr.rankDraw && tr.rankDraw[def.rank]) { draw += tr.rankDraw[def.rank]; hit = true; }
+        if (tr.rankSkip && tr.rankSkip.indexOf(def.rank) >= 0) { skip = Math.max(skip, 1); hit = true; }
+        if (tr.rankCurse && tr.rankCurse[def.rank]) { rest.push({ type: 'curse', amount: tr.rankCurse[def.rank], reflectable: true, src: actor, card: id }); hit = true; }
+        if (hit) rest.unshift({ type: 'passive', id: self.enemy.passive, src: actor });
+      }
       def.effects.forEach(function (effect) {
         if (effect.type === 'draw' && actor === 'opp' && def.rank === '7' && self.has('asbesthandschuh')) rest.push({ type: 'note', trinket: 'asbesthandschuh', src: actor });
         else if (effect.type === 'draw') draw += effect.amount + (actor === 'opp' && def.rank === '7' && self.enemy.passive === 'heavy-hand' ? 1 : 0) +
             (actor === 'player' && def.rank === '7' && self.has('seven-sleeper') ? 1 : 0) + (def.rank === '7' && self.rule('sharp-sevens') ? 1 : 0);
-        else if (effect.type === 'skip') skip = true;
+        else if (effect.type === 'skip') skip = Math.max(skip, effect.amount || 1);
+        else if (effect.type === 'debt') draw += actor === 'player' ? effect.amount + (self.grow.missing || 0) : 2; // Schuldschein
         else rest.push({ type: effect.type, amount: effect.amount || 0, duration: effect.duration || 0, reflectable: !!effect.reflectable, src: actor, card: id });
       });
       if (actor === 'player' && def.rank === '9' && self.has('neunmalklug')) {
@@ -791,12 +1030,12 @@
       }
       if (actor === 'player' && def.rank === '8' && self.has('rollercoaster')) {
         if (!skip) rest.unshift({ type: 'note', trinket: 'rollercoaster', src: actor });
-        skip = true;
+        skip = Math.max(skip, 1);
       }
     });
     var items = [];
     if (draw) items.push({ type: 'draw', amount: draw, reflectable: true, src: actor });
-    if (skip) items.push({ type: 'skip', reflectable: true, src: actor });
+    if (skip) items.push({ type: 'skip', amount: skip, reflectable: true, src: actor });
     items = items.concat(rest);
     this.queue = front ? items.concat(this.queue) : this.queue.concat(items);
   };
@@ -818,13 +1057,13 @@
   Duel.prototype._effect = function (item, ev) {
     var src = item.src, tgt = other(src), self = this;
     if (item.type === 'note') { ev.push({ t: 'trinket', id: item.trinket }); return; }
-    if (item.type === 'passive') { ev.push({ t: 'passive', id: item.id }); return; }
+    if (item.type === 'passive') { this._passive(ev, item.id); return; }
     if (item.type === 'sealnote') { ev.push({ t: 'seal', seal: item.seal, card: item.card }); return; }
     if (item.type === 'flawnote') { ev.push({ t: 'flaw', flaw: item.flaw, card: item.card }); return; }
     if (item.reflectable) {
       if (src === 'player' && this.enemy.passive === 'smoke' && !this.used.smoke) {
         this.used.smoke = true;
-        ev.push({ t: 'passive', id: 'smoke' });
+        this._passive(ev, 'smoke');
         ev.push({ t: 'reflect', onto: 'player', effect: item.type });
         src = 'opp'; tgt = 'player';
       } else if (tgt === 'player' && this.has('smoke-mirror') && !this.used['smoke-mirror']) {
@@ -841,13 +1080,27 @@
         if (src === 'opp' && this.enemy.passive === 'amplify' && !this.used.amplify) {
           this.used.amplify = true;
           amount += 2;
-          ev.push({ t: 'passive', id: 'amplify' });
+          this._passive(ev, 'amplify');
         }
         if (src === 'player' && tgt === 'opp' && this.enemy.passive === 'armored' && (this.used.armored || 0) < 2) {
           this.used.armored = (this.used.armored || 0) + 1;
-          ev.push({ t: 'passive', id: 'armored' });
+          this._passive(ev, 'armored');
           ev.push({ t: 'effect', type: 'skip-blocked', src: src, tgt: tgt });
           break;
+        }
+        if (src === 'player' && tgt === 'opp' && (this.used.ignDraw || 0) < (this.tr.ignoreDraws || 0)) {
+          this.used.ignDraw = (this.used.ignDraw || 0) + 1;
+          this._passive(ev, this.enemy.passive);
+          ev.push({ t: 'effect', type: 'skip-blocked', src: src, tgt: tgt });
+          break;
+        }
+        if (tgt === 'player' && this.has('weihrauch')) {
+          this.used.weihrauch = (this.used.weihrauch || 0) + 1;
+          if (this.used.weihrauch % 3 === 0) {
+            ev.push({ t: 'trinket', id: 'weihrauch' });
+            ev.push({ t: 'effect', type: 'skip-blocked', src: src, tgt: tgt });
+            break;
+          }
         }
         if (src === 'player' && this.has('brass-knuckles') && !this.used['brass-knuckles']) {
           this.used['brass-knuckles'] = true;
@@ -862,9 +1115,18 @@
           amount -= 1;
           ev.push({ t: 'trinket', id: 'regenschirm' });
         }
+        if (tgt === 'opp' && amount > 1 && this.tr.umbrella) {
+          amount -= 1;
+          this._passive(ev, this.enemy.passive);
+        }
         ev.push({ t: 'effect', type: 'draw', src: src, tgt: tgt, amount: amount });
         var got = this._drawInto(tgt, amount, 'effect', ev, true);
         if (tgt === 'opp') this.stats.pushed += got;
+        if (tgt === 'player' && got > 0 && this.has('trotzkopf')) {
+          this._setChain(this.chain + got);
+          ev.push({ t: 'trinket', id: 'trotzkopf' });
+          ev.push({ t: 'chain', chain: this.chain });
+        }
         break;
       }
       case 'equalize': {
@@ -886,6 +1148,49 @@
       case 'selfdraw':
         ev.push({ t: 'effect', type: 'draw', src: other(item.src), tgt: item.src, amount: item.amount });
         this._drawInto(item.src, item.amount, 'effect', ev, false);
+        break;
+      case 'spark':
+        // Funkenflug: ein Anteil des Glutziels sofort als Glut
+        if (src === 'player' && this.target) {
+          this.glut += Math.round(this.target * item.amount / 100);
+          ev.push({ t: 'effect', type: 'spark', src: src, tgt: src, amount: item.amount });
+          ev.push({ t: 'glut', glut: this.glut });
+        } else {
+          ev.push({ t: 'effect', type: 'idle', src: src, tgt: src });
+        }
+        break;
+      case 'roulette': {
+        // Rot oder Schwarz: Der Gegner zieht viel – oder man selbst die Hälfte.
+        var lucky = this.rng.next() < 0.5;
+        ev.push({ t: 'effect', type: lucky ? 'roulette-win' : 'roulette-lose', src: src, tgt: lucky ? tgt : src });
+        if (lucky) this.queue.unshift({ type: 'draw', amount: item.amount, reflectable: false, src: src });
+        else this.queue.unshift({ type: 'selfdraw', amount: Math.ceil(item.amount / 2), src: src });
+        break;
+      }
+      case 'temper':
+        if (src === 'player') {
+          this._setChain(Math.ceil(this.chain * 1.5));
+          ev.push({ t: 'effect', type: 'stoke', src: src, tgt: src, amount: this.chain });
+          ev.push({ t: 'chain', chain: this.chain });
+        } else {
+          ev.push({ t: 'effect', type: 'idle', src: src, tgt: src });
+        }
+        break;
+      case 'bankdouble':
+        if (src === 'player' && this.bank > 0) {
+          var more = Math.min(item.amount, this.bank);
+          this.bank += more;
+          ev.push({ t: 'effect', type: 'bank', src: src, tgt: src, amount: more });
+          ev.push(this._statusEvent());
+        } else {
+          ev.push({ t: 'effect', type: 'idle', src: src, tgt: src });
+        }
+        break;
+      case 'guard':
+        if (src === 'player') {
+          this.chainGuard++;
+          ev.push({ t: 'effect', type: 'guard', src: src, tgt: src });
+        }
         break;
       case 'bonusdraw':
         // Perpetuum: eine Karte nachziehen, ohne dass die Kette abreißt
@@ -946,10 +1251,19 @@
           ev.push({ t: 'effect', type: 'skip-blocked', src: src, tgt: tgt });
         } else if (tgt === 'opp' && (this.enemy.passive === 'thick-skin' || this.enemy.passive === 'prince') && !this.used['thick-skin']) {
           this.used['thick-skin'] = true;
-          ev.push({ t: 'passive', id: 'thick-skin' });
+          this._passive(ev, 'thick-skin');
+          ev.push({ t: 'effect', type: 'skip-blocked', src: src, tgt: tgt });
+        } else if (tgt === 'opp' && (this.used.ignSkip || 0) < (this.tr.ignoreSkips || 0)) {
+          this.used.ignSkip = (this.used.ignSkip || 0) + 1;
+          this._passive(ev, this.enemy.passive);
           ev.push({ t: 'effect', type: 'skip-blocked', src: src, tgt: tgt });
         } else {
-          var rounds = 1;
+          var rounds = item.amount || 1;
+          if (tgt === 'player' && src === 'opp' && this.tr.longSkip && !this.used.longSkip) {
+            this.used.longSkip = true;
+            rounds = Math.max(rounds, 2);
+            this._passive(ev, this.enemy.passive);
+          }
           if (tgt === 'opp' && this.has('doppelschloss') && !this.used.doppelschloss) {
             this.used.doppelschloss = true;
             rounds = 2;
@@ -976,8 +1290,9 @@
           curseBy = Math.ceil(curseBy / 2);
           ev.push({ t: 'trinket', id: 'pestmaske' });
         }
-        this.status.curse[tgt] += curseBy;
-        ev.push({ t: 'effect', type: 'curse', src: src, tgt: tgt, amount: curseBy });
+        var landed = this._curse(tgt, curseBy, ev);
+        if (landed) ev.push({ t: 'effect', type: 'curse', src: src, tgt: landed, amount: curseBy });
+        else ev.push({ t: 'effect', type: 'skip-blocked', src: src, tgt: tgt });
         ev.push(this._statusEvent());
         break;
       }
@@ -1158,7 +1473,8 @@
   /* Wer hält weniger Karten? Gleichstand geht ans Haus – außer mit Kellerschlüssel. */
   Duel.prototype._fewer = function () {
     var p = this.hand.player.length, o = this.hand.opp.length;
-    return p < o || (p === o && this.has('cellar-key')) ? 'player' : 'opp';
+    var need = (this.tr.tieWin || 1) - (this.has('cellar-key') ? 1 : 0); // so viele Karten weniger muss der Spieler halten
+    return p <= o - need ? 'player' : 'opp';
   };
 
   /* Letzter Stapel aufgebraucht: Wer weniger Karten hält, gewinnt. Gleichstand geht ans Haus. */
@@ -1181,6 +1497,11 @@
     if (this.status.skip[actor] > 0 && guard < 3) {
       this.status.skip[actor]--;
       ev.push({ t: 'skipped', actor: actor });
+      if (actor === 'player' && this.has('sitzfleisch')) {
+        this._setChain(this.chain + 3);
+        ev.push({ t: 'trinket', id: 'sitzfleisch' });
+        ev.push({ t: 'chain', chain: this.chain });
+      }
       if (actor === 'opp') {
         this.stats.skips++;
         if (this.has('schadenfreude')) {
@@ -1220,12 +1541,24 @@
         }
       }
       if (this.enemy.passive === 'storm' && this.oppTurns % 5 === 0) {
-        ev.push({ t: 'passive', id: 'storm' });
+        this._passive(ev, 'storm');
         this._drawInto('player', 1, 'effect', ev, true);
+      }
+      var every = this.tr.every;
+      if (every && this.oppTurns > 1 && (this.oppTurns - 1) % every.n === 0) {
+        // „nach jedem n-ten Zug": wirkt zu Beginn des folgenden Zuges
+        if (every.do === 'draw') {
+          this._passive(ev, this.enemy.passive);
+          this._drawInto('player', 1, 'effect', ev, true);
+        } else if (every.do === 'discard' && this.hand.opp.length > 1) {
+          this._passive(ev, this.enemy.passive);
+          this._oppDitch(ev);
+        }
       }
     }
     if (actor === 'player') {
       var changed = false, self = this;
+      this.pTurns++;
       if (this.status.spy > 0) { this.status.spy--; changed = true; }
       this.status.hodl = this.status.hodl.filter(function (h) {
         h.turns--;
@@ -1270,6 +1603,11 @@
       case 'ausgleich': value += mine - 1 > theirs ? 60 + (mine - 1 - theirs) * 25 : 5; break;
       case 'mischmasch': value += theirs <= 3 ? 100 + (4 - theirs) * 30 : 5; break;
       case 'bannbrecher': value += this.status.curse.opp || this.status.skip.opp ? 60 : 8; break;
+      case 'vollbremsung': value += 80 + (theirs <= 3 ? 60 : 0); break;
+      case 'schuldschein': value += 60 + (theirs <= 3 ? 60 : 0) + (ai === 'pressure' ? 30 : 0); break;
+      case 'rauchbombe': value += 55 + (theirs <= 2 ? 50 : 0); break;
+      case 'roulette': value += ai === 'gamble' ? 70 : 20; break;
+      case 'nachschub': value += -400; break; // zöge selbst Karten: lässt er liegen
       case 'zocken': value += 45 + (ai === 'gamble' ? 40 : 0); break;
       case 'tausch': {
         var diff = (mine - 1) - theirs;
@@ -1286,7 +1624,8 @@
 
   Duel.prototype._aiPlan = function () {
     var self = this, hand = this.hand.opp, best = null;
-    var sees = this.enemy.passive === 'sees-hand' || this.enemy.passive === 'director' || (this.enemy.passive === 'by-ear' && this.oppTurns <= 3);
+    var sees = this.enemy.passive === 'sees-hand' || this.enemy.passive === 'director' || (this.enemy.passive === 'by-ear' && this.oppTurns <= 3) ||
+      !!this.tr.sees || (!!this.tr.seesTurns && this.oppTurns <= this.tr.seesTurns);
     var chainCap = this.enemy.chain, chains = chainCap > 1; // nur wenige Gegner legen mehrere Karten
 
     function follow(cardId) { // wie viele Spielerkarten könnten direkt anlegen?

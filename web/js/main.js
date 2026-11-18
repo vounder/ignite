@@ -205,8 +205,9 @@
       ZU.Profile.save(profile);
       this.profile = profile;
       var self = this;
-      // Der Schleier ist zugleich Übergang: Dahinter laden die Gegner des ersten Akts.
-      self.go('select', true);
+      // Erster Besuch in diesem Haus: Die Ankunft wird erzählt. Der Schleier danach ist zugleich Übergang:
+      // Dahinter laden die Gegner des ersten Akts.
+      ZU.story.maybe(this.run.casino().id + '-ankunft').then(function () { self.go('select', true); });
     },
 
     continueRun: function (run) {
@@ -214,7 +215,13 @@
       this.go(run.s.phase === 'duel' ? 'select' : run.s.phase);
     },
 
-    startDuel: function () { this.go('duel'); },
+    startDuel: function () {
+      var self = this, run = this.run, enc = run.encounter(), casino = run.casino();
+      // Vor dem Boss des Hauses (letzter Akt) steht beim ersten Mal ein Wortwechsel.
+      var finale = enc.kind === 'boss' && run.s.act === run.acts() && !run.s.endless && !run.meta().legacy && casino.foes && casino.foes.boss === enc.enemy;
+      if (!finale) { this.go('duel'); return; }
+      ZU.story.maybe(casino.id + '-boss').then(function () { self.go('duel'); });
+    },
 
     pause: function () {
       if (!ZU.modal.isOpen()) ZU.settingsModal(this, true);
@@ -236,16 +243,20 @@
       var result = run.finishDuel(view.duel);
       if (result.won) {
         ZU.payout(this, result).then(function () {
-          var phase = run.afterPayout();
+          var phase = run.afterPayout(), casino = run.casino().id;
           if (phase === 'victory') ZU.account.reportRun({ won: true, score: run.s.score, act: run.s.act });
-          self.go(phase);
+          // Die Geschichte: das Ende des Hauses (und nach dem letzten der Epilog); sonst einmalig der erste Brand.
+          var tale = phase === 'victory' && !run.meta().legacy
+            ? ZU.story.maybe(casino + '-ende').then(function () { return casino === 'inferno' ? ZU.story.maybe('epilog') : false; })
+            : result.burnt ? ZU.story.maybe('brand') : Promise.resolve(false);
+          tale.then(function () { self.go(phase); });
         });
         return;
       }
       // Verloren, aber der Run geht weiter: Es gibt nur diesen einen Tisch, also geht es dort gleich von vorn los –
       // ohne Umweg über die Tischwahl. Hat es ein Streichholz gekostet, brennt es vorher groß in der Mitte ab.
       if (result.spared) {
-        ZU.fx.banner('Phönixfeder!', 'win', 1500).then(function () { self.rematch(false); });
+        ZU.fx.banner(result.bones ? 'Herr Knochen nimmt es auf sich!' : 'Phönixfeder!', 'win', 1500).then(function () { self.rematch(false); });
         ZU.audio.match();
         return;
       }
@@ -264,7 +275,8 @@
         ZU.audio.match();
         ZU.fx.banner(ZU.TRINKETS[result.gone].name + ' verspielt!', 'lose', 1500).then(function () { self.rematch(true); });
       } else {
-        this.rematch(true);
+        // Das allererste verlorene Streichholz: Manfred hat dazu etwas zu sagen.
+        ZU.story.maybe('holz').then(function () { self.rematch(true); });
       }
     },
 

@@ -90,7 +90,7 @@ function copyWeb(target) {
   assert.ok(offline.image);
   assert.match(offline.csp || '', /default-src 'self'/, 'die Seite aus dem Speicher trägt dieselbe Inhaltsrichtlinie');
   // ein Run lässt sich ohne Netz beginnen
-  await page.evaluate(() => ZU.game.startRun(ZU.STARTERS[0].id));
+  await page.evaluate(() => { ZU.story.maybe = () => Promise.resolve(false); ZU.game.startRun(ZU.STARTERS[0].id); });
   await page.waitForFunction(() => ZU.game.screen === 'select', null, { timeout: 30000 });
   await page.evaluate(() => { ZU.Run.clearSave(); ZU.game.run = null; });
 

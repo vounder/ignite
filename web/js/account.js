@@ -89,7 +89,7 @@
   function away() { return !A.user && !!readSync().user; }
 
   /* ---------- Der Stand auf dem Gerät ---------- */
-  var PREFS = ['avatar', 'deck', 'seenHelp', 'brSeen', 'popSeen', 'popInit'];
+  var PREFS = ['avatar', 'deck', 'seenHelp', 'brSeen', 'popSeen', 'popInit', 'story'];
   function cleanPrefs(raw) {
     var base = ZU.Profile.defaults(), out = {};
     raw = raw && typeof raw === 'object' ? raw : {};
@@ -233,6 +233,8 @@
     });
     // Was einmal gesehen wurde, bleibt gesehen – egal auf welchem Gerät.
     if (rPrefs.seenHelp || local.prefs.seenHelp) prefs.seenHelp = true;
+    // Gesehene Szenen der Geschichte: Was auf einem Gerät gesehen wurde, gilt überall.
+    if (rPrefs.story || local.prefs.story) prefs.story = Object.assign({}, rPrefs.story || {}, local.prefs.story || {});
     if (rPrefs.popInit || local.prefs.popInit) prefs.popInit = true;
     if (Array.isArray(rPrefs.popSeen) && Array.isArray(local.prefs.popSeen)) {
       prefs.popSeen = local.prefs.popSeen.concat(rPrefs.popSeen.filter(function (key) { return local.prefs.popSeen.indexOf(key) < 0; }));

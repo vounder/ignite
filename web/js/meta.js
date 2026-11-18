@@ -11,11 +11,13 @@
     trinket: ['lucky-chip', 'ashtray', 'false-bottom', 'ledger', 'fuse', 'brass-knuckles', 'pocket-watch', 'gold-tooth', 'cellar-key', 'counterfeit', 'loyalty',
       'kreuzfeuer', 'bauernopfer', 'rotlicht', 'volle-zehn', 'erster-funke', 'volles-haus', 'heisse-ware', 'endspurt',
       'schwarzer-peter', 'schadenfreude', 'bierdeckel', 'trinkgeld', 'rabattmarke', 'nachtschicht',
-      'brandbeschleuniger', 'chefsache', 'oel-ins-feuer', 'schaulustige'],
+      'brandbeschleuniger', 'chefsache', 'oel-ins-feuer', 'schaulustige',
+      'gerade-linie', 'pfeilspitze', 'schraeger-vogel', 'handwaermer', 'sitzfleisch', 'wolke-sieben', 'geduldsfaden'],
     special: ['stillstand', 'addieren', 'spion', 'fluch', 'hodl', 'opfer'],
     seal: ['glut', 'gold', 'anker']
   };
-  var STARTER_COST = { igniter: 8, cheater: 10, alchemist: 10, hearts: 10, carny: 10, picked: 10, hoarder: 10, straw: 12, cat: 12, conman: 12, snoop: 10, noble: 12, jeweler: 12, banker: 12, devil: 16 };
+  var STARTER_COST = { igniter: 8, cheater: 10, alchemist: 10, hearts: 10, carny: 10, picked: 10, hoarder: 10, straw: 12, cat: 12, conman: 12, snoop: 10, noble: 12, jeweler: 12, banker: 12, devil: 16,
+    doppelkopf: 14, raven: 10, lucky: 12, smith: 14 };
 
   /* Zählwerke: 'sum' wird aufaddiert, 'max' merkt sich den besten Wert. Nur diese Schlüssel werden gespeichert. */
   var FEATS = {
@@ -23,7 +25,7 @@
     trinkets: 'max', perks: 'max', casino: 'max', flawless: 'max', endless: 'max',
     played: 'sum', sevens: 'sum', eights: 'sum', aces: 'sum', specials: 'sum', pairs: 'sum', skips: 'sum', curses: 'sum', reflects: 'sum',
     swaps: 'sum', sacrificed: 'sum', nodraw: 'sum', fast: 'sum', curfew: 'sum', last: 'sum', slim: 'sum', losses: 'sum',
-    burned: 'sum', sold: 'sum', rerolls: 'sum', healed: 'sum', sealed: 'sum', bought: 'sum', burnt: 'sum', overkill: 'max', kniffe: 'sum'
+    burned: 'sum', sold: 'sum', rerolls: 'sum', healed: 'sum', sealed: 'sum', bought: 'sum', burnt: 'sum', overkill: 'max', kniffe: 'sum', skipped: 'sum'
   };
 
   /* Bedingungen, unter denen etwas im Hinterzimmer auftaucht: [Zählwerk, Schwelle, Hinweis, ab wann der Hinweis zu lesen ist].
@@ -47,6 +49,10 @@
     'starter:jeweler': ['sealed', 3, 'Lass bei Esme 3 Karten veredeln.'],
     'starter:banker': ['money', 40, 'Halte 40 Mark auf einmal.'],
     'starter:devil': ['casino', 3, 'Räume drei Casinos aus.'],
+    'starter:doppelkopf': ['foe:twins', 1, 'Schlage Hinz & Kunz, die Zwillinge.'],
+    'starter:raven': ['played', 300, 'Spiele 300 Karten.'],
+    'starter:lucky': ['rerolls', 15, 'Lass Manfred 15-mal neu auslegen.'],
+    'starter:smith': ['burnt', 10, 'Fackle 10 Tische ab.'],
     // --- Trinkets der ersten Serie ---
     'trinket:heartblood': ['duels', 3, 'Gewinne 3 Duelle.'],
     'trinket:black-series': ['duels', 6, 'Gewinne 6 Duelle.'],
@@ -163,6 +169,63 @@
     'trinket:weissglut': ['chain', 9, 'Erreiche eine Kette von ×9.'],
     'trinket:kerbholz': ['burnt', 4, 'Fackle 4 Tische ab.'],
     'trinket:vabanque': ['last', 1, 'Gewinne ein Duell mit dem letzten Streichholz.'],
+    // --- dritte Serie (3.0) ---
+    'trinket:halbe-portion': ['fast', 2, 'Gewinne 2 Duelle in höchstens 16 Zügen.'],
+    'trinket:popcorn': ['duels', 8, 'Gewinne 8 Duelle.'],
+    'trinket:banane': ['losses', 4, 'Verliere 4 Duelle.'],
+    'trinket:elitepartner': ['elites', 6, 'Schlage 6 Elite-Gegner.'],
+    'trinket:fehldruck': ['foe:newsboy', 1, 'Schlage Piet, den Zeitungsjungen.'],
+    'trinket:schiefertafel': ['played', 250, 'Spiele 250 Karten.'],
+    'trinket:schwarzfahrer': ['foe:taxi', 2, 'Schlage Droschken-Paule zweimal.'],
+    'trinket:baron': ['foe:boss-baron', 1, 'Schlage den Lügenbaron.'],
+    'trinket:mondsuechtig': ['foe:coat-check', 1, 'Schlage Trude, die Garderobiere.'],
+    'trinket:blutstein': ['duels', 25, 'Gewinne 25 Duelle.'],
+    'trinket:blumentopf': ['played', 400, 'Spiele 400 Karten.'],
+    'trinket:hofnarr': ['casino', 6, '', NIE],
+    'trinket:yorick': ['casino', 8, '', NIE],
+    'trinket:schablone': ['trinkets', 4, 'Trage 4 Trinkets in einem Run.'],
+    'trinket:meisterbrief': ['sealed', 12, 'Lass bei Esme 12 Karten veredeln.', 1],
+    'trinket:schwaenzer': ['skipped', 3, 'Lass 3 Tische aus.'],
+    'trinket:lagerfeuer': ['burned', 15, 'Verbrenne 15 Karten.'],
+    'trinket:drahtseilakt': ['last', 2, 'Gewinne 2 Duelle mit dem letzten Streichholz.'],
+    'trinket:bonusheft': ['bought', 30, 'Kaufe 30-mal bei Manfred ein.'],
+    'trinket:das-trio': ['pairs', 30, 'Lege 30-mal mehrere Karten auf einmal.', 1],
+    'trinket:selters': ['foe:cook', 1, 'Schlage Kombüsen-Kuddel.'],
+    'trinket:wetterhahn': ['foe:chimney-sweep', 1, 'Schlage Felix Glück, den Schornsteinfeger.'],
+    'trinket:hologramm': ['deck', 24, 'Trage ein Deck mit 24 Karten.', 1],
+    'trinket:ersatzhose': ['pairs', 12, 'Lege 12-mal mehrere Karten auf einmal.'],
+    'trinket:glaskugel': ['sealed', 8, 'Lass bei Esme 8 Karten veredeln.'],
+    'trinket:wahnsinn': ['foe:hypnotist', 2, 'Schlage Morpheo zweimal.', 1],
+    'trinket:armutsgeluebde': ['foe:boss-abbess', 1, 'Schlage Mutter Immaculata.'],
+    'trinket:stein-der-weisen': ['foe:magician', 3, 'Schlage den Großen Bellini dreimal.', 1],
+    'trinket:totenkopfring': ['last', 4, 'Gewinne 4 Duelle mit dem letzten Streichholz.'],
+    'trinket:nachteule': ['curfew', 3, 'Gewinne 3 Duelle durch die Sperrstunde.'],
+    'trinket:geballte-faust': ['foe:bruiser', 2, 'Schlage Knochen-Kalle zweimal.'],
+    'trinket:blaupause': ['deck', 18, 'Trage ein Deck mit 18 Karten.'],
+    'trinket:stuntman': ['foe:knife-thrower', 1, 'Schlage Messer-Marek.'],
+    'trinket:daeumling': ['sevens', 40, 'Spiele 40 Siebenen.'],
+    'trinket:wandersmann': ['played', 600, 'Spiele 600 Karten.', 1],
+    'trinket:maskenball': ['foe:gigolo', 1, 'Schlage den Schönen Egon.'],
+    'trinket:spiegelkabinett': ['foe:boss-zampano', 1, 'Schlage Direktor Zampano.', 1],
+    'trinket:siebenerkrieg': ['sevens', 60, 'Spiele 60 Siebenen.'],
+    'trinket:trotzkopf': ['losses', 5, 'Verliere 5 Duelle.'],
+    'trinket:torero': ['bosses', 8, 'Schlage 8 Bosse.'],
+    'trinket:kuckucksuhr': ['foe:conductor', 2, 'Schlage Schaffner Knips zweimal.', 2],
+    'trinket:oellampe': ['fast', 3, 'Gewinne 3 Duelle in höchstens 16 Zügen.'],
+    'trinket:wuerfelbecher': ['foe:dice-girl', 1, 'Schlage Würfel-Wanda.'],
+    'trinket:vier-finger': ['pairs', 40, 'Lege 40-mal mehrere Karten auf einmal.', 2],
+    'trinket:verschmiert': ['casino', 5, '', NIE],
+    'trinket:narrenfreiheit': ['bosses', 25, 'Schlage 25 Bosse.', 4],
+    'trinket:hasenpfote': ['foe:lottery-girl', 2, 'Schlage Hanni, die Losverkäuferin, zweimal.'],
+    'trinket:herr-knochen': ['losses', 12, 'Verliere 12 Duelle.', 1],
+    'trinket:weihrauch': ['reflects', 3, 'Wirf 3 Effekte auf den Gegner zurück.'],
+    'trinket:schutzengel': ['foe:nurse', 1, 'Schlage Nachtschwester Agnes.'],
+    'trinket:stammbaum': ['foe:granny', 2, 'Schlage Oma Hedwig zweimal.', 1],
+    'trinket:kuckucksei': ['trinkets', 7, 'Trage 7 Trinkets in einem Run.'],
+    'trinket:gesindel': ['foe:scrap-dealer', 3, 'Schlage Eisen-Ede dreimal.', 1],
+    'trinket:rakete': ['bosses', 4, 'Schlage 4 Bosse.'],
+    'trinket:notgroschen': ['healed', 4, 'Kaufe 4 Streichhölzer nach.'],
+    'trinket:visitenkarte': ['foe:crypto-bro', 1, 'Schlage Kai Krypto.'],
     // --- Spezialkarten ---
     'special:zytokinese': ['deck', 22, 'Baue ein Deck aus 22 Karten.'],
     'special:zocken': ['foe:bookie', 1, 'Schlage Quoten-Otto.'],
@@ -180,11 +243,24 @@
     'special:mischmasch': ['swaps', 5, 'Spiele 5-mal Tausch.', 2],
     'special:reservefunke': ['flawless', 1, 'Räume ein Casino aus, ohne ein Streichholz zu verlieren.', 2],
     'special:inferno': ['casino', 5, '', NIE],
+    'special:nachschub': ['deck', 18, 'Trage ein Deck mit 18 Karten.'],
+    'special:feuerwerk': ['glut', 1200, 'Sammle 1.200 Glut in einem Duell.'],
+    'special:funkenflug': ['burnt', 2, 'Fackle 2 Tische ab.'],
+    'special:roulette': ['foe:lottery-girl', 1, 'Schlage Hanni, die Losverkäuferin.'],
+    'special:schuldschein': ['losses', 6, 'Verliere 6 Duelle.'],
+    'special:rauchbombe': ['skips', 20, 'Lass Gegner 20-mal aussetzen.'],
+    'special:schmiedefeuer': ['chain', 11, 'Erreiche eine Kette von ×11.', 1],
+    'special:grossbrand': ['burnt', 6, 'Fackle 6 Tische ab.', 1],
+    'special:kassensturz': ['bank', 15, 'Kassiere in einem Duell eine Bank von 15 Mark.'],
+    'special:vollbremsung': ['foe:boss-else', 1, 'Schlage die Eiserne Else.', 2],
     // --- Veredelungen (Esme) ---
     'seal:zuend': ['sealed', 2, 'Lass bei Esme 2 Karten veredeln.'],
     'seal:haken': ['sealed', 6, 'Lass bei Esme 6 Karten veredeln.'],
     'seal:bumerang': ['pairs', 15, 'Lege 15-mal mehrere Karten auf einmal.'],
     'seal:irrlicht': ['sealed', 20, 'Lass bei Esme 20 Karten veredeln.', 1],
+    'seal:funke': ['sealed', 3, 'Lass bei Esme 3 Karten veredeln.'],
+    'seal:spiegel': ['sealed', 10, 'Lass bei Esme 10 Karten veredeln.'],
+    'seal:maulkorb': ['skips', 30, 'Lass Gegner 30-mal aussetzen.', 1],
     // --- Upgrades ---
     'upgrade:tarot': ['sealed', 4, 'Lass bei Esme 4 Karten veredeln.'],
     'upgrade:stammkunde': ['rerolls', 5, 'Lass Manfred 5-mal neu auslegen.'],
@@ -242,10 +318,10 @@
       }
       meta.ash = count(raw.ash, 1000000);
       meta.earned = count(raw.earned, 10000000);
-      // Stände aus der Zeit mit sechs Casinos: Die Häuser sind umsortiert, der Index wandert mit.
+      // Stände aus der Zeit mit sechs oder acht Casinos: Die Häuser sind umsortiert, der Index wandert mit.
       function house(value) {
         var n = count(value, 1000);
-        if (raw.cv !== ZU.CASINO_VERSION && ZU.CASINO_REMAP[n] != null) n = ZU.CASINO_REMAP[n];
+        n = ZU.casinoIndex(n, raw.cv);
         return Math.min(n, M.STAKES.length - 1);
       }
       meta.maxStake = house(raw.maxStake);
